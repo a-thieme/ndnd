@@ -59,6 +59,9 @@ type SvsAloOpts struct {
 
 	// MulticastPrefix is a prefix to prepend to Sync Interests
 	MulticastPrefix enc.Name
+
+	// TODO: this essentially defeats the purpose of SVS ALO. Once we make sure it works, we should refactor it into another svs model
+	FetchLatestOnly bool // If true, only fetch the latest sequence number. Default to be false
 }
 
 // NewSvsALO creates a new SvsALO instance.
@@ -300,6 +303,12 @@ func (s *SvsALO) onSvsUpdate(update SvSyncUpdate) {
 	hash := update.Name.TlvStr()
 	entry := s.state.Get(hash, update.Boot)
 	entry.Latest = update.High
+
+	// TODO: hacky solution
+	if s.opts.FetchLatestOnly {
+		entry.Known = entry.Latest - 1
+		entry.Pending = entry.Latest // fetch only the latest
+	}
 	s.state.Set(hash, update.Boot, entry)
 
 	// Check if we want to queue new fetch for this update.
