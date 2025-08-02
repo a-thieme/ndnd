@@ -3,6 +3,7 @@ package repo
 import (
 	"sync"
 
+	"github.com/named-data/ndnd/repo/awareness"
 	enc "github.com/named-data/ndnd/std/encoding"
 	"github.com/named-data/ndnd/std/engine"
 	"github.com/named-data/ndnd/std/engine/basic"
@@ -21,6 +22,8 @@ type Repo struct {
 	engine ndn.Engine
 	store  ndn.Store
 	client ndn.Client
+
+	awareness *awareness.RepoAwareness
 
 	groupsSvs map[string]*RepoSvs
 	mutex     sync.Mutex
@@ -91,6 +94,10 @@ func (r *Repo) Start() (err error) {
 		Name:   r.config.NameN,
 		Expose: true,
 	})
+
+	// Create awareness
+	r.awareness = awareness.NewRepoAwareness(r.config.NameN, r.client)
+	r.awareness.Start()
 
 	return nil
 }
