@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/named-data/ndnd/repo/tlv"
 	enc "github.com/named-data/ndnd/std/encoding"
 	"github.com/named-data/ndnd/std/log"
 	"github.com/named-data/ndnd/std/ndn"
@@ -24,13 +25,16 @@ const (
 
 type RepoAwareness struct {
 	// single mutex
-	mutex sync.Mutex
+	mutex sync.RWMutex
 
 	// name of the local repo
 	name enc.Name
 
 	// awareness of the cluster
-	storage *LRU[string, RepoNodeAwareness]
+	localState *RepoNodeAwareness // node awareness of the local repo
+	storage    *RepoAwarenessStore
+
+	// storage *LRU[string, RepoNodeAwareness]
 	// callback function when a node awareness expires
 	onExpiry func(RepoNodeAwareness)
 
@@ -49,20 +53,24 @@ func (r *RepoAwareness) String() string {
 
 // TODO: create a new repo awareness object
 func NewRepoAwareness(name enc.Name, client ndn.Client) *RepoAwareness {
-	// TODO:
+	// TODO: get the health svs group prefix from somewhere else, e.g., configuration
 	groupPrefix, _ := enc.NameFromStr(HealthSVSGroupPrefix)
 
 	return &RepoAwareness{
 		name:              name,
-		storage:           NewLRU[string, RepoNodeAwareness](),
 		client:            client, // use Repo shared client
 		healthSvs:         nil,
 		healthGroupPrefix: groupPrefix,
+		localState:        NewRepoNodeAwareness(name.String()),
+		storage:           NewRepoAwarenessStore(),
 	}
 }
 
 func (r *RepoAwareness) Start() (err error) {
 	log.Info(r, "Starting Repo Awareness SVS")
+
+	// DEBUG: start with an assigned partition
+	r.localState.partitions = append(r.localState.partitions, 1)
 
 	r.healthSvs, err = ndn_sync.NewSvsALO(ndn_sync.SvsAloOpts{
 		Name: r.name,
@@ -80,7 +88,7 @@ func (r *RepoAwareness) Start() (err error) {
 			},
 		},
 		Snapshot:        &ndn_sync.SnapshotNull{}, // there is no need for snapshots in this case
-		FetchLatestOnly: true,                     // only fetch the latest sequence number
+		FetchLatestOnly: false,                    // only fetch the latest sequence number
 	})
 	if err != nil {
 		panic(err)
@@ -94,10 +102,19 @@ func (r *RepoAwareness) Start() (err error) {
 	// Subscribe to all publishers
 	r.healthSvs.SubscribePublisher(enc.Name{}, func(pub ndn_sync.SvsPub) {
 		if pub.IsSnapshot {
-			log.Info(r, "Received snapshot publication", "pub", pub)
+			log.Info(r, "Received snapshot publication", "pub", pub.Content)
+			panic("Snapshot publications are not supported in Repo Awareness")
 		} else {
 			// Process the publication.
-			log.Info(r, "Received non-snapshot publication", "pub", pub)
+			log.Info(r, "Received non-snapshot publication", "pub", pub.Content)
+
+			update, err := tlv.ParseAwarenessUpdate(enc.NewWireView(pub.Content), true)
+			if err != nil {
+				panic(err)
+			}
+
+			// update storage
+			r.storage.ProcessUpdate(update)
 		}
 	})
 
@@ -131,58 +148,48 @@ func (r *RepoAwareness) Stop() (err error) {
 		if err := r.healthSvs.Stop(); err != nil {
 			log.Error(r, "Error stopping health SVS", "err", err)
 		}
+
+		// Withdraw group prefix route
+		for _, route := range []enc.Name{
+			r.healthSvs.SyncPrefix(),
+			r.healthSvs.DataPrefix(),
+		} {
+			r.client.WithdrawPrefix(route, nil)
+		}
+
 		r.healthSvs = nil
-	} else {
-		return nil
-	}
-
-	// Withdraw group prefix route
-	for _, route := range []enc.Name{
-		r.healthSvs.SyncPrefix(),
-		r.healthSvs.DataPrefix(),
-	} {
-		r.client.WithdrawPrefix(route, nil)
-	}
-
-	// Stop SVS ALO
-	if r.healthSvs != nil {
-		r.healthSvs.Stop()
 	}
 
 	return nil
 }
 
-func (r *RepoAwareness) processUpdate(update *ndn_sync.SvSyncUpdate) {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	// TODO: Process the update
-	// This is a placeholder for the actual implementation
-	// In a real implementation, we would update the awareness of the node in the cluster
-	// We should only fetch high in any case, even if this may miss potential partition updates - for performance reasons
-	log.Info(r, "Processing update", "update", update)
-}
-
-// TODO: transmit a heartbeat, and schedule next heartbeat
-// This function is blocking and should be in a separate goroutine
+// StartHeartbeat runs the heartbeat loop in a goroutine
 func (r *RepoAwareness) StartHeartbeat() (err error) {
 	log.Info(r, "Heartbeat started", "repo", r.name)
 
-	// publish heartbeat data using svs
 	ticker := time.NewTicker(HeartbeatInterval)
+	defer ticker.Stop()
+
 	for {
 		t := <-ticker.C
-		_, _, err := r.healthSvs.Publish(enc.Wire{}) // TODO: empty message
+		// Create awareness update with current node info
+		r.mutex.RLock()
+		awarenessUpdate := &tlv.AwarenessUpdate{
+			NodeName:   r.name.String(),
+			Partitions: r.localState.partitions, // Get partitions this node is responsible for
+		}
+		r.mutex.RUnlock()
+
+		_, _, err := r.healthSvs.Publish(awarenessUpdate.Encode())
 		log.Info(r, "Published heartbeat", "time", t)
 
 		if err != nil {
 			log.Error(r, "Error publishing heartbeat", "err", err, "time", t)
 			return err
 		}
+	} // TODO: make this a separate goroutine that doesn't block the main thread
 
-		// TODO: create a heartbeat update
-		// seq := r.healthSvs.IncrSeqNo(r.client)
-	}
+	return nil
 }
 
 // TODO: return the list of known nodes and their status (up, p-fail, fail)
@@ -199,18 +206,12 @@ func (l *RepoAwareness) SetOnExpiry(handler func(RepoNodeAwareness)) {
 // Update updates the awareness of a node in the cluster.
 // If the node does not exist, it adds a new entry.
 func (l *RepoAwareness) Update(awareness RepoNodeAwareness) {
-	key := awareness.name
-	l.storage.Put(key, awareness, true)
-
-	// TODO: pass expired node awareness to an expiry handler
-	// for l.storage.storage.Head() != nil {
-	// 	if l.storage.storage.Head().value.
-	// }
+	// TODO: update the awareness store
 }
 
 // Get retrieves the awareness of a node by its name.
 // If the node does not exist, it returns nil.
 func (l *RepoAwareness) Get(key string) *RepoNodeAwareness {
-	awareness := l.storage.Get(key, false)
+	awareness := l.storage.GetNode(key)
 	return awareness
 }

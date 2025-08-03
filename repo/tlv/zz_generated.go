@@ -926,3 +926,233 @@ func ParseBlobFetch(reader enc.WireView, ignoreCritical bool) (*BlobFetch, error
 	context.Init()
 	return context.Parse(reader, ignoreCritical)
 }
+
+type AwarenessUpdateEncoder struct {
+	Length uint
+
+	Partitions_subencoder []struct {
+	}
+}
+
+type AwarenessUpdateParsingContext struct {
+}
+
+func (encoder *AwarenessUpdateEncoder) Init(value *AwarenessUpdate) {
+
+	{
+		Partitions_l := len(value.Partitions)
+		encoder.Partitions_subencoder = make([]struct {
+		}, Partitions_l)
+		for i := 0; i < Partitions_l; i++ {
+			pseudoEncoder := &encoder.Partitions_subencoder[i]
+			pseudoValue := struct {
+				Partitions uint64
+			}{
+				Partitions: value.Partitions[i],
+			}
+			{
+				encoder := pseudoEncoder
+				value := &pseudoValue
+
+				_ = encoder
+				_ = value
+			}
+		}
+	}
+
+	l := uint(0)
+	l += 3
+	l += uint(enc.TLNum(len(value.NodeName)).EncodingLength())
+	l += uint(len(value.NodeName))
+	if value.Partitions != nil {
+		for seq_i, seq_v := range value.Partitions {
+			pseudoEncoder := &encoder.Partitions_subencoder[seq_i]
+			pseudoValue := struct {
+				Partitions uint64
+			}{
+				Partitions: seq_v,
+			}
+			{
+				encoder := pseudoEncoder
+				value := &pseudoValue
+				l += 3
+				l += uint(1 + enc.Nat(value.Partitions).EncodingLength())
+				_ = encoder
+				_ = value
+			}
+		}
+	}
+	encoder.Length = l
+
+}
+
+func (context *AwarenessUpdateParsingContext) Init() {
+
+}
+
+func (encoder *AwarenessUpdateEncoder) EncodeInto(value *AwarenessUpdate, buf []byte) {
+
+	pos := uint(0)
+
+	buf[pos] = 253
+	binary.BigEndian.PutUint16(buf[pos+1:], uint16(576))
+	pos += 3
+	pos += uint(enc.TLNum(len(value.NodeName)).EncodeInto(buf[pos:]))
+	copy(buf[pos:], value.NodeName)
+	pos += uint(len(value.NodeName))
+	if value.Partitions != nil {
+		for seq_i, seq_v := range value.Partitions {
+			pseudoEncoder := &encoder.Partitions_subencoder[seq_i]
+			pseudoValue := struct {
+				Partitions uint64
+			}{
+				Partitions: seq_v,
+			}
+			{
+				encoder := pseudoEncoder
+				value := &pseudoValue
+				buf[pos] = 253
+				binary.BigEndian.PutUint16(buf[pos+1:], uint16(577))
+				pos += 3
+
+				buf[pos] = byte(enc.Nat(value.Partitions).EncodeInto(buf[pos+1:]))
+				pos += uint(1 + buf[pos])
+				_ = encoder
+				_ = value
+			}
+		}
+	}
+}
+
+func (encoder *AwarenessUpdateEncoder) Encode(value *AwarenessUpdate) enc.Wire {
+
+	wire := make(enc.Wire, 1)
+	wire[0] = make([]byte, encoder.Length)
+	buf := wire[0]
+	encoder.EncodeInto(value, buf)
+
+	return wire
+}
+
+func (context *AwarenessUpdateParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*AwarenessUpdate, error) {
+
+	var handled_NodeName bool = false
+	var handled_Partitions bool = false
+
+	progress := -1
+	_ = progress
+
+	value := &AwarenessUpdate{}
+	var err error
+	var startPos int
+	for {
+		startPos = reader.Pos()
+		if startPos >= reader.Length() {
+			break
+		}
+		typ := enc.TLNum(0)
+		l := enc.TLNum(0)
+		typ, err = reader.ReadTLNum()
+		if err != nil {
+			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
+		}
+		l, err = reader.ReadTLNum()
+		if err != nil {
+			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
+		}
+
+		err = nil
+		if handled := false; true {
+			switch typ {
+			case 576:
+				if true {
+					handled = true
+					handled_NodeName = true
+					{
+						var builder strings.Builder
+						_, err = reader.CopyN(&builder, int(l))
+						if err == nil {
+							value.NodeName = builder.String()
+						}
+					}
+				}
+			case 577:
+				if true {
+					handled = true
+					handled_Partitions = true
+					if value.Partitions == nil {
+						value.Partitions = make([]uint64, 0)
+					}
+					{
+						pseudoValue := struct {
+							Partitions uint64
+						}{}
+						{
+							value := &pseudoValue
+							value.Partitions = uint64(0)
+							{
+								for i := 0; i < int(l); i++ {
+									x := byte(0)
+									x, err = reader.ReadByte()
+									if err != nil {
+										if err == io.EOF {
+											err = io.ErrUnexpectedEOF
+										}
+										break
+									}
+									value.Partitions = uint64(value.Partitions<<8) | uint64(x)
+								}
+							}
+							_ = value
+						}
+						value.Partitions = append(value.Partitions, pseudoValue.Partitions)
+					}
+					progress--
+				}
+			default:
+				if !ignoreCritical && ((typ <= 31) || ((typ & 1) == 1)) {
+					return nil, enc.ErrUnrecognizedField{TypeNum: typ}
+				}
+				handled = true
+				err = reader.Skip(int(l))
+			}
+			if err == nil && !handled {
+			}
+			if err != nil {
+				return nil, enc.ErrFailToParse{TypeNum: typ, Err: err}
+			}
+		}
+	}
+
+	startPos = reader.Pos()
+	err = nil
+
+	if !handled_NodeName && err == nil {
+		err = enc.ErrSkipRequired{Name: "NodeName", TypeNum: 576}
+	}
+	if !handled_Partitions && err == nil {
+		// sequence - skip
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return value, nil
+}
+
+func (value *AwarenessUpdate) Encode() enc.Wire {
+	encoder := AwarenessUpdateEncoder{}
+	encoder.Init(value)
+	return encoder.Encode(value)
+}
+
+func (value *AwarenessUpdate) Bytes() []byte {
+	return value.Encode().Join()
+}
+
+func ParseAwarenessUpdate(reader enc.WireView, ignoreCritical bool) (*AwarenessUpdate, error) {
+	context := AwarenessUpdateParsingContext{}
+	context.Init()
+	return context.Parse(reader, ignoreCritical)
+}

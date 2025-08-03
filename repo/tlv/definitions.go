@@ -48,3 +48,10 @@ type BlobFetch struct {
 	//+field:sequence:[]byte:binary:[]byte
 	Data [][]byte `tlv:"0x1BA"`
 }
+
+type AwarenessUpdate struct {
+	//+field:string
+	NodeName string `tlv:"0x240"`
+	//+field:sequence:uint64:natural
+	Partitions []uint64 `tlv:"0x241"`
+}
