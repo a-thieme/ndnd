@@ -23,7 +23,7 @@ type RepoNodeAwareness struct {
 	// last time we checked the node
 	lastKnown time.Time
 	// partitions a node is holding
-	partitions []uint64
+	partitions map[uint]bool // using map for fast lookup
 	// state of the node
 	state NodeState
 }
@@ -38,7 +38,7 @@ func NewRepoNodeAwareness(name string) *RepoNodeAwareness {
 	return &RepoNodeAwareness{
 		name:       name,
 		lastKnown:  time.Now(),
-		partitions: make([]uint64, 0),
+		partitions: make(map[uint]bool),
 		state:      Up,
 	}
 }
@@ -49,7 +49,7 @@ func (r *RepoNodeAwareness) SetState(state NodeState) {
 }
 
 // Update updates the node's partitions and resets its state to Up.
-func (r *RepoNodeAwareness) Update(partitions []uint64) {
+func (r *RepoNodeAwareness) Update(partitions map[uint]bool) {
 	log.Info(r, "Updating node awareness", "node", r.name, "partitions", partitions)
 
 	r.state = Up // Reset state to Up when updating partitions

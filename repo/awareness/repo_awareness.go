@@ -21,6 +21,11 @@ const (
 	HeartbeatInterval = 5 * time.Second
 	// HeartbeatExpiry is the time after which a node is considered down if no heartbeat is received.
 	HeartbeatExpiry = 20 * time.Second
+
+	// NumPartitions is the number of partitions in the system.
+	NumPartitions = 32 // TODO: this should be configurable or supplied by the higher layer
+	// NumReplicas is the minimum number of replicas per partition.
+	NumReplicas = 3 // TODO: this should be configurable or supplied by the higher
 )
 
 type RepoAwareness struct {
@@ -70,7 +75,10 @@ func (r *RepoAwareness) Start() (err error) {
 	log.Info(r, "Starting Repo Awareness SVS")
 
 	// DEBUG: start with an assigned partition
-	r.localState.partitions = append(r.localState.partitions, 1)
+	r.localState.partitions[0] = true
+	r.localState.partitions[3] = true
+	r.localState.partitions[5] = true
+	r.localState.partitions[7] = true
 
 	r.healthSvs, err = ndn_sync.NewSvsALO(ndn_sync.SvsAloOpts{
 		Name: r.name,
@@ -180,16 +188,16 @@ func (r *RepoAwareness) StartHeartbeat() (err error) {
 		}
 		r.mutex.RUnlock()
 
+		log.Info(r, "Published partitions", "time", t, "partitions", awarenessUpdate.Partitions)
 		_, _, err := r.healthSvs.Publish(awarenessUpdate.Encode())
-		log.Info(r, "Published heartbeat", "time", t)
+
+		// log.Info(r, "Published heartbeat", "time", t)
 
 		if err != nil {
 			log.Error(r, "Error publishing heartbeat", "err", err, "time", t)
 			return err
 		}
 	} // TODO: make this a separate goroutine that doesn't block the main thread
-
-	return nil
 }
 
 // TODO: return the list of known nodes and their status (up, p-fail, fail)
