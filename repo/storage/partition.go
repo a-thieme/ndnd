@@ -144,7 +144,10 @@ func (p *Partition) Start() (err error) {
 		p.svsGroup.SyncPrefix(),
 		p.svsGroup.DataPrefix(),
 	} {
-		p.client.AnnouncePrefix(ndn.Announcement{Name: route})
+		p.client.AnnouncePrefix(ndn.Announcement{
+			Name:   route,
+			Expose: true,
+		})
 	}
 
 	// Start partition SVS

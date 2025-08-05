@@ -1190,6 +1190,141 @@ func ParseAwarenessUpdate(reader enc.WireView, ignoreCritical bool) (*AwarenessU
 	return context.Parse(reader, ignoreCritical)
 }
 
+type RepoNotifyEncoder struct {
+	Length uint
+
+	CommandName_encoder spec.NameContainerEncoder
+}
+
+type RepoNotifyParsingContext struct {
+	CommandName_context spec.NameContainerParsingContext
+}
+
+func (encoder *RepoNotifyEncoder) Init(value *RepoNotify) {
+	if value.CommandName != nil {
+		encoder.CommandName_encoder.Init(value.CommandName)
+	}
+
+	l := uint(0)
+	if value.CommandName != nil {
+		l += 3
+		l += uint(enc.TLNum(encoder.CommandName_encoder.Length).EncodingLength())
+		l += encoder.CommandName_encoder.Length
+	}
+	encoder.Length = l
+
+}
+
+func (context *RepoNotifyParsingContext) Init() {
+	context.CommandName_context.Init()
+}
+
+func (encoder *RepoNotifyEncoder) EncodeInto(value *RepoNotify, buf []byte) {
+
+	pos := uint(0)
+
+	if value.CommandName != nil {
+		buf[pos] = 253
+		binary.BigEndian.PutUint16(buf[pos+1:], uint16(608))
+		pos += 3
+		pos += uint(enc.TLNum(encoder.CommandName_encoder.Length).EncodeInto(buf[pos:]))
+		if encoder.CommandName_encoder.Length > 0 {
+			encoder.CommandName_encoder.EncodeInto(value.CommandName, buf[pos:])
+			pos += encoder.CommandName_encoder.Length
+		}
+	}
+}
+
+func (encoder *RepoNotifyEncoder) Encode(value *RepoNotify) enc.Wire {
+
+	wire := make(enc.Wire, 1)
+	wire[0] = make([]byte, encoder.Length)
+	buf := wire[0]
+	encoder.EncodeInto(value, buf)
+
+	return wire
+}
+
+func (context *RepoNotifyParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*RepoNotify, error) {
+
+	var handled_CommandName bool = false
+
+	progress := -1
+	_ = progress
+
+	value := &RepoNotify{}
+	var err error
+	var startPos int
+	for {
+		startPos = reader.Pos()
+		if startPos >= reader.Length() {
+			break
+		}
+		typ := enc.TLNum(0)
+		l := enc.TLNum(0)
+		typ, err = reader.ReadTLNum()
+		if err != nil {
+			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
+		}
+		l, err = reader.ReadTLNum()
+		if err != nil {
+			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
+		}
+
+		err = nil
+		if handled := false; true {
+			switch typ {
+			case 608:
+				if true {
+					handled = true
+					handled_CommandName = true
+					value.CommandName, err = context.CommandName_context.Parse(reader.Delegate(int(l)), ignoreCritical)
+				}
+			default:
+				if !ignoreCritical && ((typ <= 31) || ((typ & 1) == 1)) {
+					return nil, enc.ErrUnrecognizedField{TypeNum: typ}
+				}
+				handled = true
+				err = reader.Skip(int(l))
+			}
+			if err == nil && !handled {
+			}
+			if err != nil {
+				return nil, enc.ErrFailToParse{TypeNum: typ, Err: err}
+			}
+		}
+	}
+
+	startPos = reader.Pos()
+	err = nil
+
+	if !handled_CommandName && err == nil {
+		value.CommandName = nil
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return value, nil
+}
+
+func (value *RepoNotify) Encode() enc.Wire {
+	encoder := RepoNotifyEncoder{}
+	encoder.Init(value)
+	return encoder.Encode(value)
+}
+
+func (value *RepoNotify) Bytes() []byte {
+	return value.Encode().Join()
+}
+
+func ParseRepoNotify(reader enc.WireView, ignoreCritical bool) (*RepoNotify, error) {
+	context := RepoNotifyParsingContext{}
+	context.Init()
+	return context.Parse(reader, ignoreCritical)
+}
+
 type RepoCommandEncoder struct {
 	Length uint
 

@@ -128,7 +128,10 @@ func (r *RepoAwareness) Start() (err error) {
 		r.healthSvs.SyncPrefix(),
 		r.healthSvs.DataPrefix(),
 	} {
-		r.client.AnnouncePrefix(ndn.Announcement{Name: route})
+		r.client.AnnouncePrefix(ndn.Announcement{
+			Name:   route,
+			Expose: true,
+		})
 	}
 
 	// Start health SVS
@@ -206,4 +209,13 @@ func (r *RepoAwareness) StartHeartbeat() (err error) {
 			return err
 		}
 	} // TODO: make this a separate goroutine that doesn't block the main thread
+}
+
+// GetReplicas returns the replicas for a given partition (local awareness)
+func (r *RepoAwareness) GetReplicas(partitionId uint64) []enc.Name {
+	replicas := make([]enc.Name, 0)
+
+	// TODO: implement lookups
+
+	return replicas
 }

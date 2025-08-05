@@ -56,6 +56,11 @@ type AwarenessUpdate struct {
 	Partitions map[uint64]bool `tlv:"0x241"`
 }
 
+type RepoNotify struct {
+	//+field:struct:spec.NameContainer
+	CommandName *spec.NameContainer `tlv:"0x260"`
+}
+
 type RepoCommand struct {
 	//+field:struct:spec.NameContainer
 	CommandName *spec.NameContainer `tlv:"0x250"`
