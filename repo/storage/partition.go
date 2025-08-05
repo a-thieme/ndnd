@@ -2,11 +2,14 @@ package storage
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
+	"github.com/named-data/ndnd/repo/tlv"
 	enc "github.com/named-data/ndnd/std/encoding"
 	"github.com/named-data/ndnd/std/log"
 	"github.com/named-data/ndnd/std/ndn"
+	"github.com/named-data/ndnd/std/ndn/svs_ps"
 	ndn_sync "github.com/named-data/ndnd/std/sync"
 )
 
@@ -19,6 +22,8 @@ const (
 
 // Represents a partition in the storage
 type Partition struct {
+	mutex sync.RWMutex
+
 	// id
 	id uint64
 
@@ -27,29 +32,35 @@ type Partition struct {
 	svsGroup  *ndn_sync.SvsALO // the SVS group
 	client    ndn.Client
 
+	// commands
+	commands map[string]*tlv.RepoCommand
+
 	// storage
-	store *RepoStorage
-	size  uint64 // the estimated size of the partition, in bytes
+	size           uint64 // the estimated size of the partition, in bytes
+	store          *RepoStorage
+	userSyncGroups map[string]*PartitionSvs
 
 	// status
 	status PartitionStatus // current status of the partition
 }
 
 func (p *Partition) String() string {
-	return fmt.Sprintf("Partition #%d", p.id)
+	return fmt.Sprintf("partition #%d", p.id)
 }
 
 // NewPartition creates a new partition
 // TODO: need more parameters to create a partition
 func NewPartition(id uint64, client ndn.Client, store *RepoStorage) *Partition {
 	return &Partition{
-		id:        id,
-		size:      0,
-		svsPrefix: nil,
-		status:    Registered,
-		client:    client,
-		svsGroup:  nil,
-		store:     store,
+		id:             id,
+		size:           0,
+		svsPrefix:      nil,
+		client:         client,
+		svsGroup:       nil,
+		store:          store,
+		status:         Registered,
+		commands:       make(map[string]*tlv.RepoCommand),
+		userSyncGroups: make(map[string]*PartitionSvs),
 	}
 }
 
@@ -75,10 +86,8 @@ func (p *Partition) Start() (err error) {
 		},
 		Snapshot: &ndn_sync.SnapshotNodeLatest{
 			Client: p.client,
-			SnapMe: func(enc.Name) (enc.Wire, error) {
-				// TODO: bundle all state of the partition and make a snapshot
-
-				return enc.Wire{}, nil
+			SnapMe: func(n enc.Name) (enc.Wire, error) {
+				return p.Snap(), nil
 			},
 			Threshold: 10, // TODO: configurable
 		},
@@ -97,11 +106,36 @@ func (p *Partition) Start() (err error) {
 	p.svsGroup.SubscribePublisher(enc.Name{}, func(pub ndn_sync.SvsPub) {
 		if pub.IsSnapshot {
 			log.Info(p, "Received snapshot publication", "pub", pub.Content)
-			// TODO: handle snapshot
+			// partition snapshot is the application state, i.e. the data in the partition
+
+			snapshot, err := svs_ps.ParseHistorySnap(enc.NewWireView(pub.Content), true)
+			if err != nil {
+				panic(err) // impossible, encoded by us
+			}
+
+			// handle snapshot
+			for _, entry := range snapshot.Entries {
+				// parse command
+				command, err := tlv.ParseRepoCommand(enc.NewWireView(entry.Content), true)
+				if err != nil {
+					panic(err)
+				}
+
+				// handle command
+				p.HandleCommand(command)
+			}
 		} else {
 			// Process the publication.
 			log.Info(p, "Received non-snapshot publication", "pub", pub.Content)
-			// TODO: process individual update
+
+			// parse command
+			command, err := tlv.ParseRepoCommand(enc.NewWireView(pub.Content), true)
+			if err != nil {
+				panic(err)
+			}
+
+			// handle command
+			p.HandleCommand(command)
 		}
 	})
 
@@ -144,4 +178,21 @@ func (p *Partition) Stop() (err error) {
 	}
 
 	return nil
+}
+
+// Snap takes a snapshot of this partition
+func (p *Partition) Snap() enc.Wire {
+	p.mutex.RLock()
+	defer p.mutex.RUnlock()
+
+	snap := tlv.PartitionSnapshot{
+		Commands: make([]*tlv.RepoCommand, 0),
+	}
+
+	// TODO: optimization: if there is a delete command after insert, we don't need to include either in the snapshot
+	for _, entry := range p.commands {
+		snap.Commands = append(snap.Commands, entry)
+	}
+
+	return snap.Encode()
 }

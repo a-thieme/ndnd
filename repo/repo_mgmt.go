@@ -8,6 +8,8 @@ import (
 	"github.com/named-data/ndnd/std/log"
 )
 
+// onMgmtCmd handles repo commands sent to the node
+// TODO: it should have different procedures for single/distributed mode
 func (r *Repo) onMgmtCmd(_ enc.Name, wire enc.Wire, reply func(enc.Wire) error) {
 	cmd, err := tlv.ParseRepoCmd(enc.NewWireView(wire), false)
 	if err != nil {

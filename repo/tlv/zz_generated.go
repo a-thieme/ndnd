@@ -1189,3 +1189,471 @@ func ParseAwarenessUpdate(reader enc.WireView, ignoreCritical bool) (*AwarenessU
 	context.Init()
 	return context.Parse(reader, ignoreCritical)
 }
+
+type RepoCommandEncoder struct {
+	Length uint
+
+	CommandName_encoder         spec.NameContainerEncoder
+	TargetName_encoder          spec.NameContainerEncoder
+	RegisterPrefixes_subencoder []struct {
+		RegisterPrefixes_encoder spec.NameContainerEncoder
+	}
+}
+
+type RepoCommandParsingContext struct {
+	CommandName_context      spec.NameContainerParsingContext
+	TargetName_context       spec.NameContainerParsingContext
+	RegisterPrefixes_context spec.NameContainerParsingContext
+}
+
+func (encoder *RepoCommandEncoder) Init(value *RepoCommand) {
+	if value.CommandName != nil {
+		encoder.CommandName_encoder.Init(value.CommandName)
+	}
+	if value.TargetName != nil {
+		encoder.TargetName_encoder.Init(value.TargetName)
+	}
+	{
+		RegisterPrefixes_l := len(value.RegisterPrefixes)
+		encoder.RegisterPrefixes_subencoder = make([]struct {
+			RegisterPrefixes_encoder spec.NameContainerEncoder
+		}, RegisterPrefixes_l)
+		for i := 0; i < RegisterPrefixes_l; i++ {
+			pseudoEncoder := &encoder.RegisterPrefixes_subencoder[i]
+			pseudoValue := struct {
+				RegisterPrefixes *spec.NameContainer
+			}{
+				RegisterPrefixes: value.RegisterPrefixes[i],
+			}
+			{
+				encoder := pseudoEncoder
+				value := &pseudoValue
+				if value.RegisterPrefixes != nil {
+					encoder.RegisterPrefixes_encoder.Init(value.RegisterPrefixes)
+				}
+				_ = encoder
+				_ = value
+			}
+		}
+	}
+
+	l := uint(0)
+	if value.CommandName != nil {
+		l += 3
+		l += uint(enc.TLNum(encoder.CommandName_encoder.Length).EncodingLength())
+		l += encoder.CommandName_encoder.Length
+	}
+	if value.TargetName != nil {
+		l += 3
+		l += uint(enc.TLNum(encoder.TargetName_encoder.Length).EncodingLength())
+		l += encoder.TargetName_encoder.Length
+	}
+	if value.RegisterPrefixes != nil {
+		for seq_i, seq_v := range value.RegisterPrefixes {
+			pseudoEncoder := &encoder.RegisterPrefixes_subencoder[seq_i]
+			pseudoValue := struct {
+				RegisterPrefixes *spec.NameContainer
+			}{
+				RegisterPrefixes: seq_v,
+			}
+			{
+				encoder := pseudoEncoder
+				value := &pseudoValue
+				if value.RegisterPrefixes != nil {
+					l += 3
+					l += uint(enc.TLNum(encoder.RegisterPrefixes_encoder.Length).EncodingLength())
+					l += encoder.RegisterPrefixes_encoder.Length
+				}
+				_ = encoder
+				_ = value
+			}
+		}
+	}
+	encoder.Length = l
+
+}
+
+func (context *RepoCommandParsingContext) Init() {
+	context.CommandName_context.Init()
+	context.TargetName_context.Init()
+	context.RegisterPrefixes_context.Init()
+}
+
+func (encoder *RepoCommandEncoder) EncodeInto(value *RepoCommand, buf []byte) {
+
+	pos := uint(0)
+
+	if value.CommandName != nil {
+		buf[pos] = 253
+		binary.BigEndian.PutUint16(buf[pos+1:], uint16(592))
+		pos += 3
+		pos += uint(enc.TLNum(encoder.CommandName_encoder.Length).EncodeInto(buf[pos:]))
+		if encoder.CommandName_encoder.Length > 0 {
+			encoder.CommandName_encoder.EncodeInto(value.CommandName, buf[pos:])
+			pos += encoder.CommandName_encoder.Length
+		}
+	}
+	if value.TargetName != nil {
+		buf[pos] = 253
+		binary.BigEndian.PutUint16(buf[pos+1:], uint16(593))
+		pos += 3
+		pos += uint(enc.TLNum(encoder.TargetName_encoder.Length).EncodeInto(buf[pos:]))
+		if encoder.TargetName_encoder.Length > 0 {
+			encoder.TargetName_encoder.EncodeInto(value.TargetName, buf[pos:])
+			pos += encoder.TargetName_encoder.Length
+		}
+	}
+	if value.RegisterPrefixes != nil {
+		for seq_i, seq_v := range value.RegisterPrefixes {
+			pseudoEncoder := &encoder.RegisterPrefixes_subencoder[seq_i]
+			pseudoValue := struct {
+				RegisterPrefixes *spec.NameContainer
+			}{
+				RegisterPrefixes: seq_v,
+			}
+			{
+				encoder := pseudoEncoder
+				value := &pseudoValue
+				if value.RegisterPrefixes != nil {
+					buf[pos] = 253
+					binary.BigEndian.PutUint16(buf[pos+1:], uint16(595))
+					pos += 3
+					pos += uint(enc.TLNum(encoder.RegisterPrefixes_encoder.Length).EncodeInto(buf[pos:]))
+					if encoder.RegisterPrefixes_encoder.Length > 0 {
+						encoder.RegisterPrefixes_encoder.EncodeInto(value.RegisterPrefixes, buf[pos:])
+						pos += encoder.RegisterPrefixes_encoder.Length
+					}
+				}
+				_ = encoder
+				_ = value
+			}
+		}
+	}
+}
+
+func (encoder *RepoCommandEncoder) Encode(value *RepoCommand) enc.Wire {
+
+	wire := make(enc.Wire, 1)
+	wire[0] = make([]byte, encoder.Length)
+	buf := wire[0]
+	encoder.EncodeInto(value, buf)
+
+	return wire
+}
+
+func (context *RepoCommandParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*RepoCommand, error) {
+
+	var handled_CommandName bool = false
+	var handled_TargetName bool = false
+	var handled_RegisterPrefixes bool = false
+
+	progress := -1
+	_ = progress
+
+	value := &RepoCommand{}
+	var err error
+	var startPos int
+	for {
+		startPos = reader.Pos()
+		if startPos >= reader.Length() {
+			break
+		}
+		typ := enc.TLNum(0)
+		l := enc.TLNum(0)
+		typ, err = reader.ReadTLNum()
+		if err != nil {
+			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
+		}
+		l, err = reader.ReadTLNum()
+		if err != nil {
+			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
+		}
+
+		err = nil
+		if handled := false; true {
+			switch typ {
+			case 592:
+				if true {
+					handled = true
+					handled_CommandName = true
+					value.CommandName, err = context.CommandName_context.Parse(reader.Delegate(int(l)), ignoreCritical)
+				}
+			case 593:
+				if true {
+					handled = true
+					handled_TargetName = true
+					value.TargetName, err = context.TargetName_context.Parse(reader.Delegate(int(l)), ignoreCritical)
+				}
+			case 595:
+				if true {
+					handled = true
+					handled_RegisterPrefixes = true
+					if value.RegisterPrefixes == nil {
+						value.RegisterPrefixes = make([]*spec.NameContainer, 0)
+					}
+					{
+						pseudoValue := struct {
+							RegisterPrefixes *spec.NameContainer
+						}{}
+						{
+							value := &pseudoValue
+							value.RegisterPrefixes, err = context.RegisterPrefixes_context.Parse(reader.Delegate(int(l)), ignoreCritical)
+							_ = value
+						}
+						value.RegisterPrefixes = append(value.RegisterPrefixes, pseudoValue.RegisterPrefixes)
+					}
+					progress--
+				}
+			default:
+				if !ignoreCritical && ((typ <= 31) || ((typ & 1) == 1)) {
+					return nil, enc.ErrUnrecognizedField{TypeNum: typ}
+				}
+				handled = true
+				err = reader.Skip(int(l))
+			}
+			if err == nil && !handled {
+			}
+			if err != nil {
+				return nil, enc.ErrFailToParse{TypeNum: typ, Err: err}
+			}
+		}
+	}
+
+	startPos = reader.Pos()
+	err = nil
+
+	if !handled_CommandName && err == nil {
+		value.CommandName = nil
+	}
+	if !handled_TargetName && err == nil {
+		value.TargetName = nil
+	}
+	if !handled_RegisterPrefixes && err == nil {
+		// sequence - skip
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return value, nil
+}
+
+func (value *RepoCommand) Encode() enc.Wire {
+	encoder := RepoCommandEncoder{}
+	encoder.Init(value)
+	return encoder.Encode(value)
+}
+
+func (value *RepoCommand) Bytes() []byte {
+	return value.Encode().Join()
+}
+
+func ParseRepoCommand(reader enc.WireView, ignoreCritical bool) (*RepoCommand, error) {
+	context := RepoCommandParsingContext{}
+	context.Init()
+	return context.Parse(reader, ignoreCritical)
+}
+
+type PartitionSnapshotEncoder struct {
+	Length uint
+
+	Commands_subencoder []struct {
+		Commands_encoder RepoCommandEncoder
+	}
+}
+
+type PartitionSnapshotParsingContext struct {
+	Commands_context RepoCommandParsingContext
+}
+
+func (encoder *PartitionSnapshotEncoder) Init(value *PartitionSnapshot) {
+	{
+		Commands_l := len(value.Commands)
+		encoder.Commands_subencoder = make([]struct {
+			Commands_encoder RepoCommandEncoder
+		}, Commands_l)
+		for i := 0; i < Commands_l; i++ {
+			pseudoEncoder := &encoder.Commands_subencoder[i]
+			pseudoValue := struct {
+				Commands *RepoCommand
+			}{
+				Commands: value.Commands[i],
+			}
+			{
+				encoder := pseudoEncoder
+				value := &pseudoValue
+				if value.Commands != nil {
+					encoder.Commands_encoder.Init(value.Commands)
+				}
+				_ = encoder
+				_ = value
+			}
+		}
+	}
+
+	l := uint(0)
+	if value.Commands != nil {
+		for seq_i, seq_v := range value.Commands {
+			pseudoEncoder := &encoder.Commands_subencoder[seq_i]
+			pseudoValue := struct {
+				Commands *RepoCommand
+			}{
+				Commands: seq_v,
+			}
+			{
+				encoder := pseudoEncoder
+				value := &pseudoValue
+				if value.Commands != nil {
+					l += 3
+					l += uint(enc.TLNum(encoder.Commands_encoder.Length).EncodingLength())
+					l += encoder.Commands_encoder.Length
+				}
+				_ = encoder
+				_ = value
+			}
+		}
+	}
+	encoder.Length = l
+
+}
+
+func (context *PartitionSnapshotParsingContext) Init() {
+	context.Commands_context.Init()
+}
+
+func (encoder *PartitionSnapshotEncoder) EncodeInto(value *PartitionSnapshot, buf []byte) {
+
+	pos := uint(0)
+
+	if value.Commands != nil {
+		for seq_i, seq_v := range value.Commands {
+			pseudoEncoder := &encoder.Commands_subencoder[seq_i]
+			pseudoValue := struct {
+				Commands *RepoCommand
+			}{
+				Commands: seq_v,
+			}
+			{
+				encoder := pseudoEncoder
+				value := &pseudoValue
+				if value.Commands != nil {
+					buf[pos] = 253
+					binary.BigEndian.PutUint16(buf[pos+1:], uint16(596))
+					pos += 3
+					pos += uint(enc.TLNum(encoder.Commands_encoder.Length).EncodeInto(buf[pos:]))
+					if encoder.Commands_encoder.Length > 0 {
+						encoder.Commands_encoder.EncodeInto(value.Commands, buf[pos:])
+						pos += encoder.Commands_encoder.Length
+					}
+				}
+				_ = encoder
+				_ = value
+			}
+		}
+	}
+}
+
+func (encoder *PartitionSnapshotEncoder) Encode(value *PartitionSnapshot) enc.Wire {
+
+	wire := make(enc.Wire, 1)
+	wire[0] = make([]byte, encoder.Length)
+	buf := wire[0]
+	encoder.EncodeInto(value, buf)
+
+	return wire
+}
+
+func (context *PartitionSnapshotParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*PartitionSnapshot, error) {
+
+	var handled_Commands bool = false
+
+	progress := -1
+	_ = progress
+
+	value := &PartitionSnapshot{}
+	var err error
+	var startPos int
+	for {
+		startPos = reader.Pos()
+		if startPos >= reader.Length() {
+			break
+		}
+		typ := enc.TLNum(0)
+		l := enc.TLNum(0)
+		typ, err = reader.ReadTLNum()
+		if err != nil {
+			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
+		}
+		l, err = reader.ReadTLNum()
+		if err != nil {
+			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
+		}
+
+		err = nil
+		if handled := false; true {
+			switch typ {
+			case 596:
+				if true {
+					handled = true
+					handled_Commands = true
+					if value.Commands == nil {
+						value.Commands = make([]*RepoCommand, 0)
+					}
+					{
+						pseudoValue := struct {
+							Commands *RepoCommand
+						}{}
+						{
+							value := &pseudoValue
+							value.Commands, err = context.Commands_context.Parse(reader.Delegate(int(l)), ignoreCritical)
+							_ = value
+						}
+						value.Commands = append(value.Commands, pseudoValue.Commands)
+					}
+					progress--
+				}
+			default:
+				if !ignoreCritical && ((typ <= 31) || ((typ & 1) == 1)) {
+					return nil, enc.ErrUnrecognizedField{TypeNum: typ}
+				}
+				handled = true
+				err = reader.Skip(int(l))
+			}
+			if err == nil && !handled {
+			}
+			if err != nil {
+				return nil, enc.ErrFailToParse{TypeNum: typ, Err: err}
+			}
+		}
+	}
+
+	startPos = reader.Pos()
+	err = nil
+
+	if !handled_Commands && err == nil {
+		// sequence - skip
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return value, nil
+}
+
+func (value *PartitionSnapshot) Encode() enc.Wire {
+	encoder := PartitionSnapshotEncoder{}
+	encoder.Init(value)
+	return encoder.Encode(value)
+}
+
+func (value *PartitionSnapshot) Bytes() []byte {
+	return value.Encode().Join()
+}
+
+func ParsePartitionSnapshot(reader enc.WireView, ignoreCritical bool) (*PartitionSnapshot, error) {
+	context := PartitionSnapshotParsingContext{}
+	context.Init()
+	return context.Parse(reader, ignoreCritical)
+}

@@ -4,13 +4,15 @@ import (
 	"sync"
 
 	"github.com/named-data/ndnd/repo/awareness"
+	"github.com/named-data/ndnd/repo/storage"
+
 	enc "github.com/named-data/ndnd/std/encoding"
 	"github.com/named-data/ndnd/std/engine"
 	"github.com/named-data/ndnd/std/engine/basic"
 	"github.com/named-data/ndnd/std/log"
 	"github.com/named-data/ndnd/std/ndn"
 	"github.com/named-data/ndnd/std/object"
-	"github.com/named-data/ndnd/std/object/storage"
+	local_storage "github.com/named-data/ndnd/std/object/storage"
 	sec "github.com/named-data/ndnd/std/security"
 	"github.com/named-data/ndnd/std/security/keychain"
 	"github.com/named-data/ndnd/std/security/trust_schema"
@@ -24,6 +26,7 @@ type Repo struct {
 	client ndn.Client
 
 	awareness *awareness.RepoAwareness
+	storage   *storage.RepoStorage
 
 	groupsSvs map[string]*RepoSvs
 	mutex     sync.Mutex
@@ -44,7 +47,7 @@ func (r *Repo) Start() (err error) {
 	log.Info(r, "Starting NDN Data Repository", "dir", r.config.StorageDir)
 
 	// Make object store database
-	r.store, err = storage.NewBadgerStore(r.config.StorageDir + "/badger")
+	r.store, err = local_storage.NewBadgerStore(r.config.StorageDir + "/badger")
 	if err != nil {
 		return err
 	}
@@ -95,11 +98,14 @@ func (r *Repo) Start() (err error) {
 		Expose: true,
 	})
 
-	// Create awareness
+	// Create repo awareness
 	r.awareness = awareness.NewRepoAwareness(r.config.NameN, r.client)
 	if err := r.awareness.Start(); err != nil {
 		return err
 	}
+
+	// Create repo storage
+	r.storage = storage.NewRepoStorage(r.store, r.client)
 
 	return nil
 }
@@ -120,12 +126,17 @@ func (r *Repo) Stop() error {
 	if r.client != nil {
 		r.client.Stop()
 	}
+
 	if r.engine != nil {
 		r.engine.Stop()
 	}
 
 	if r.awareness != nil {
 		r.awareness.Stop()
+	}
+
+	if r.storage != nil {
+		r.storage.Close()
 	}
 
 	return nil

@@ -20,6 +20,8 @@ type RepoAwarenessStore struct {
 	// Replication and partition management
 	replicaCounts []int          // partition ID to replica count
 	underRepMask  *bitset.BitSet // bit set for under-replicated partitions
+	// TODO: we need to track replication events so they aren't repetitively called
+	//  a simple map between partition ID and its ongoing event (type) suffices
 
 	// Callbacks for node state changes
 	onNodeUp        func(*RepoNodeAwareness)

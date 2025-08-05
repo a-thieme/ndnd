@@ -1,6 +1,7 @@
 package storage
 
 import (
+	enc "github.com/named-data/ndnd/std/encoding"
 	"github.com/named-data/ndnd/std/log"
 	"github.com/named-data/ndnd/std/ndn"
 )
@@ -30,7 +31,7 @@ func (s *RepoStorage) String() string {
 }
 
 // RegisterPartition registers a new partition
-func (s *RepoStorage) RegisterPartition(id uint64) {
+func (s *RepoStorage) RegisterPartition(id uint64) (err error) {
 	// TODO: we can infer SVS prefix from partition id
 	//  this method handles svs part of partition registration, i.e. joining the group and fetch the right data
 
@@ -39,12 +40,14 @@ func (s *RepoStorage) RegisterPartition(id uint64) {
 
 	if err := partition.Start(); err != nil {
 		log.Error(s, "Failed to start partition", "err", err)
-		return
+		return err
 	}
+
+	return nil
 }
 
 // UnregisterPartition unregisters a partition
-func (s *RepoStorage) UnregisterPartition(id uint64) {
+func (s *RepoStorage) UnregisterPartition(id uint64) (err error) {
 	partition, ok := s.partitions[id]
 	if !ok {
 		log.Error(s, "Partition not found", "id", id)
@@ -53,8 +56,32 @@ func (s *RepoStorage) UnregisterPartition(id uint64) {
 
 	if err := partition.Stop(); err != nil {
 		log.Error(s, "Failed to stop partition", "err", err)
-		return
+		return err
 	}
 
 	delete(s.partitions, id)
+	return nil
+}
+
+// Close stops all partitions and deletes them from the storage
+func (s *RepoStorage) Close() (err error) {
+	for id, partition := range s.partitions {
+		if err := partition.Stop(); err != nil {
+			log.Error(s, "Failed to stop partition", "err", err)
+			return err
+		}
+		delete(s.partitions, id)
+	}
+
+	return nil
+}
+
+// Put puts data into the storage
+func (s *RepoStorage) Put(name enc.Name, data []byte) (err error) {
+	return s.store.Put(name, data)
+}
+
+// Remove removes data from the storage
+func (s *RepoStorage) Remove(name enc.Name) (err error) {
+	return s.store.Remove(name)
 }

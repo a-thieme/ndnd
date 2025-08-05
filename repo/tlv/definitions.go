@@ -55,3 +55,17 @@ type AwarenessUpdate struct {
 	//+field:map:uint64:natural:0x242:bool:bool
 	Partitions map[uint64]bool `tlv:"0x241"`
 }
+
+type RepoCommand struct {
+	//+field:struct:spec.NameContainer
+	CommandName *spec.NameContainer `tlv:"0x250"`
+	//+field:struct:spec.NameContainer
+	TargetName *spec.NameContainer `tlv:"0x251"`
+	//+field:sequence:*spec.NameContainer:struct:spec.NameContainer
+	RegisterPrefixes []*spec.NameContainer `tlv:"0x253"`
+}
+
+type PartitionSnapshot struct {
+	//+field:sequence:*RepoCommand:struct:RepoCommand
+	Commands []*RepoCommand `tlv:"0x254"`
+}
