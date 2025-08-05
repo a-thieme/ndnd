@@ -97,7 +97,9 @@ func (r *Repo) Start() (err error) {
 
 	// Create awareness
 	r.awareness = awareness.NewRepoAwareness(r.config.NameN, r.client)
-	r.awareness.Start()
+	if err := r.awareness.Start(); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -120,6 +122,10 @@ func (r *Repo) Stop() error {
 	}
 	if r.engine != nil {
 		r.engine.Stop()
+	}
+
+	if r.awareness != nil {
+		r.awareness.Stop()
 	}
 
 	return nil

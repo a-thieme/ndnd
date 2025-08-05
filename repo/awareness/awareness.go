@@ -39,10 +39,6 @@ type RepoAwareness struct {
 	localState *RepoNodeAwareness // node awareness of the local repo
 	storage    *RepoAwarenessStore
 
-	// storage *LRU[string, RepoNodeAwareness]
-	// callback function when a node awareness expires
-	onExpiry func(RepoNodeAwareness)
-
 	// health ndn client
 	client ndn.Client
 	// health sync group
@@ -79,6 +75,7 @@ func (r *RepoAwareness) Start() (err error) {
 	r.localState.partitions[3] = true
 	r.localState.partitions[5] = true
 	r.localState.partitions[7] = true
+	// TODO: remove this after testings
 
 	r.healthSvs, err = ndn_sync.NewSvsALO(ndn_sync.SvsAloOpts{
 		Name: r.name,
@@ -140,10 +137,21 @@ func (r *RepoAwareness) Start() (err error) {
 		return err
 	}
 
+	// TODO: under/over replication handler
+	r.storage.SetOnUnderReplication(func(id uint64) {
+		log.Info(r, "Partition under-replicated", "id", id)
+	})
+
+	r.storage.SetOnOverReplication(func(id uint64) {
+		log.Info(r, "Partition over-replicated", "id", id)
+	})
+
 	// Start heartbeat
-	if err := r.StartHeartbeat(); err != nil {
-		log.Error(r, "Failed to start heartbeat", "err", err)
-	}
+	go func() {
+		if err := r.StartHeartbeat(); err != nil {
+			log.Error(r, "Failed to start heartbeat", "err", err)
+		}
+	}()
 
 	return err
 }
@@ -198,28 +206,4 @@ func (r *RepoAwareness) StartHeartbeat() (err error) {
 			return err
 		}
 	} // TODO: make this a separate goroutine that doesn't block the main thread
-}
-
-// TODO: return the list of known nodes and their status (up, p-fail, fail)
-func (r *RepoAwareness) GetKnownNodes() {
-
-}
-
-// Handlers
-// SetOnExpiry sets the callback function to be called when a node awareness expires.
-func (l *RepoAwareness) SetOnExpiry(handler func(RepoNodeAwareness)) {
-	l.onExpiry = handler
-}
-
-// Update updates the awareness of a node in the cluster.
-// If the node does not exist, it adds a new entry.
-func (l *RepoAwareness) Update(awareness RepoNodeAwareness) {
-	// TODO: update the awareness store
-}
-
-// Get retrieves the awareness of a node by its name.
-// If the node does not exist, it returns nil.
-func (l *RepoAwareness) Get(key string) *RepoNodeAwareness {
-	awareness := l.storage.GetNode(key)
-	return awareness
 }

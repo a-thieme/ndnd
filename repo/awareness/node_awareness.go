@@ -7,11 +7,10 @@ import (
 	"github.com/named-data/ndnd/std/log"
 )
 
-type NodeState int
+type NodeStatus int
 
 const (
-	Up NodeState = iota
-	PFailed
+	Up NodeStatus = iota
 	Failed
 	Forgotten // Node is forgotten and should not be considered for operations
 )
@@ -23,9 +22,9 @@ type RepoNodeAwareness struct {
 	// last time we checked the node
 	lastKnown time.Time
 	// partitions a node is holding
-	partitions map[uint]bool // using map for fast lookup
-	// state of the node
-	state NodeState
+	partitions map[uint64]bool // using map for fast lookup
+	// status of the node
+	status NodeStatus
 }
 
 func (r *RepoNodeAwareness) String() string {
@@ -38,26 +37,21 @@ func NewRepoNodeAwareness(name string) *RepoNodeAwareness {
 	return &RepoNodeAwareness{
 		name:       name,
 		lastKnown:  time.Now(),
-		partitions: make(map[uint]bool),
-		state:      Up,
+		partitions: make(map[uint64]bool),
+		status:     Up,
 	}
 }
 
 // SetState updates the state of the node and resets the lastKnown time.
-func (r *RepoNodeAwareness) SetState(state NodeState) {
-	r.state = state
+func (r *RepoNodeAwareness) SetState(state NodeStatus) {
+	r.status = state
 }
 
 // Update updates the node's partitions and resets its state to Up.
-func (r *RepoNodeAwareness) Update(partitions map[uint]bool) {
+func (r *RepoNodeAwareness) Update(partitions map[uint64]bool) {
 	log.Info(r, "Updating node awareness", "node", r.name, "partitions", partitions)
 
-	r.state = Up // Reset state to Up when updating partitions
+	r.status = Up // Reset state to Up when updating partitions
 	r.partitions = partitions
-	r.lastKnown = time.Now()
-}
-
-func (r *RepoNodeAwareness) SetStateUp() {
-	r.state = Up
 	r.lastKnown = time.Now()
 }

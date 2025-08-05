@@ -52,6 +52,6 @@ type BlobFetch struct {
 type AwarenessUpdate struct {
 	//+field:string
 	NodeName string `tlv:"0x240"`
-	//+field:map:uint:natural:bool
-	Partitions map[uint]bool `tlv:"0x241"`
+	//+field:map:uint64:natural:0x242:bool:bool
+	Partitions map[uint64]bool `tlv:"0x241"`
 }

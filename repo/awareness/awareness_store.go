@@ -25,6 +25,10 @@ type RepoAwarenessStore struct {
 	onNodeUp        func(*RepoNodeAwareness)
 	onNodeFailed    func(*RepoNodeAwareness)
 	onNodeForgotten func(*RepoNodeAwareness)
+
+	// Callbacks for partition management
+	underReplicationHandler func(uint64) // called when a partition is under-replicated
+	overReplicationHandler  func(uint64) // called when a partition is over-replicated
 }
 
 func NewRepoAwarenessStore() *RepoAwarenessStore {
@@ -72,7 +76,7 @@ func (s *RepoAwarenessStore) ProcessUpdate(update *tlv.AwarenessUpdate) {
 
 	// Update the node's partitions and reset its state to Up
 	s.UpdateNodePartitions(node, update.Partitions)
-	if node.state != Up {
+	if node.status != Up {
 		// Mark the node as Up
 		s.MarkNodeUp(node)
 	}
@@ -101,7 +105,7 @@ func (s *RepoAwarenessStore) SetOnNodeForgotten(callback func(*RepoNodeAwareness
 func (s *RepoAwarenessStore) MarkNodeUp(node *RepoNodeAwareness) {
 	log.Info(s, "Marked node as Up", "node", node.name)
 
-	node.state = Up
+	node.status = Up
 	if s.onNodeUp != nil {
 		s.onNodeUp(node)
 	}
@@ -111,9 +115,7 @@ func (s *RepoAwarenessStore) MarkNodeUp(node *RepoNodeAwareness) {
 		log.Info(s, "Incrementing replica count for partition", "partition", partition, "node", node.name)
 
 		s.replicaCounts[partition]++
-		if s.replicaCounts[partition] >= NumReplicas {
-			s.underRepMask.Clear(partition)
-		}
+		s.CheckPartitionReplication(partition)
 	}
 }
 
@@ -122,7 +124,7 @@ func (s *RepoAwarenessStore) MarkNodeUp(node *RepoNodeAwareness) {
 func (s *RepoAwarenessStore) MarkNodeFailed(node *RepoNodeAwareness) {
 	log.Info(s, "Marked node as Failed", "node", node.name)
 
-	node.state = Failed
+	node.status = Failed
 	if s.onNodeFailed != nil {
 		s.onNodeFailed(node)
 	}
@@ -132,10 +134,7 @@ func (s *RepoAwarenessStore) MarkNodeFailed(node *RepoNodeAwareness) {
 		log.Info(s, "Decrementing replica count for partition", "partition", partition, "node", node.name)
 
 		s.replicaCounts[partition]--
-		if s.replicaCounts[partition] < NumReplicas {
-			s.underRepMask.Set(partition)
-			// TODO: handle auction for under-replicated partitions
-		}
+		s.CheckPartitionReplication(partition)
 	}
 
 	// TODO: in the future, handle forgotten state. For now, we keep the node in the store
@@ -147,7 +146,7 @@ func (s *RepoAwarenessStore) MarkNodeFailed(node *RepoNodeAwareness) {
 func (s *RepoAwarenessStore) MarkNodeForgotten(node *RepoNodeAwareness) {
 	log.Info(s, "Marked node as Forgotten", "node", node.name)
 
-	node.state = Forgotten
+	node.status = Forgotten
 	if s.onNodeForgotten != nil {
 		s.onNodeForgotten(node)
 	}
@@ -160,10 +159,19 @@ func (s *RepoAwarenessStore) MarkNodeForgotten(node *RepoNodeAwareness) {
 	}
 }
 
+// Callbacks for partition management
+func (s *RepoAwarenessStore) SetOnUnderReplication(callback func(uint64)) {
+	s.underReplicationHandler = callback
+}
+
+func (s *RepoAwarenessStore) SetOnOverReplication(callback func(uint64)) {
+	s.overReplicationHandler = callback
+}
+
 // TODO: this struct should also handle partition underreplication scenario, probably through handlers
 // Thread safety is handled by the caller
 // TODO: see tlv/definitions.go for the AwarenessUpdate struct definition (and why it's a sequence)
-func (s *RepoAwarenessStore) UpdateNodePartitions(node *RepoNodeAwareness, partitions map[uint]bool) {
+func (s *RepoAwarenessStore) UpdateNodePartitions(node *RepoNodeAwareness, partitions map[uint64]bool) {
 	log.Info(s, "Updating node partitions", "node", node.name, "partitions", partitions)
 
 	// Update partition replication counts
@@ -171,10 +179,7 @@ func (s *RepoAwarenessStore) UpdateNodePartitions(node *RepoNodeAwareness, parti
 		if !partitions[partition] {
 			log.Info(s, "Decrementing replica count for partition", "partition", partition, "node", node.name)
 			s.replicaCounts[partition]--
-			if s.replicaCounts[partition] < NumReplicas {
-				s.underRepMask.Set(partition)
-				// TODO: handle auction for under-replicated partitions
-			}
+			s.CheckPartitionReplication(partition)
 		}
 	}
 
@@ -182,12 +187,31 @@ func (s *RepoAwarenessStore) UpdateNodePartitions(node *RepoNodeAwareness, parti
 		if !node.partitions[partition] {
 			log.Info(s, "Incrementing replica count for partition", "partition", partition, "node", node.name)
 			s.replicaCounts[partition]++
-			if s.replicaCounts[partition] >= NumReplicas {
-				s.underRepMask.Clear(partition)
-			}
+			s.CheckPartitionReplication(partition)
 		}
 	}
 
 	// Update the node's partitions
 	node.partitions = partitions
+}
+
+// CheckPartitionReplication checks if a partition is under-replicated or over-replicated
+// and calls the appropriate handler
+// thread safety is handled by the caller
+func (s *RepoAwarenessStore) CheckPartitionReplication(partition uint64) {
+	if s.replicaCounts[partition] < NumReplicas {
+		s.underRepMask.Set(uint(partition))
+
+		// TODO: handle auction for under-replicated partitions
+		if s.underReplicationHandler != nil {
+			s.underReplicationHandler(partition)
+		}
+	} else if s.replicaCounts[partition] > NumReplicas {
+		s.underRepMask.Clear(uint(partition))
+
+		// TODO: handle auction for over-replicated partitions
+		if s.overReplicationHandler != nil {
+			s.overReplicationHandler(partition)
+		}
+	}
 }

@@ -929,6 +929,9 @@ func ParseBlobFetch(reader enc.WireView, ignoreCritical bool) (*BlobFetch, error
 
 type AwarenessUpdateEncoder struct {
 	Length uint
+
+	Partitions_valencoder map[uint64]*struct {
+	}
 }
 
 type AwarenessUpdateParsingContext struct {
@@ -936,10 +939,57 @@ type AwarenessUpdateParsingContext struct {
 
 func (encoder *AwarenessUpdateEncoder) Init(value *AwarenessUpdate) {
 
+	{
+		Partitions_l := len(value.Partitions)
+		encoder.Partitions_valencoder = make(map[uint64]*struct {
+		}, Partitions_l)
+		for map_k := range value.Partitions {
+			pseudoEncoder := &struct {
+			}{}
+			encoder.Partitions_valencoder[map_k] = pseudoEncoder
+			pseudoValue := struct {
+				Partitions_v bool
+			}{
+				Partitions_v: value.Partitions[map_k],
+			}
+			{
+				encoder := pseudoEncoder
+				value := &pseudoValue
+
+				_ = encoder
+				_ = value
+			}
+		}
+	}
+
 	l := uint(0)
 	l += 3
 	l += uint(enc.TLNum(len(value.NodeName)).EncodingLength())
 	l += uint(len(value.NodeName))
+	if value.Partitions != nil {
+		for map_k, map_v := range value.Partitions {
+			pseudoEncoder := encoder.Partitions_valencoder[map_k]
+			pseudoValue := struct {
+				Partitions_k uint64
+				Partitions_v bool
+			}{
+				Partitions_k: map_k,
+				Partitions_v: map_v,
+			}
+			{
+				encoder := pseudoEncoder
+				value := &pseudoValue
+				l += 3
+				l += uint(1 + enc.Nat(value.Partitions_k).EncodingLength())
+				if value.Partitions_v {
+					l += 3
+					l += 1
+				}
+				_ = encoder
+				_ = value
+			}
+		}
+	}
 	encoder.Length = l
 
 }
@@ -958,6 +1008,37 @@ func (encoder *AwarenessUpdateEncoder) EncodeInto(value *AwarenessUpdate, buf []
 	pos += uint(enc.TLNum(len(value.NodeName)).EncodeInto(buf[pos:]))
 	copy(buf[pos:], value.NodeName)
 	pos += uint(len(value.NodeName))
+	if value.Partitions != nil {
+		for map_k, map_v := range value.Partitions {
+			pseudoEncoder := encoder.Partitions_valencoder[map_k]
+			pseudoValue := struct {
+				Partitions_k uint64
+				Partitions_v bool
+			}{
+				Partitions_k: map_k,
+				Partitions_v: map_v,
+			}
+			{
+				encoder := pseudoEncoder
+				value := &pseudoValue
+				buf[pos] = 253
+				binary.BigEndian.PutUint16(buf[pos+1:], uint16(577))
+				pos += 3
+
+				buf[pos] = byte(enc.Nat(value.Partitions_k).EncodeInto(buf[pos+1:]))
+				pos += uint(1 + buf[pos])
+				if value.Partitions_v {
+					buf[pos] = 253
+					binary.BigEndian.PutUint16(buf[pos+1:], uint16(578))
+					pos += 3
+					buf[pos] = byte(0)
+					pos += 1
+				}
+				_ = encoder
+				_ = value
+			}
+		}
+	}
 }
 
 func (encoder *AwarenessUpdateEncoder) Encode(value *AwarenessUpdate) enc.Wire {
@@ -973,6 +1054,7 @@ func (encoder *AwarenessUpdateEncoder) Encode(value *AwarenessUpdate) enc.Wire {
 func (context *AwarenessUpdateParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*AwarenessUpdate, error) {
 
 	var handled_NodeName bool = false
+	var handled_Partitions bool = false
 
 	progress := -1
 	_ = progress
@@ -1011,6 +1093,55 @@ func (context *AwarenessUpdateParsingContext) Parse(reader enc.WireView, ignoreC
 						}
 					}
 				}
+			case 577:
+				if true {
+					handled = true
+					handled_Partitions = true
+					if value.Partitions == nil {
+						value.Partitions = make(map[uint64]bool)
+					}
+					{
+						pseudoValue := struct {
+							Partitions_k uint64
+							Partitions_v bool
+						}{}
+						{
+							value := &pseudoValue
+							value.Partitions_k = uint64(0)
+							{
+								for i := 0; i < int(l); i++ {
+									x := byte(0)
+									x, err = reader.ReadByte()
+									if err != nil {
+										if err == io.EOF {
+											err = io.ErrUnexpectedEOF
+										}
+										break
+									}
+									value.Partitions_k = uint64(value.Partitions_k<<8) | uint64(x)
+								}
+							}
+							typ := enc.TLNum(0)
+							l := enc.TLNum(0)
+							typ, err = reader.ReadTLNum()
+							if err != nil {
+								return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
+							}
+							l, err = reader.ReadTLNum()
+							if err != nil {
+								return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
+							}
+							if typ != 578 {
+								return nil, enc.ErrFailToParse{TypeNum: 577, Err: enc.ErrUnrecognizedField{TypeNum: typ}}
+							}
+							value.Partitions_v = true
+							err = reader.Skip(int(l))
+							_ = value
+						}
+						value.Partitions[pseudoValue.Partitions_k] = pseudoValue.Partitions_v
+					}
+					progress--
+				}
 			default:
 				if !ignoreCritical && ((typ <= 31) || ((typ & 1) == 1)) {
 					return nil, enc.ErrUnrecognizedField{TypeNum: typ}
@@ -1031,6 +1162,9 @@ func (context *AwarenessUpdateParsingContext) Parse(reader enc.WireView, ignoreC
 
 	if !handled_NodeName && err == nil {
 		err = enc.ErrSkipRequired{Name: "NodeName", TypeNum: 576}
+	}
+	if !handled_Partitions && err == nil {
+		// map - skip
 	}
 
 	if err != nil {
