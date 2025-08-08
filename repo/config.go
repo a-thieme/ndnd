@@ -10,7 +10,9 @@ import (
 
 type Config struct {
 	// Name is the name of the repo service.
-	Name string `json:"name"`
+	RepoName string `json:"repo_name"`
+	// NodeName is the name of the node
+	NodeName string `json:"node_name"`
 	// StorageDir is the directory to store data.
 	StorageDir string `json:"storage_dir"`
 	// URI specifying KeyChain location.
@@ -18,14 +20,20 @@ type Config struct {
 	// List of trust anchor full names.
 	TrustAnchors []string `json:"trust_anchors"`
 
-	// NameN is the parsed name of the repo service.
-	NameN enc.Name
+	// RepoNameN is the parsed name of the repo service.
+	RepoNameN enc.Name
+	// NodeNameN is the parsed name of the node
+	NodeNameN enc.Name
 }
 
 func (c *Config) Parse() (err error) {
-	c.NameN, err = enc.NameFromStr(c.Name)
-	if err != nil || len(c.NameN) == 0 {
-		return fmt.Errorf("failed to parse or invalid repo name (%s): %w", c.Name, err)
+	c.RepoNameN, err = enc.NameFromStr(c.RepoName)
+	if err != nil || len(c.RepoNameN) == 0 {
+		return fmt.Errorf("failed to parse or invalid repo name (%s): %w", c.RepoName, err)
+	}
+	c.NodeNameN, err = enc.NameFromStr(c.NodeName)
+	if err != nil || len(c.NodeNameN) == 0 {
+		return fmt.Errorf("failed to parse or invalid node name (%s): %w", c.NodeName, err)
 	}
 
 	if c.StorageDir == "" {
@@ -57,9 +65,11 @@ func (c *Config) TrustAnchorNames() []enc.Name {
 
 func DefaultConfig() *Config {
 	return &Config{
-		Name:       "", // invalid
+		RepoName:   "", // invalid
+		NodeName:   "", // invalid
 		StorageDir: "", // invalid
 
-		NameN: nil,
+		RepoNameN: nil,
+		NodeNameN: nil,
 	}
 }

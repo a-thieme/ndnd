@@ -14,10 +14,7 @@ import (
 // TODO: variables in this section should be configurable or supplied by the higher layer
 // for now, we use hardcoded values to finish the implementation first
 const (
-	// HealthSVSName is the group fix for health svs sync
-	HealthSVSName        = "repo-health"
-	HealthSVSGroupPrefix = "/ndn/repo/health"
-	// HeartbeatInterval is the interval between heartbeats.
+	// HeartbeatInterval is the interval between heartbeats (at most).
 	HeartbeatInterval = 5 * time.Second
 	// HeartbeatExpiry is the time after which a node is considered down if no heartbeat is received.
 	HeartbeatExpiry = 20 * time.Second
@@ -27,6 +24,14 @@ const (
 	// NumReplicas is the minimum number of replicas per partition.
 	NumReplicas = 3 // TODO: this should be configurable or supplied by the higher
 )
+
+// Config passed to awareness module
+// type RepoAwarenessConfig struct {
+// 	HeartbeatInterval time.Duration
+// 	HeartbeatExpiry   time.Duration
+// 	NumPartitions     uint
+// 	NumReplicas       uint
+// }
 
 type RepoAwareness struct {
 	// single mutex
@@ -41,11 +46,16 @@ type RepoAwareness struct {
 
 	// health ndn client
 	client ndn.Client
-	// health sync group
-	healthSvs *ndn_sync.SvsALO
+	// awareness sync group
+	awarenessSvs *ndn_sync.SvsALO
+	heartbeatSvs *ndn_sync.SvSync // TODO: we don't need alo guarantees for heartbeat
 
 	// TODO: make put into a configuration struct
-	healthGroupPrefix enc.Name // group prefix for health SVS
+	awarenessSvsPrefix enc.Name // group prefix for awareness SVS
+
+	// heartbeat
+	ticker             *time.Ticker // ticker for heartbeat
+	heartbeatSvsPrefix enc.Name     // group prefix for heartbeat SVS
 }
 
 func (r *RepoAwareness) String() string {
@@ -53,17 +63,18 @@ func (r *RepoAwareness) String() string {
 }
 
 // TODO: create a new repo awareness object
-func NewRepoAwareness(name enc.Name, client ndn.Client) *RepoAwareness {
-	// TODO: get the health svs group prefix from somewhere else, e.g., configuration
-	groupPrefix, _ := enc.NameFromStr(HealthSVSGroupPrefix)
+func NewRepoAwareness(repoName enc.Name, nodeName enc.Name, client ndn.Client) *RepoAwareness {
+	awarenessPrefix := repoName.Append(enc.NewGenericComponent("awareness"))
+	heartbeatPrefix := repoName.Append(enc.NewGenericComponent("heartbeat"))
 
 	return &RepoAwareness{
-		name:              name,
-		client:            client, // use Repo shared client
-		healthSvs:         nil,
-		healthGroupPrefix: groupPrefix,
-		localState:        NewRepoNodeAwareness(name.String()),
-		storage:           NewRepoAwarenessStore(),
+		name:               nodeName,
+		client:             client, // use Repo shared client
+		awarenessSvs:       nil,
+		localState:         NewRepoNodeAwareness(nodeName.String()),
+		storage:            NewRepoAwarenessStore(),
+		awarenessSvsPrefix: awarenessPrefix,
+		heartbeatSvsPrefix: heartbeatPrefix,
 	}
 }
 
@@ -77,20 +88,14 @@ func (r *RepoAwareness) Start() (err error) {
 	r.localState.partitions[7] = true
 	// TODO: remove this after testings
 
-	r.healthSvs, err = ndn_sync.NewSvsALO(ndn_sync.SvsAloOpts{
+	// Start awareness SVS
+	r.awarenessSvs, err = ndn_sync.NewSvsALO(ndn_sync.SvsAloOpts{
 		Name: r.name,
 		Svs: ndn_sync.SvSyncOpts{
 			Client:            r.client,
-			GroupPrefix:       r.healthGroupPrefix,
+			GroupPrefix:       r.awarenessSvsPrefix,
 			SuppressionPeriod: 500 * time.Millisecond, // TODO: should this be reactive to the heartbeat interval?
-			PeriodicTimeout:   30 * time.Second,       // TODO: this is the default value. To my understanding, periodic sync interests don't increase sequence numbers; it can be used as a redundancy to inform other nodes about the newest local state, but it can't replace the heartbeat mechanism
-			OnUpdate: func(ssu ndn_sync.SvSyncUpdate) {
-				log.Info(r, "Received SVS update", "update", ssu)
-				// TODO： handle the update
-				// 1. if the update is a heartbeat, update the node last known time
-				// 2. if the update is a partition dump, update both the last known time and partition awareness
-				// go r.processUpdate(&ssu)
-			},
+			PeriodicTimeout:   3 * time.Hour,          // TODO: periodic timeouts are for redundancy only; we want to minimize traffic
 		},
 		Snapshot:        &ndn_sync.SnapshotNull{}, // there is no need for snapshots in this case
 		FetchLatestOnly: false,                    // only fetch the latest sequence number
@@ -100,12 +105,12 @@ func (r *RepoAwareness) Start() (err error) {
 	}
 
 	// Set error handler
-	r.healthSvs.SetOnError(func(err error) {
+	r.awarenessSvs.SetOnError(func(err error) {
 		log.Error(r, "SVS ALO error", "err", err)
 	})
 
 	// Subscribe to all publishers
-	r.healthSvs.SubscribePublisher(enc.Name{}, func(pub ndn_sync.SvsPub) {
+	r.awarenessSvs.SubscribePublisher(enc.Name{}, func(pub ndn_sync.SvsPub) {
 		if pub.IsSnapshot {
 			log.Info(r, "Received snapshot publication", "pub", pub.Content)
 			panic("Snapshot publications are not supported in Repo Awareness")
@@ -119,14 +124,25 @@ func (r *RepoAwareness) Start() (err error) {
 			}
 
 			// update storage
-			r.storage.ProcessUpdate(update)
+			r.storage.ProcessAwarenessUpdate(update)
 		}
+	})
+
+	// Start heartbeat SVS
+	r.heartbeatSvs = ndn_sync.NewSvSync(ndn_sync.SvSyncOpts{
+		Client:      r.client,
+		GroupPrefix: r.heartbeatSvsPrefix,
+		OnUpdate: func(pub ndn_sync.SvSyncUpdate) {
+			log.Info(r, "Received heartbeat", pub)
+			r.storage.ProcessHeartbeat(pub.Name)
+		},
 	})
 
 	// Announce group prefix route
 	for _, route := range []enc.Name{
-		r.healthSvs.SyncPrefix(),
-		r.healthSvs.DataPrefix(),
+		r.awarenessSvs.SyncPrefix(),
+		r.awarenessSvs.DataPrefix(),
+		r.heartbeatSvsPrefix,
 	} {
 		r.client.AnnouncePrefix(ndn.Announcement{
 			Name:   route,
@@ -134,13 +150,7 @@ func (r *RepoAwareness) Start() (err error) {
 		})
 	}
 
-	// Start health SVS
-	if err = r.healthSvs.Start(); err != nil {
-		log.Error(r, "Unable to start health SVS ALO", "err", err)
-		return err
-	}
-
-	// TODO: under/over replication handler
+	// Partition handlers
 	r.storage.SetOnUnderReplication(func(id uint64) {
 		log.Info(r, "Partition under-replicated", "id", id)
 	})
@@ -150,11 +160,9 @@ func (r *RepoAwareness) Start() (err error) {
 	})
 
 	// Start heartbeat
-	go func() {
-		if err := r.StartHeartbeat(); err != nil {
-			log.Error(r, "Failed to start heartbeat", "err", err)
-		}
-	}()
+	if err := r.StartHeartbeat(); err != nil {
+		log.Error(r, "Failed to start heartbeat", "err", err)
+	}
 
 	return err
 }
@@ -163,52 +171,80 @@ func (r *RepoAwareness) Stop() (err error) {
 	log.Info(r, "Stopping Repo Awareness SVS")
 
 	// Stop health SVS
-	if r.healthSvs != nil {
-		if err := r.healthSvs.Stop(); err != nil {
+	if r.awarenessSvs != nil {
+		// stop awareness svs_alo
+		if err := r.awarenessSvs.Stop(); err != nil {
 			log.Error(r, "Error stopping health SVS", "err", err)
+		}
+
+		// stop heartbeat svs
+		r.ticker.Stop()
+		if err := r.heartbeatSvs.Stop(); err != nil {
+			log.Error(r, "Error stopping heartbeat SVS", "err", err)
 		}
 
 		// Withdraw group prefix route
 		for _, route := range []enc.Name{
-			r.healthSvs.SyncPrefix(),
-			r.healthSvs.DataPrefix(),
+			r.awarenessSvs.SyncPrefix(),
+			r.awarenessSvs.DataPrefix(),
+			r.heartbeatSvsPrefix,
 		} {
 			r.client.WithdrawPrefix(route, nil)
 		}
 
-		r.healthSvs = nil
+		r.awarenessSvs = nil
 	}
 
 	return nil
 }
 
-// StartHeartbeat runs the heartbeat loop in a goroutine
+// StartHeartbeat starts the heartbeat loop in a goroutine
 func (r *RepoAwareness) StartHeartbeat() (err error) {
+	// start heartbeat svs
+	err = r.heartbeatSvs.Start()
+	if err != nil {
+		log.Error(r, "Failed to start heartbeat SVS", "err", err)
+		return err
+	}
 	log.Info(r, "Heartbeat started", "repo", r.name)
 
-	ticker := time.NewTicker(HeartbeatInterval)
-	defer ticker.Stop()
+	// start ticker
+	r.ticker = time.NewTicker(HeartbeatInterval)
 
+	// start heartbeat loop
 	for {
-		t := <-ticker.C
-		// Create awareness update with current node info
-		r.mutex.RLock()
-		awarenessUpdate := &tlv.AwarenessUpdate{
-			NodeName:   r.name.String(),
-			Partitions: r.localState.partitions, // Get partitions this node is responsible for
-		}
-		r.mutex.RUnlock()
+		t := <-r.ticker.C
+		log.Info(r, "Heartbeat published", "time", t)
+		r.heartbeatSvs.IncrSeqNo(r.name)
+	}
+}
 
-		log.Info(r, "Published partitions", "time", t, "partitions", awarenessUpdate.Partitions)
-		_, _, err := r.healthSvs.Publish(awarenessUpdate.Encode())
+// PublishAwarenessUpdate publishes an awareness update with the current node state
+func (r *RepoAwareness) publishAwarenessUpdate() {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
 
-		// log.Info(r, "Published heartbeat", "time", t)
+	// create awareness update
+	awarenessUpdate := &tlv.AwarenessUpdate{
+		NodeName:   r.name.String(),
+		Partitions: r.localState.partitions, // Get partitions this node is responsible for
+	}
 
-		if err != nil {
-			log.Error(r, "Error publishing heartbeat", "err", err, "time", t)
-			return err
-		}
-	} // TODO: make this a separate goroutine that doesn't block the main thread
+	// publish to awareness SVS
+	log.Info(r, "Publishing awareness update", "time", time.Now(), "partitions", awarenessUpdate.Partitions)
+	_, _, err := r.awarenessSvs.Publish(awarenessUpdate.Encode())
+	if err != nil {
+		log.Error(r, "Error publishing awareness update", "err", err, "time", time.Now())
+	}
+}
+
+// UpdateLocalPartitions updates the local partitions and publishes an awareness update
+func (r *RepoAwareness) UpdateLocalPartitions(partitions *map[uint64]bool) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	r.localState.partitions = *partitions // create a shallow copy of the partitions
+	r.publishAwarenessUpdate()
 }
 
 // GetReplicas returns the replicas for a given partition (local awareness)

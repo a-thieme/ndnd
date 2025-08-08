@@ -7,6 +7,7 @@ import (
 	"github.com/bits-and-blooms/bitset"
 
 	"github.com/named-data/ndnd/repo/tlv"
+	enc "github.com/named-data/ndnd/std/encoding"
 	"github.com/named-data/ndnd/std/log"
 )
 
@@ -56,7 +57,46 @@ func (s *RepoAwarenessStore) GetNode(name string) *RepoNodeAwareness {
 	return node
 }
 
-func (s *RepoAwarenessStore) ProcessUpdate(update *tlv.AwarenessUpdate) {
+// ProcessHeartbeat processes a heartbeat from a node.
+// If the node is not in the store, it is added.
+// If the node is in the store, its expiration timer is reset.
+// Thread-safe.
+func (s *RepoAwarenessStore) ProcessHeartbeat(name enc.Name) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	log.Info(s, "Processing heartbeat", "publisher", name)
+	nodeName := name.String()
+
+	node := s.nodeStates[nodeName]
+
+	// Initialize the node state if it doesn't exist
+	if node == nil {
+		node = NewRepoNodeAwareness(nodeName)
+		s.nodeStates[nodeName] = node
+		log.Info(s, "New node added", "name", name)
+	} else if node.status != Up {
+		// Mark the node as Up
+		s.MarkNodeUp(node)
+	}
+
+	// Cancel existing expiration timer if it exists
+	if timer, exists := s.expirationTimer[nodeName]; exists {
+		timer.Stop()
+		// don't delete the timer as the node isn't forgotten yet, so it's likely to be reused
+	}
+
+	// Set new expiration timer
+	s.expirationTimer[nodeName] = time.AfterFunc(HeartbeatExpiry, func() {
+		s.MarkNodeFailed(node)
+	})
+}
+
+// ProcessAwarenessUpdate processes an awareness update from a node.
+// If the node is not in the store, it is added.
+// If the node is in the store, its expiration timer is reset.
+// Thread-safe.
+func (s *RepoAwarenessStore) ProcessAwarenessUpdate(update *tlv.AwarenessUpdate) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -64,29 +104,8 @@ func (s *RepoAwarenessStore) ProcessUpdate(update *tlv.AwarenessUpdate) {
 	name := update.NodeName
 	node := s.nodeStates[name]
 
-	// Cancel existing expiration timer if it exists
-	if timer, exists := s.expirationTimer[name]; exists {
-		timer.Stop()
-		// don't delete the timer as the node isn't forgotten yet, so it's likely to be reused
-	}
-
-	if node == nil { // initialize the node state
-		node = NewRepoNodeAwareness(name)
-		s.nodeStates[name] = node
-		log.Info(s, "New node added", "name", name)
-	}
-
 	// Update the node's partitions and reset its state to Up
 	s.UpdateNodePartitions(node, update.Partitions)
-	if node.status != Up {
-		// Mark the node as Up
-		s.MarkNodeUp(node)
-	}
-
-	// Set new expiration timer
-	s.expirationTimer[name] = time.AfterFunc(HeartbeatExpiry, func() {
-		s.MarkNodeFailed(node)
-	})
 }
 
 // Callbacks for node state changes

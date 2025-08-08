@@ -3,6 +3,7 @@ package repo
 import (
 	"sync"
 
+	"github.com/named-data/ndnd/repo/auction"
 	"github.com/named-data/ndnd/repo/awareness"
 	"github.com/named-data/ndnd/repo/storage"
 
@@ -27,6 +28,7 @@ type Repo struct {
 
 	awareness *awareness.RepoAwareness
 	storage   *storage.RepoStorage
+	auction   *auction.AuctionEngine
 
 	groupsSvs map[string]*RepoSvs
 	mutex     sync.Mutex
@@ -84,22 +86,23 @@ func (r *Repo) Start() (err error) {
 	trust.UseDataNameFwHint = true
 
 	// Start NDN Object API client
-	r.client = object.NewClient(r.engine, r.store, trust)
+	// r.client = object.NewClient(r.engine, r.store, trust)
+	r.client = object.NewClient(r.engine, r.store, nil)
 	if err := r.client.Start(); err != nil {
 		return err
 	}
 
 	// Attach managmemt interest handler
-	if err := r.client.AttachCommandHandler(r.config.NameN, r.onMgmtCmd); err != nil {
+	if err := r.client.AttachCommandHandler(r.config.RepoNameN, r.onMgmtCmd); err != nil {
 		return err
 	}
 	r.client.AnnouncePrefix(ndn.Announcement{
-		Name:   r.config.NameN,
+		Name:   r.config.RepoNameN,
 		Expose: true,
 	})
 
 	// Create repo awareness
-	r.awareness = awareness.NewRepoAwareness(r.config.NameN, r.client)
+	r.awareness = awareness.NewRepoAwareness(r.config.RepoNameN, r.config.NodeNameN, r.client)
 	if err := r.awareness.Start(); err != nil {
 		return err
 	}
@@ -118,8 +121,8 @@ func (r *Repo) Stop() error {
 	}
 	clear(r.groupsSvs)
 
-	r.client.WithdrawPrefix(r.config.NameN, nil)
-	if err := r.client.DetachCommandHandler(r.config.NameN); err != nil {
+	r.client.WithdrawPrefix(r.config.RepoNameN, nil)
+	if err := r.client.DetachCommandHandler(r.config.RepoNameN); err != nil {
 		log.Warn(r, "Failed to detach command handler", "err", err)
 	}
 
