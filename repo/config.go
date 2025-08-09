@@ -8,7 +8,7 @@ import (
 	enc "github.com/named-data/ndnd/std/encoding"
 )
 
-type Config struct {
+type RepoConfig struct {
 	// Name is the name of the repo service.
 	RepoName string `json:"repo_name"`
 	// NodeName is the name of the node
@@ -26,7 +26,7 @@ type Config struct {
 	NodeNameN enc.Name
 }
 
-func (c *Config) Parse() (err error) {
+func (c *RepoConfig) Parse() (err error) {
 	c.RepoNameN, err = enc.NameFromStr(c.RepoName)
 	if err != nil || len(c.RepoNameN) == 0 {
 		return fmt.Errorf("failed to parse or invalid repo name (%s): %w", c.RepoName, err)
@@ -51,7 +51,7 @@ func (c *Config) Parse() (err error) {
 	return nil
 }
 
-func (c *Config) TrustAnchorNames() []enc.Name {
+func (c *RepoConfig) TrustAnchorNames() []enc.Name {
 	res := make([]enc.Name, len(c.TrustAnchors))
 	for i, ta := range c.TrustAnchors {
 		var err error
@@ -63,8 +63,8 @@ func (c *Config) TrustAnchorNames() []enc.Name {
 	return res
 }
 
-func DefaultConfig() *Config {
-	return &Config{
+func DefaultConfig() *RepoConfig {
+	return &RepoConfig{
 		RepoName:   "", // invalid
 		NodeName:   "", // invalid
 		StorageDir: "", // invalid

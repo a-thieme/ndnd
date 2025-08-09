@@ -1,8 +1,8 @@
 package repo
 
 import (
-	"fmt"
 	"math/rand"
+	"strconv"
 	"sync"
 	"time"
 
@@ -23,7 +23,7 @@ import (
 )
 
 type Repo struct {
-	config *Config
+	config *RepoConfig
 
 	engine ndn.Engine
 	store  ndn.Store
@@ -37,7 +37,7 @@ type Repo struct {
 	mutex     sync.Mutex
 }
 
-func NewRepo(config *Config) *Repo {
+func NewRepo(config *RepoConfig) *Repo {
 	return &Repo{
 		config:    config,
 		groupsSvs: make(map[string]*RepoSvs),
@@ -113,17 +113,14 @@ func (r *Repo) Start() (err error) {
 	}
 
 	// Create repo storage
-	r.storage = storage.NewRepoStorage(r.store, r.client)
+	r.storage = storage.NewRepoStorage(r.config.RepoNameN, r.config.NodeNameN, r.store, r.client)
 
 	// Create repo auction
 	// TODO: currently we use trivial get bid & on win, etc.
-	trivialGetBid := func(name string) int {
+	testGetBid := func(name string) int {
 		return 100
 	}
-	trivialOnWin := func(name string) {
-		log.Info(r, "Won partition", name)
-	}
-	r.auction = auction.NewAuctionEngine(r.config.NodeNameN, r.config.RepoNameN, 3, r.client, r.awareness.GetOnlineNodes, trivialGetBid, trivialOnWin)
+	r.auction = auction.NewAuctionEngine(r.config.NodeNameN, r.config.RepoNameN, 3, r.client, r.awareness.GetOnlineNodes, testGetBid, r.wonAuction)
 	if err := r.auction.Start(); err != nil {
 		return err
 	}
@@ -131,7 +128,7 @@ func (r *Repo) Start() (err error) {
 
 	// Set under-replication handler
 	r.awareness.SetOnUnderReplication(func(partition uint64) {
-		item := fmt.Sprintf("partition-%d", partition)
+		item := strconv.FormatUint(partition, 10)
 		time.Sleep(time.Duration(rand.Float64()*1000) * time.Millisecond) // sleep for a random amount of time between 0 and 1000ms for suppression
 		r.auction.AuctionItem(item)
 	})
@@ -152,24 +149,39 @@ func (r *Repo) Stop() error {
 		log.Warn(r, "Failed to detach command handler", "err", err)
 	}
 
+	// Stop NDN Object API client
 	if r.client != nil {
-		r.client.Stop()
+		if err := r.client.Stop(); err != nil {
+			log.Warn(r, "Failed to stop client", "err", err)
+		}
 	}
 
+	// Stop NDN engine
 	if r.engine != nil {
-		r.engine.Stop()
+		if err := r.engine.Stop(); err != nil {
+			log.Warn(r, "Failed to stop engine", "err", err)
+		}
 	}
 
+	// Stop awareness
 	if r.awareness != nil {
-		r.awareness.Stop()
+		if err := r.awareness.Stop(); err != nil {
+			log.Warn(r, "Failed to stop awareness", "err", err)
+		}
 	}
 
+	// Stop storage
 	if r.storage != nil {
-		r.storage.Close()
+		if err := r.storage.Close(); err != nil {
+			log.Warn(r, "Failed to close storage", "err", err)
+		}
 	}
 
+	// Stop auction
 	if r.auction != nil {
-		r.auction.Stop()
+		if err := r.auction.Stop(); err != nil {
+			log.Warn(r, "Failed to stop auction", "err", err)
+		}
 	}
 
 	return nil
@@ -189,4 +201,18 @@ func (r *Repo) setupEngineHook() {
 		}
 		return nil
 	}
+}
+
+func (r *Repo) wonAuction(item string) {
+	log.Info(r, "Won auction for item", "item", item)
+	partitionId, _ := strconv.ParseUint(item, 10, 64)
+
+	err := r.storage.RegisterPartition(partitionId)
+	if err != nil {
+		log.Warn(r, "Failed to register partition", "id", partitionId, "err", err)
+		return
+	}
+
+	log.Info(r, "Won partition", "id", partitionId)
+	r.awareness.AddLocalPartition(partitionId)
 }

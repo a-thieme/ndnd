@@ -22,7 +22,7 @@ var CmdRepo = &cobra.Command{
 
 func run(cmd *cobra.Command, args []string) {
 	config := struct {
-		Repo *Config `json:"repo"`
+		Repo *RepoConfig `json:"repo"`
 	}{
 		Repo: DefaultConfig(),
 	}

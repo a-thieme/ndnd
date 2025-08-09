@@ -66,15 +66,15 @@ func (r *RepoAwareness) String() string {
 }
 
 // TODO: create a new repo awareness object
-func NewRepoAwareness(repoName enc.Name, nodeName enc.Name, client ndn.Client) *RepoAwareness {
-	awarenessPrefix := repoName.Append(enc.NewGenericComponent("awareness"))
+func NewRepoAwareness(repoNameN enc.Name, nodeNameN enc.Name, client ndn.Client) *RepoAwareness {
+	awarenessPrefix := repoNameN.Append(enc.NewGenericComponent("awareness"))
 	// awarenessPrefix, _ = enc.NameFromStr("ndnd/repo/awareness") // TODO: testing only
-	heartbeatPrefix := repoName.Append(enc.NewGenericComponent("heartbeat"))
+	heartbeatPrefix := repoNameN.Append(enc.NewGenericComponent("heartbeat"))
 
 	return &RepoAwareness{
-		name:               nodeName,
+		name:               nodeNameN,
 		client:             client, // use Repo shared client
-		localState:         NewRepoNodeAwareness(nodeName.String()),
+		localState:         NewRepoNodeAwareness(nodeNameN.String()),
 		storage:            NewRepoAwarenessStore(),
 		awarenessSvsPrefix: awarenessPrefix,
 		heartbeatSvsPrefix: heartbeatPrefix,
@@ -277,6 +277,17 @@ func (r *RepoAwareness) UpdateLocalPartitions(partitions *map[uint64]bool) {
 	r.publishAwarenessUpdate()
 }
 
+// AddLocalPartition adds a partition to the local state and publishes an awareness update
+func (r *RepoAwareness) AddLocalPartition(partitionId uint64) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	if _, exists := r.localState.partitions[partitionId]; !exists {
+		r.localState.partitions[partitionId] = true
+		r.publishAwarenessUpdate()
+	}
+}
+
 // GetReplicas returns the replicas for a given partition (local awareness)
 func (r *RepoAwareness) GetReplicas(partitionId uint64) []enc.Name {
 	replicas := make([]enc.Name, 0)
@@ -295,6 +306,7 @@ func (r *RepoAwareness) GetOnlineNodes() []enc.Name {
 			nameNs = append(nameNs, nameN)
 		}
 	}
+	nameNs = append(nameNs, r.name) // add self to the list
 	return nameNs
 }
 

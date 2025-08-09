@@ -242,3 +242,11 @@ func (s *RepoAwarenessStore) CheckPartitionReplication(partition uint64) {
 		}
 	}
 }
+
+// CheckReplications checks all partitions for replication status
+// thread safety is handled by the caller
+func (s *RepoAwarenessStore) CheckReplications() {
+	for partition := range s.replicaCounts {
+		s.CheckPartitionReplication(uint64(partition))
+	}
+}

@@ -50,7 +50,8 @@ func (a *Auction) determineWinners(numWinners int) {
 	sort.Slice(a.bids, func(i, j int) bool {
 		return a.bids[i].bid > a.bids[j].bid
 	})
-	for i := 0; i < numWinners; i++ {
+
+	for i := 0; i < numWinners && i < a.numBids; i++ {
 		out += a.bids[i].node + " "
 	}
 	log.Info(a, "Determined winners", "winners", out)
@@ -74,6 +75,8 @@ type AuctionEngine struct {
 
 	// auxiliary fields
 	auctionPrefix enc.Name
+	bidPrefix     enc.Name
+	resultsPrefix enc.Name
 }
 
 func (a *AuctionEngine) String() string {
@@ -86,7 +89,6 @@ func NewAuctionEngine(nodeNameN enc.Name, repoNameN enc.Name, replications int, 
 	a.engine = client.Engine()
 	a.nodeNameN = nodeNameN
 	a.repoNameN = repoNameN
-	a.auctionPrefix = nodeNameN.Append(enc.NewGenericComponent("auction"))
 	a.auctions = make(map[string]Auction)
 	a.interestCfg = ndn.InterestConfig{
 		MustBeFresh: true,
@@ -96,6 +98,11 @@ func NewAuctionEngine(nodeNameN enc.Name, repoNameN enc.Name, replications int, 
 	a.calculateBid = calculateBid
 	a.replications = replications
 	a.onWin = onWin
+
+	a.auctionPrefix = nodeNameN.Append(repoNameN...)
+	a.bidPrefix = a.auctionPrefix.Append(enc.NewGenericComponent("bid"))
+	a.resultsPrefix = a.auctionPrefix.Append(enc.NewGenericComponent("results"))
+
 	return a
 }
 
@@ -103,15 +110,23 @@ func (a *AuctionEngine) Start() error {
 	log.Info(a, "Starting Repo Auction Engine")
 
 	// Announce auction prefix
-	a.client.AnnouncePrefix(ndn.Announcement{
-		Name:   a.auctionPrefix,
-		Expose: true,
-	})
+	for _, prefix := range []enc.Name{a.auctionPrefix} {
+		a.client.AnnouncePrefix(ndn.Announcement{
+			Name:   prefix,
+			Expose: true,
+		})
+	}
 
 	// Auction engine interest handler
 	if err := a.client.Engine().AttachHandler(a.auctionPrefix, a.onInterest); err != nil {
 		return err
 	}
+	// if err := a.client.Engine().AttachHandler(a.bidPrefix, a.onBidInterest); err != nil {
+	// 	return err
+	// }
+	// if err := a.client.Engine().AttachHandler(a.resultsPrefix, a.onAuctionResultsInterest); err != nil {
+	// 	return err
+	// }
 
 	return nil
 }
@@ -120,10 +135,16 @@ func (a *AuctionEngine) Stop() error {
 	log.Info(a, "Stopping Repo Auction Engine")
 
 	// Withdraw auction prefix
-	a.client.WithdrawPrefix(a.auctionPrefix, nil)
+	for _, prefix := range []enc.Name{a.auctionPrefix} {
+		a.client.WithdrawPrefix(prefix, nil)
+	}
 
 	// Detach interest handler
-	a.client.Engine().DetachHandler(a.auctionPrefix)
+	if err := a.client.Engine().DetachHandler(a.auctionPrefix); err != nil {
+		return err
+	}
+	// a.client.Engine().DetachHandler(a.bidPrefix)
+	// a.client.Engine().DetachHandler(a.resultsPrefix)
 
 	return nil
 }
@@ -135,6 +156,7 @@ func (a *AuctionEngine) addBid(itemId string, node enc.Name, bid int) {
 	a.auctions[itemId].bids[a.auctions[itemId].numBids] = Bid{node.String(), bid}
 	// https://stackoverflow.com/questions/42605337/cannot-assign-to-struct-field-in-a-map
 	if entry, ok := a.auctions[itemId]; ok {
+		log.Info(a, "Adding bid", "itemId", itemId, "node", node, "bid", bid)
 		entry.numBids++
 		if entry.numBids == entry.expectedBids {
 			entry.determineWinners(a.replications)
@@ -161,6 +183,7 @@ func (a *AuctionEngine) AuctionItem(itemId string) {
 		// probably a better way to do this
 		var n = node.String() + a.repoNameN.String() + "/" + itemId + "/bid/" + enc.Component{Typ: 8, Val: a.nodeNameN.Bytes()}.String() + "/" + a.auctions[itemId].nonce
 		iName, _ := enc.NameFromStr(n)
+
 		log.Info(a, "Sent bid interest", "itemId", itemId, "node", node, "nonce", a.auctions[itemId].nonce)
 		object.ExpressR(a.engine, ndn.ExpressRArgs{
 			Name:    iName,
@@ -230,10 +253,11 @@ func (a *AuctionEngine) fetchResults(auctioneer []byte, itemId string, nonce str
 func (a *AuctionEngine) onInterest(args ndn.InterestHandlerArgs) {
 	interest := args.Interest
 	n := interest.Name()
-	log.Info(a, "Received bid interest", "name", n)
 	tmp := n.At(-3).String()
 	var content []byte
 	if tmp == "bid" {
+		log.Info(a, "Received bid interest", "name", n)
+
 		itemId := n.At(-4).String()
 		auctioneer := n.At(-2).Val
 		nonce := n.At(-1).String()
@@ -241,6 +265,8 @@ func (a *AuctionEngine) onInterest(args ndn.InterestHandlerArgs) {
 
 		content = []byte(strconv.Itoa(a.calculateBid(itemId)))
 	} else if n.At(-2).String() == "results" {
+		log.Info(a, "Received auction results interest", "name", n)
+
 		itemId := n.At(-3).String()
 		// todo: add nonce to itemID
 		nonce := n.At(-1).String()
@@ -261,11 +287,14 @@ func (a *AuctionEngine) onInterest(args ndn.InterestHandlerArgs) {
 		log.Info(a, "Received unknown interest", "name", n)
 		content = []byte("unknown")
 	}
+
+	// Create data packet
 	data, err := a.engine.Spec().MakeData(
 		n,
 		&ndn.DataConfig{},
 		enc.Wire{content},
-		nil)
+		a.client.SuggestSigner(n),
+	)
 	if err != nil {
 		log.Error(a, "Failed to make data", "name", n, "error", err)
 		return
@@ -275,4 +304,6 @@ func (a *AuctionEngine) onInterest(args ndn.InterestHandlerArgs) {
 		log.Error(a, "Failed to reply to interest", "name", n, "error", err)
 		return
 	}
+
+	log.Info(a, "Replied to bid interest", "name", n, "content", string(content))
 }

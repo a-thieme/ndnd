@@ -2,6 +2,7 @@ package storage
 
 import (
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -68,29 +69,29 @@ func NewPartition(id uint64, client ndn.Client, store *RepoStorage) *Partition {
 func (p *Partition) Start() (err error) {
 	log.Info(p, "Starting partition SVS ALO")
 
-	// TODO: get the svs prefix from the configuraiton
-	groupPrefix := "/ndnd/repo/svs/partition/"
-	p.svsPrefix, err = enc.NameFromStr(fmt.Sprintf("%s%d", groupPrefix, p.id))
+	// get the svs prefix from the configuration
+	p.svsPrefix = p.store.repoNameN.Append(enc.NewGenericComponent(strconv.FormatUint(p.id, 10)))
 	if err != nil {
 		return err
 	}
 
 	// initialize the SVS group
 	p.svsGroup, err = ndn_sync.NewSvsALO(ndn_sync.SvsAloOpts{
-		Name: p.svsPrefix,
+		Name: p.store.nodeNameN,
 		Svs: ndn_sync.SvSyncOpts{
 			Client:            p.client,
 			GroupPrefix:       p.svsPrefix,
 			SuppressionPeriod: 500 * time.Millisecond, // TODO: should this be reactive to the heartbeat interval?
 			PeriodicTimeout:   30 * time.Second,       // TODO: this is the default value. To my understanding, periodic sync interests don't increase sequence numbers; it can be used as a redundancy to inform other nodes about the newest local state, but it can't replace the heartbeat mechanism
 		},
-		Snapshot: &ndn_sync.SnapshotNodeLatest{
-			Client: p.client,
-			SnapMe: func(n enc.Name) (enc.Wire, error) {
-				return p.Snap(), nil
-			},
-			Threshold: 10, // TODO: configurable
-		},
+		// Snapshot: &ndn_sync.SnapshotNodeLatest{
+		// 	Client: p.client,
+		// 	SnapMe: func(n enc.Name) (enc.Wire, error) {
+		// 		return p.Snap(), nil
+		// 	},
+		// 	Threshold: 10, // TODO: configurable
+		// },
+		Snapshot: &ndn_sync.SnapshotNull{}, // TODO: starts with no snapshot
 	})
 	if err != nil {
 		return err
@@ -184,6 +185,7 @@ func (p *Partition) Stop() (err error) {
 }
 
 // Snap takes a snapshot of this partition
+// TODO: this is probably buggy and needs to be fixed
 func (p *Partition) Snap() enc.Wire {
 	p.mutex.RLock()
 	defer p.mutex.RUnlock()

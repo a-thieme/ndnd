@@ -14,17 +14,22 @@ type RepoStorage struct {
 	partitions map[uint64]*Partition // the partitions owned by the repo node
 
 	client ndn.Client
+
+	repoNameN enc.Name // name of the repo node
+	nodeNameN enc.Name // name of the local node
 }
 
 // NewRepoStorage creates a new repo storage
 // TODO: more parameters
-func NewRepoStorage(store ndn.Store, client ndn.Client) *RepoStorage {
+func NewRepoStorage(repoNameN enc.Name, nodeNameN enc.Name, store ndn.Store, client ndn.Client) *RepoStorage {
 	log.Info(nil, "Created Repo Storage")
 
 	return &RepoStorage{
 		store:      store,
 		partitions: make(map[uint64]*Partition),
 		client:     client,
+		repoNameN:  repoNameN,
+		nodeNameN:  nodeNameN,
 	}
 }
 
@@ -42,6 +47,7 @@ func (s *RepoStorage) RegisterPartition(id uint64) (err error) {
 
 	if err := partition.Start(); err != nil {
 		log.Error(s, "Failed to start partition", "err", err)
+		delete(s.partitions, id) // rollback
 		return err
 	}
 
