@@ -3,15 +3,14 @@ package auction
 import (
 	"fmt"
 	"math/rand"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/named-data/ndnd/std/encoding"
-	"github.com/named-data/ndnd/std/engine"
+	enc "github.com/named-data/ndnd/std/encoding"
+	"github.com/named-data/ndnd/std/log"
 	"github.com/named-data/ndnd/std/ndn"
 	"github.com/named-data/ndnd/std/object"
 	"github.com/named-data/ndnd/std/types/optional"
@@ -29,6 +28,10 @@ type Auction struct {
 type Bid struct {
 	node string
 	bid  int
+}
+
+func (a *Auction) String() string {
+	return fmt.Sprintf("auction (itemID=%s, nonce=%s)", a.itemID, a.nonce)
 }
 
 func NewAuction(itemID string, size int) Auction {
@@ -50,7 +53,7 @@ func (a *Auction) determineWinners(numWinners int) {
 	for i := 0; i < numWinners; i++ {
 		out += a.bids[i].node + " "
 	}
-	fmt.Println("winners:", out)
+	log.Info(a, "Determined winners", "winners", out)
 	a.results = out
 }
 
@@ -58,47 +61,74 @@ type AuctionEngine struct {
 	mutex sync.RWMutex
 
 	// ndn communication
+	client         ndn.Client
 	engine         ndn.Engine
-	myPrefix       encoding.Name
-	repoPrefix     encoding.Name
-	availableNodes func() []encoding.Name
+	nodeNameN      enc.Name
+	repoNameN      enc.Name
+	availableNodes func() []enc.Name
 	auctions       map[string]Auction
 	interestCfg    ndn.InterestConfig
 	calculateBid   func(string) int
 	replications   int
 	onWin          func(string)
+
+	// auxiliary fields
+	auctionPrefix enc.Name
 }
 
-func NewAuctionEngine(myPrefix encoding.Name, repoPrefix encoding.Name, availableNodes func() []encoding.Name, calculateBid func(string) int, app ndn.Engine, replications int, onWin func(string)) *AuctionEngine {
+func (a *AuctionEngine) String() string {
+	return "auction-engine"
+}
+
+func NewAuctionEngine(nodeNameN enc.Name, repoNameN enc.Name, replications int, client ndn.Client, availableNodes func() []enc.Name, calculateBid func(string) int, onWin func(string)) *AuctionEngine {
 	a := new(AuctionEngine)
-	if app == nil {
-		a.engine = engine.NewBasicEngine(engine.NewDefaultFace())
-	} else {
-		a.engine = app
-	}
-	a.myPrefix = myPrefix
+	a.client = client
+	a.engine = client.Engine()
+	a.nodeNameN = nodeNameN
+	a.repoNameN = repoNameN
+	a.auctionPrefix = nodeNameN.Append(enc.NewGenericComponent("auction"))
 	a.auctions = make(map[string]Auction)
-	a.availableNodes = availableNodes
 	a.interestCfg = ndn.InterestConfig{
 		MustBeFresh: true,
 		Lifetime:    optional.Some(time.Second * 1),
 	}
+	a.availableNodes = availableNodes
 	a.calculateBid = calculateBid
-	a.repoPrefix = repoPrefix
 	a.replications = replications
 	a.onWin = onWin
 	return a
 }
 
 func (a *AuctionEngine) Start() error {
-	return a.engine.Start()
+	log.Info(a, "Starting Repo Auction Engine")
+
+	// Announce auction prefix
+	a.client.AnnouncePrefix(ndn.Announcement{
+		Name:   a.auctionPrefix,
+		Expose: true,
+	})
+
+	// Auction engine interest handler
+	if err := a.client.Engine().AttachHandler(a.auctionPrefix, a.onInterest); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (a *AuctionEngine) Stop() error {
-	return a.engine.Stop()
+	log.Info(a, "Stopping Repo Auction Engine")
+
+	// Withdraw auction prefix
+	a.client.WithdrawPrefix(a.auctionPrefix, nil)
+
+	// Detach interest handler
+	a.client.Engine().DetachHandler(a.auctionPrefix)
+
+	return nil
 }
 
-func (a *AuctionEngine) addBid(itemId string, node encoding.Name, bid int) {
+func (a *AuctionEngine) addBid(itemId string, node enc.Name, bid int) {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 
@@ -120,7 +150,7 @@ func (a *AuctionEngine) AuctionItem(itemId string) {
 	a.auctions[itemId] = NewAuction(itemId, numNodes)
 	// /<node>/<repo>/<itemID>/bid/<auctioneer>/<nonce>
 	for _, node := range nodes {
-		if node.Equal(a.myPrefix) {
+		if node.Equal(a.nodeNameN) {
 			a.addBid(itemId, node, a.calculateBid(itemId))
 			continue
 		}
@@ -129,9 +159,9 @@ func (a *AuctionEngine) AuctionItem(itemId string) {
 		intCfg.Nonce = utils.ConvertNonce(a.engine.Timer().Nonce())
 
 		// probably a better way to do this
-		var n = node.String() + a.repoPrefix.String() + "/" + itemId + "/bid/" + encoding.Component{Typ: 8, Val: a.myPrefix.Bytes()}.String() + "/" + a.auctions[itemId].nonce
-		iName, _ := encoding.NameFromStr(n)
-		fmt.Println("interest: ", iName)
+		var n = node.String() + a.repoNameN.String() + "/" + itemId + "/bid/" + enc.Component{Typ: 8, Val: a.nodeNameN.Bytes()}.String() + "/" + a.auctions[itemId].nonce
+		iName, _ := enc.NameFromStr(n)
+		log.Info(a, "Sent bid interest", "itemId", itemId, "node", node, "nonce", a.auctions[itemId].nonce)
 		object.ExpressR(a.engine, ndn.ExpressRArgs{
 			Name:    iName,
 			Retries: 5,
@@ -140,20 +170,20 @@ func (a *AuctionEngine) AuctionItem(itemId string) {
 				switch args.Result {
 				case ndn.InterestResultData:
 					data := args.Data
-					dName := data.Name()
-					fmt.Printf("Received Data Name: %s\n", dName.String())
+					// dName := data.Name()
+					log.Info(a, "Received bid", "itemId", itemId, "node", node, "nonce", a.auctions[itemId].nonce, "bid", string(data.Content().Join()))
 					bid, _ := strconv.Atoi(string(data.Content().Join()))
 					a.addBid(itemId, node, bid)
 				case ndn.InterestCancelled:
-					fmt.Println("Cancelled")
+					log.Info(a, "Interest cancelled", "itemId", itemId, "node", node, "nonce", a.auctions[itemId].nonce)
 				case ndn.InterestResultNack:
-					fmt.Printf("Received Nack with reason=%d\n", args.NackReason)
+					log.Info(a, "Received Nack", "itemId", itemId, "node", node, "nonce", a.auctions[itemId].nonce, "reason", args.NackReason)
 				case ndn.InterestResultError:
-					fmt.Println("Received Error")
+					log.Info(a, "Received Error", "itemId", itemId, "node", node, "nonce", a.auctions[itemId].nonce)
 				case ndn.InterestResultTimeout:
-					fmt.Printf("Received Timeout for name %s\n", node.String())
+					log.Info(a, "Received Timeout", "itemId", itemId, "node", node, "nonce", a.auctions[itemId].nonce)
 				default:
-					fmt.Println("unhandled default case for ", args.Result)
+					log.Info(a, "Unhandled default case", "itemId", itemId, "node", node, "nonce", a.auctions[itemId].nonce, "result", args.Result)
 				}
 			},
 		})
@@ -161,9 +191,9 @@ func (a *AuctionEngine) AuctionItem(itemId string) {
 }
 
 func (a *AuctionEngine) fetchResults(auctioneer []byte, itemId string, nonce string) {
-	auctioneerName, _ := encoding.NameFromBytes(auctioneer)
-	iName, _ := encoding.NameFromStr(auctioneerName.String() + a.repoPrefix.String() + "/" + itemId + "/results/" + nonce)
-	fmt.Println("results interest: ", iName)
+	auctioneerName, _ := enc.NameFromBytes(auctioneer)
+	iName, _ := enc.NameFromStr(auctioneerName.String() + a.repoNameN.String() + "/" + itemId + "/results/" + nonce)
+	log.Info(a, "Received results interest", "itemId", itemId, "auctioneer", auctioneerName, "nonce", nonce)
 	intCfg := a.interestCfg
 	intCfg.Nonce = utils.ConvertNonce(a.engine.Timer().Nonce())
 	object.ExpressR(a.engine, ndn.ExpressRArgs{
@@ -174,25 +204,24 @@ func (a *AuctionEngine) fetchResults(auctioneer []byte, itemId string, nonce str
 			switch args.Result {
 			case ndn.InterestResultData:
 				data := args.Data
-				dName := data.Name()
-				fmt.Printf("Received Data Name: %s\n", dName.String())
+				// dName := data.Name()
 				winners := strings.Fields(string(data.Content().Join()))
-				fmt.Println("winners: ", winners)
+				log.Info(a, "Fetched winners", "itemId", itemId, "nonce", nonce, "auctioneer", auctioneerName, "winners", winners)
 				for _, winner := range winners {
-					if a.myPrefix.String() == winner {
+					if a.nodeNameN.String() == winner {
 						a.onWin(itemId)
 					}
 				}
 			case ndn.InterestCancelled:
-				fmt.Println("Cancelled")
+				log.Info(a, "Interest cancelled", "itemId", itemId, "auctioneer", auctioneerName, "nonce", nonce)
 			case ndn.InterestResultNack:
-				fmt.Printf("Received Nack with reason=%d\n", args.NackReason)
+				log.Info(a, "Received Nack", "itemId", itemId, "auctioneer", auctioneerName, "nonce", nonce, "reason", args.NackReason)
 			case ndn.InterestResultError:
-				fmt.Println("Received Error")
+				log.Info(a, "Received Error", "itemId", itemId, "auctioneer", auctioneerName, "nonce", nonce)
 			case ndn.InterestResultTimeout:
-				fmt.Printf("Received Timeout for name %s\n", iName.String())
+				log.Info(a, "Received Timeout", "itemId", itemId, "auctioneer", auctioneerName, "nonce", nonce)
 			default:
-				fmt.Println("unhandled default case for ", args.Result)
+				log.Info(a, "Unhandled default case", "itemId", itemId, "auctioneer", auctioneerName, "nonce", nonce, "result", args.Result)
 			}
 		},
 	})
@@ -201,7 +230,7 @@ func (a *AuctionEngine) fetchResults(auctioneer []byte, itemId string, nonce str
 func (a *AuctionEngine) onInterest(args ndn.InterestHandlerArgs) {
 	interest := args.Interest
 	n := interest.Name()
-	fmt.Println("got interest for name: ", n)
+	log.Info(a, "Received bid interest", "name", n)
 	tmp := n.At(-3).String()
 	var content []byte
 	if tmp == "bid" {
@@ -229,85 +258,21 @@ func (a *AuctionEngine) onInterest(args ndn.InterestHandlerArgs) {
 		}
 		content = []byte(r)
 	} else {
-		fmt.Println("not results or bid")
+		log.Info(a, "Received unknown interest", "name", n)
 		content = []byte("unknown")
 	}
 	data, err := a.engine.Spec().MakeData(
 		n,
 		&ndn.DataConfig{},
-		encoding.Wire{content},
+		enc.Wire{content},
 		nil)
 	if err != nil {
-		fmt.Println(err)
+		log.Error(a, "Failed to make data", "name", n, "error", err)
 		return
 	}
 	err = args.Reply(data.Wire)
 	if err != nil {
-		fmt.Println(err)
+		log.Error(a, "Failed to reply to interest", "name", n, "error", err)
 		return
 	}
-}
-
-func getOnline() []encoding.Name {
-	out := make([]encoding.Name, 2)
-	var comp = encoding.Component{}
-	for i := 0; i < 2; i++ {
-		comp, _ = encoding.ComponentFromStr("prefix")
-		out[i] = out[i].Append(comp)
-		comp, _ = encoding.ComponentFromStr("node" + strconv.Itoa(i+1))
-		out[i] = out[i].Append(comp)
-	}
-	return out
-}
-
-func doBid(itemID string) int {
-	b := rand.Int() % 256
-	fmt.Println(itemID, "bid: ", b)
-	return b
-}
-
-func onWin(itemID string) {
-	fmt.Println("I won", itemID)
-}
-
-func main() {
-	fmt.Println(getOnline())
-	prefix, err := encoding.NameFromStr(os.Args[1])
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	itemID := os.Args[2]
-	repo, err := encoding.NameFromStr("<repo>")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	a := NewAuctionEngine(prefix, repo, getOnline, doBid, nil, 3, onWin)
-	defer a.Stop()
-	if a.Start() != nil {
-		fmt.Println("Error starting:", a.Start())
-		return
-	}
-	if a.engine.AttachHandler(prefix, a.onInterest) != nil {
-		fmt.Println("Error attaching handler")
-		return
-	}
-	if a.engine.RegisterRoute(prefix) != nil {
-		fmt.Println("Error registering route:", prefix)
-		return
-	}
-	time.Sleep(2 * time.Second)
-
-	a.AuctionItem(itemID)
-	time.Sleep(3 * time.Second)
-	fmt.Println(a.auctions)
-
-	// do an additional auction if you want
-	//a.AuctionItem(itemID)
-	//time.Sleep(3 * time.Second)
-	//fmt.Println(a.auctions)
-
-	fmt.Println("Finished")
 }

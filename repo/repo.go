@@ -1,7 +1,10 @@
 package repo
 
 import (
+	"fmt"
+	"math/rand"
 	"sync"
+	"time"
 
 	"github.com/named-data/ndnd/repo/auction"
 	"github.com/named-data/ndnd/repo/awareness"
@@ -87,17 +90,19 @@ func (r *Repo) Start() (err error) {
 
 	// Start NDN Object API client
 	// r.client = object.NewClient(r.engine, r.store, trust)
+	// TODO: temporarily disable trust
 	r.client = object.NewClient(r.engine, r.store, nil)
 	if err := r.client.Start(); err != nil {
 		return err
 	}
 
 	// Attach managmemt interest handler
-	if err := r.client.AttachCommandHandler(r.config.RepoNameN, r.onMgmtCmd); err != nil {
+	commandHandlerPreifx := r.config.RepoNameN.Append(enc.NewGenericComponent("cmd")) // TODO: unify command handler prefix
+	if err := r.client.AttachCommandHandler(commandHandlerPreifx, r.onMgmtCmd); err != nil {
 		return err
 	}
 	r.client.AnnouncePrefix(ndn.Announcement{
-		Name:   r.config.RepoNameN,
+		Name:   commandHandlerPreifx,
 		Expose: true,
 	})
 
@@ -109,6 +114,27 @@ func (r *Repo) Start() (err error) {
 
 	// Create repo storage
 	r.storage = storage.NewRepoStorage(r.store, r.client)
+
+	// Create repo auction
+	// TODO: currently we use trivial get bid & on win, etc.
+	trivialGetBid := func(name string) int {
+		return 100
+	}
+	trivialOnWin := func(name string) {
+		log.Info(r, "Won partition", name)
+	}
+	r.auction = auction.NewAuctionEngine(r.config.NodeNameN, r.config.RepoNameN, 3, r.client, r.awareness.GetOnlineNodes, trivialGetBid, trivialOnWin)
+	if err := r.auction.Start(); err != nil {
+		return err
+	}
+	log.Info(r, "AuctionEngine started", "auction", r.auction)
+
+	// Set under-replication handler
+	r.awareness.SetOnUnderReplication(func(partition uint64) {
+		item := fmt.Sprintf("partition-%d", partition)
+		time.Sleep(time.Duration(rand.Float64()*1000) * time.Millisecond) // sleep for a random amount of time between 0 and 1000ms for suppression
+		r.auction.AuctionItem(item)
+	})
 
 	return nil
 }
@@ -140,6 +166,10 @@ func (r *Repo) Stop() error {
 
 	if r.storage != nil {
 		r.storage.Close()
+	}
+
+	if r.auction != nil {
+		r.auction.Stop()
 	}
 
 	return nil
