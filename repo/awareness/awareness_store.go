@@ -104,6 +104,12 @@ func (s *RepoAwarenessStore) ProcessAwarenessUpdate(update *tlv.AwarenessUpdate)
 	name := update.NodeName
 	node := s.nodeStates[name]
 
+	if node == nil { // to handle when awareness updates are received before heartbeats
+		node = NewRepoNodeAwareness(name)
+		s.nodeStates[name] = node
+		log.Info(s, "New node added", "name", name)
+	}
+
 	// Update the node's partitions and reset its state to Up
 	s.UpdateNodePartitions(node, update.Partitions)
 }
@@ -225,14 +231,14 @@ func (s *RepoAwarenessStore) CheckPartitionReplication(partition uint64) {
 
 		// TODO: handle auction for under-replicated partitions
 		if s.underReplicationHandler != nil {
-			s.underReplicationHandler(partition)
+			go s.underReplicationHandler(partition) // run in separate goroutine to avoid blocking
 		}
 	} else if s.replicaCounts[partition] > NumReplicas {
 		s.underRepMask.Clear(uint(partition))
 
 		// TODO: handle auction for over-replicated partitions
 		if s.overReplicationHandler != nil {
-			s.overReplicationHandler(partition)
+			go s.overReplicationHandler(partition) // run in separate goroutine to avoid blocking
 		}
 	}
 }

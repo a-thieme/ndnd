@@ -37,7 +37,7 @@ type RepoAwareness struct {
 	// single mutex
 	mutex sync.RWMutex
 
-	// name of the local repo
+	// name of the local node
 	name enc.Name
 
 	// awareness of the cluster
@@ -56,6 +56,9 @@ type RepoAwareness struct {
 	// heartbeat
 	ticker             *time.Ticker // ticker for heartbeat
 	heartbeatSvsPrefix enc.Name     // group prefix for heartbeat SVS
+
+	// stop channel to signal the heartbeat loop to stop
+	stop chan struct{}
 }
 
 func (r *RepoAwareness) String() string {
@@ -65,16 +68,20 @@ func (r *RepoAwareness) String() string {
 // TODO: create a new repo awareness object
 func NewRepoAwareness(repoName enc.Name, nodeName enc.Name, client ndn.Client) *RepoAwareness {
 	awarenessPrefix := repoName.Append(enc.NewGenericComponent("awareness"))
+	// awarenessPrefix, _ = enc.NameFromStr("ndnd/repo/awareness") // TODO: testing only
 	heartbeatPrefix := repoName.Append(enc.NewGenericComponent("heartbeat"))
 
 	return &RepoAwareness{
 		name:               nodeName,
 		client:             client, // use Repo shared client
-		awarenessSvs:       nil,
 		localState:         NewRepoNodeAwareness(nodeName.String()),
 		storage:            NewRepoAwarenessStore(),
 		awarenessSvsPrefix: awarenessPrefix,
 		heartbeatSvsPrefix: heartbeatPrefix,
+		awarenessSvs:       nil,
+		heartbeatSvs:       nil,
+		ticker:             nil,
+		stop:               nil,
 	}
 }
 
@@ -95,7 +102,7 @@ func (r *RepoAwareness) Start() (err error) {
 			Client:            r.client,
 			GroupPrefix:       r.awarenessSvsPrefix,
 			SuppressionPeriod: 500 * time.Millisecond, // TODO: should this be reactive to the heartbeat interval?
-			PeriodicTimeout:   3 * time.Hour,          // TODO: periodic timeouts are for redundancy only; we want to minimize traffic
+			PeriodicTimeout:   30 * time.Second,       // TODO: periodic timeouts are for redundancy only; we want to minimize traffic
 		},
 		Snapshot:        &ndn_sync.SnapshotNull{}, // there is no need for snapshots in this case
 		FetchLatestOnly: false,                    // only fetch the latest sequence number
@@ -116,7 +123,7 @@ func (r *RepoAwareness) Start() (err error) {
 			panic("Snapshot publications are not supported in Repo Awareness")
 		} else {
 			// Process the publication.
-			log.Info(r, "Received non-snapshot publication", "pub", pub.Content)
+			// log.Info(r, "Received non-snapshot publication", "pub", pub.Content)
 
 			update, err := tlv.ParseAwarenessUpdate(enc.NewWireView(pub.Content), true)
 			if err != nil {
@@ -151,6 +158,7 @@ func (r *RepoAwareness) Start() (err error) {
 	}
 
 	// Partition handlers
+	// TODO: currently, just trivial handlers
 	r.storage.SetOnUnderReplication(func(id uint64) {
 		log.Info(r, "Partition under-replicated", "id", id)
 	})
@@ -159,7 +167,15 @@ func (r *RepoAwareness) Start() (err error) {
 		log.Info(r, "Partition over-replicated", "id", id)
 	})
 
+	// Start awareness update
+	log.Info(r, "Starting awareness update")
+	if err := r.awarenessSvs.Start(); err != nil {
+		log.Error(r, "Failed to start awareness SVS", "err", err)
+		return err
+	}
+
 	// Start heartbeat
+	log.Info(r, "Starting heartbeat")
 	if err := r.StartHeartbeat(); err != nil {
 		log.Error(r, "Failed to start heartbeat", "err", err)
 	}
@@ -170,17 +186,20 @@ func (r *RepoAwareness) Start() (err error) {
 func (r *RepoAwareness) Stop() (err error) {
 	log.Info(r, "Stopping Repo Awareness SVS")
 
-	// Stop health SVS
+	// stop heartbeat svs
+	if r.heartbeatSvs != nil {
+		if err := r.heartbeatSvs.Stop(); err != nil {
+			log.Error(r, "Error stopping heartbeat SVS", "err", err)
+		}
+		close(r.stop)
+		r.ticker.Stop()
+	}
+
+	// Stop awareness SVS
 	if r.awarenessSvs != nil {
 		// stop awareness svs_alo
 		if err := r.awarenessSvs.Stop(); err != nil {
 			log.Error(r, "Error stopping health SVS", "err", err)
-		}
-
-		// stop heartbeat svs
-		r.ticker.Stop()
-		if err := r.heartbeatSvs.Stop(); err != nil {
-			log.Error(r, "Error stopping heartbeat SVS", "err", err)
 		}
 
 		// Withdraw group prefix route
@@ -206,32 +225,43 @@ func (r *RepoAwareness) StartHeartbeat() (err error) {
 		log.Error(r, "Failed to start heartbeat SVS", "err", err)
 		return err
 	}
-	log.Info(r, "Heartbeat started", "repo", r.name)
+	log.Info(r, "Heartbeat started", "node", r.name)
 
 	// start ticker
 	r.ticker = time.NewTicker(HeartbeatInterval)
 
+	// create stop channel
+	r.stop = make(chan struct{})
+
 	// start heartbeat loop
-	for {
-		t := <-r.ticker.C
-		log.Info(r, "Heartbeat published", "time", t)
-		r.heartbeatSvs.IncrSeqNo(r.name)
-	}
+	go func() {
+		for {
+			select {
+			case <-r.ticker.C:
+				log.Info(r, "Heartbeat published", "time", time.Now())
+				r.heartbeatSvs.IncrSeqNo(r.name)
+				r.publishAwarenessUpdate() // TODO: test: periodically publish awareness update
+			case <-r.stop:
+				return
+			}
+		}
+	}()
+
+	return nil
 }
 
 // PublishAwarenessUpdate publishes an awareness update with the current node state
 func (r *RepoAwareness) publishAwarenessUpdate() {
-	r.mutex.RLock()
-	defer r.mutex.RUnlock()
-
 	// create awareness update
+	r.mutex.RLock()
 	awarenessUpdate := &tlv.AwarenessUpdate{
 		NodeName:   r.name.String(),
 		Partitions: r.localState.partitions, // Get partitions this node is responsible for
 	}
+	r.mutex.RUnlock()
 
 	// publish to awareness SVS
-	log.Info(r, "Publishing awareness update", "time", time.Now(), "partitions", awarenessUpdate.Partitions)
+	log.Info(r, "Publishing awareness update", "time", time.Now(), "src", r.name, "partitions", awarenessUpdate.Partitions)
 	_, _, err := r.awarenessSvs.Publish(awarenessUpdate.Encode())
 	if err != nil {
 		log.Error(r, "Error publishing awareness update", "err", err, "time", time.Now())
@@ -254,4 +284,26 @@ func (r *RepoAwareness) GetReplicas(partitionId uint64) []enc.Name {
 	// TODO: implement lookups
 
 	return replicas
+}
+
+// GetOnlineNodes returns the nodes that are known to be online
+func (r *RepoAwareness) GetOnlineNodes() []enc.Name {
+	nameNs := make([]enc.Name, 0)
+	for name, awareness := range r.storage.nodeStates {
+		if awareness.status == Up {
+			nameN, _ := enc.NameFromStr(name)
+			nameNs = append(nameNs, nameN)
+		}
+	}
+	return nameNs
+}
+
+// SetOnOverReplication sets the callback for over-replication
+func (r *RepoAwareness) SetOnOverReplication(callback func(uint64)) {
+	r.storage.SetOnOverReplication(callback)
+}
+
+// SetOnUnderReplication sets the callback for under-replication
+func (r *RepoAwareness) SetOnUnderReplication(callback func(uint64)) {
+	r.storage.SetOnUnderReplication(callback)
 }

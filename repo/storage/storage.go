@@ -19,6 +19,8 @@ type RepoStorage struct {
 // NewRepoStorage creates a new repo storage
 // TODO: more parameters
 func NewRepoStorage(store ndn.Store, client ndn.Client) *RepoStorage {
+	log.Info(nil, "Created Repo Storage")
+
 	return &RepoStorage{
 		store:      store,
 		partitions: make(map[uint64]*Partition),
@@ -65,6 +67,8 @@ func (s *RepoStorage) UnregisterPartition(id uint64) (err error) {
 
 // Close stops all partitions and deletes them from the storage
 func (s *RepoStorage) Close() (err error) {
+	log.Info(s, "Closed Repo Storage")
+
 	for id, partition := range s.partitions {
 		if err := partition.Stop(); err != nil {
 			log.Error(s, "Failed to stop partition", "err", err)
