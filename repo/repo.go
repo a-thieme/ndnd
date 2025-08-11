@@ -1,13 +1,12 @@
 package repo
 
 import (
-	"math/rand"
 	"strconv"
 	"sync"
-	"time"
 
 	"github.com/named-data/ndnd/repo/auction"
 	"github.com/named-data/ndnd/repo/awareness"
+	"github.com/named-data/ndnd/repo/management"
 	"github.com/named-data/ndnd/repo/storage"
 
 	enc "github.com/named-data/ndnd/std/encoding"
@@ -29,9 +28,10 @@ type Repo struct {
 	store  ndn.Store
 	client ndn.Client
 
-	awareness *awareness.RepoAwareness
-	storage   *storage.RepoStorage
-	auction   *auction.AuctionEngine
+	awareness  *awareness.RepoAwareness
+	storage    *storage.RepoStorage
+	auction    *auction.AuctionEngine
+	management *management.RepoManagement
 
 	groupsSvs map[string]*RepoSvs
 	mutex     sync.Mutex
@@ -126,12 +126,11 @@ func (r *Repo) Start() (err error) {
 	}
 	log.Info(r, "AuctionEngine started", "auction", r.auction)
 
-	// Set under-replication handler
-	r.awareness.SetOnUnderReplication(func(partition uint64) {
-		item := strconv.FormatUint(partition, 10)
-		time.Sleep(time.Duration(rand.Float64()*1000) * time.Millisecond) // sleep for a random amount of time between 0 and 1000ms for suppression
-		r.auction.AuctionItem(item)
-	})
+	// Create repo management
+	r.management = management.NewRepoManagement(r.client, r.awareness, r.auction, r.storage)
+	if err := r.management.Start(); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -181,6 +180,13 @@ func (r *Repo) Stop() error {
 	if r.auction != nil {
 		if err := r.auction.Stop(); err != nil {
 			log.Warn(r, "Failed to stop auction", "err", err)
+		}
+	}
+
+	// Stop management
+	if r.management != nil {
+		if err := r.management.Stop(); err != nil {
+			log.Warn(r, "Failed to stop management", "err", err)
 		}
 	}
 

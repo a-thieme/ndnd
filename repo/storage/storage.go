@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"sync"
+
 	enc "github.com/named-data/ndnd/std/encoding"
 	"github.com/named-data/ndnd/std/log"
 	"github.com/named-data/ndnd/std/ndn"
@@ -10,6 +12,8 @@ import (
 // it is responsible for managing the partitions and the data in the store
 // if it doesn't enough space, it may drop partitions with/without coordination of the auction module (TODO)
 type RepoStorage struct {
+	mutex sync.RWMutex
+
 	store      ndn.Store             // the store of the repo
 	partitions map[uint64]*Partition // the partitions owned by the repo node
 
@@ -39,6 +43,9 @@ func (s *RepoStorage) String() string {
 
 // RegisterPartition registers a new partition
 func (s *RepoStorage) RegisterPartition(id uint64) (err error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	// TODO: we can infer SVS prefix from partition id
 	//  this method handles svs part of partition registration, i.e. joining the group and fetch the right data
 
@@ -51,11 +58,15 @@ func (s *RepoStorage) RegisterPartition(id uint64) (err error) {
 		return err
 	}
 
+	log.Info(s, "Registered partition", "id", id)
 	return nil
 }
 
 // UnregisterPartition unregisters a partition
 func (s *RepoStorage) UnregisterPartition(id uint64) (err error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	partition, ok := s.partitions[id]
 	if !ok {
 		log.Error(s, "Partition not found", "id", id)
@@ -67,6 +78,7 @@ func (s *RepoStorage) UnregisterPartition(id uint64) (err error) {
 		return err
 	}
 
+	log.Info(s, "Unregistered partition", "id", id)
 	delete(s.partitions, id)
 	return nil
 }

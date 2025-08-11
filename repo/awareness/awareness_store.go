@@ -11,6 +11,8 @@ import (
 	"github.com/named-data/ndnd/std/log"
 )
 
+// TODO: there are lots of "thread-safety" is handled by the caller currently. We should minimize these since they are lower-level functions that may be used more generally. Also, we need a mechanism to periodically check if some partitions are under-replicated
+
 type RepoAwarenessStore struct {
 	mutex sync.RWMutex
 
@@ -19,8 +21,9 @@ type RepoAwarenessStore struct {
 	expirationTimer map[string]*time.Timer
 
 	// Replication and partition management
-	replicaCounts []int          // partition ID to replica count
-	underRepMask  *bitset.BitSet // bit set for under-replicated partitions
+	replicaCounts []int             // partition ID to replica count
+	underRepMask  *bitset.BitSet    // bit set for under-replicated partitions
+	replicaOwners []map[string]bool // partition ID to owners of partition
 	// TODO: we need to track replication events so they aren't repetitively called
 	//  a simple map between partition ID and its ongoing event (type) suffices
 
@@ -35,11 +38,17 @@ type RepoAwarenessStore struct {
 }
 
 func NewRepoAwarenessStore() *RepoAwarenessStore {
+	replicaOwners := make([]map[string]bool, NumPartitions)
+	for i := range replicaOwners {
+		replicaOwners[i] = make(map[string]bool)
+	}
+
 	return &RepoAwarenessStore{
 		nodeStates:      make(map[string]*RepoNodeAwareness),
 		expirationTimer: make(map[string]*time.Timer),
 		replicaCounts:   make([]int, NumPartitions),
 		underRepMask:    bitset.New(NumPartitions),
+		replicaOwners:   replicaOwners,
 	}
 }
 
@@ -142,6 +151,7 @@ func (s *RepoAwarenessStore) MarkNodeUp(node *RepoNodeAwareness) {
 		log.Info(s, "Incrementing replica count for partition", "partition", partition, "node", node.name)
 
 		s.replicaCounts[partition]++
+		s.replicaOwners[partition][node.name] = true
 		s.CheckPartitionReplication(partition)
 	}
 }
@@ -161,6 +171,7 @@ func (s *RepoAwarenessStore) MarkNodeFailed(node *RepoNodeAwareness) {
 		log.Info(s, "Decrementing replica count for partition", "partition", partition, "node", node.name)
 
 		s.replicaCounts[partition]--
+		delete(s.replicaOwners[partition], node.name)
 		s.CheckPartitionReplication(partition)
 	}
 
@@ -206,6 +217,7 @@ func (s *RepoAwarenessStore) UpdateNodePartitions(node *RepoNodeAwareness, parti
 		if !partitions[partition] {
 			log.Info(s, "Decrementing replica count for partition", "partition", partition, "node", node.name)
 			s.replicaCounts[partition]--
+			delete(s.replicaOwners[partition], node.name)
 			s.CheckPartitionReplication(partition)
 		}
 	}
@@ -214,6 +226,7 @@ func (s *RepoAwarenessStore) UpdateNodePartitions(node *RepoNodeAwareness, parti
 		if !node.partitions[partition] {
 			log.Info(s, "Incrementing replica count for partition", "partition", partition, "node", node.name)
 			s.replicaCounts[partition]++
+			s.replicaOwners[partition][node.name] = true
 			s.CheckPartitionReplication(partition)
 		}
 	}

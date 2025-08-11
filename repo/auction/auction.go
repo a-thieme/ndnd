@@ -169,7 +169,12 @@ func (a *AuctionEngine) AuctionItem(itemId string) {
 	// get list of node prefixes
 	nodes := a.availableNodes()
 	numNodes := len(nodes)
+
+	// Protect the map write with mutex
+	a.mutex.Lock()
 	a.auctions[itemId] = NewAuction(itemId, numNodes)
+	nonce := a.auctions[itemId].nonce
+	a.mutex.Unlock()
 	// /<node>/<repo>/<itemID>/bid/<auctioneer>/<nonce>
 	for _, node := range nodes {
 		if node.Equal(a.nodeNameN) {
@@ -181,10 +186,10 @@ func (a *AuctionEngine) AuctionItem(itemId string) {
 		intCfg.Nonce = utils.ConvertNonce(a.engine.Timer().Nonce())
 
 		// probably a better way to do this
-		var n = node.String() + a.repoNameN.String() + "/" + itemId + "/bid/" + enc.Component{Typ: 8, Val: a.nodeNameN.Bytes()}.String() + "/" + a.auctions[itemId].nonce
+		var n = node.String() + a.repoNameN.String() + "/" + itemId + "/bid/" + enc.Component{Typ: 8, Val: a.nodeNameN.Bytes()}.String() + "/" + nonce
 		iName, _ := enc.NameFromStr(n)
 
-		log.Info(a, "Sent bid interest", "itemId", itemId, "node", node, "nonce", a.auctions[itemId].nonce)
+		log.Info(a, "Sent bid interest", "itemId", itemId, "node", node, "nonce", nonce)
 		object.ExpressR(a.engine, ndn.ExpressRArgs{
 			Name:    iName,
 			Retries: 5,
@@ -194,19 +199,19 @@ func (a *AuctionEngine) AuctionItem(itemId string) {
 				case ndn.InterestResultData:
 					data := args.Data
 					// dName := data.Name()
-					log.Info(a, "Received bid", "itemId", itemId, "node", node, "nonce", a.auctions[itemId].nonce, "bid", string(data.Content().Join()))
+					log.Info(a, "Received bid", "itemId", itemId, "node", node, "nonce", nonce, "bid", string(data.Content().Join()))
 					bid, _ := strconv.Atoi(string(data.Content().Join()))
 					a.addBid(itemId, node, bid)
 				case ndn.InterestCancelled:
-					log.Info(a, "Interest cancelled", "itemId", itemId, "node", node, "nonce", a.auctions[itemId].nonce)
+					log.Info(a, "Interest cancelled", "itemId", itemId, "node", node, "nonce", nonce)
 				case ndn.InterestResultNack:
-					log.Info(a, "Received Nack", "itemId", itemId, "node", node, "nonce", a.auctions[itemId].nonce, "reason", args.NackReason)
+					log.Info(a, "Received Nack", "itemId", itemId, "node", node, "nonce", nonce, "reason", args.NackReason)
 				case ndn.InterestResultError:
-					log.Info(a, "Received Error", "itemId", itemId, "node", node, "nonce", a.auctions[itemId].nonce)
+					log.Info(a, "Received Error", "itemId", itemId, "node", node, "nonce", nonce)
 				case ndn.InterestResultTimeout:
-					log.Info(a, "Received Timeout", "itemId", itemId, "node", node, "nonce", a.auctions[itemId].nonce)
+					log.Info(a, "Received Timeout", "itemId", itemId, "node", node, "nonce", nonce)
 				default:
-					log.Info(a, "Unhandled default case", "itemId", itemId, "node", node, "nonce", a.auctions[itemId].nonce, "result", args.Result)
+					log.Info(a, "Unhandled default case", "itemId", itemId, "node", node, "nonce", nonce, "result", args.Result)
 				}
 			},
 		})
@@ -270,12 +275,17 @@ func (a *AuctionEngine) onInterest(args ndn.InterestHandlerArgs) {
 		itemId := n.At(-3).String()
 		// todo: add nonce to itemID
 		nonce := n.At(-1).String()
+
+		// Protect map access with mutex
+		a.mutex.RLock()
 		if a.auctions[itemId].nonce != nonce {
 			// todo: nack?
 			// requested results were for a previous auction of the item, not the latest
+			a.mutex.RUnlock()
 			return
 		}
 		r := a.auctions[itemId].results
+		a.mutex.RUnlock()
 		// todo: wait until < interest timeout and keep checking if r is changed
 		// r should be changed after an auction timeout to something like "unsuccessful auction"
 		if r == "" {
@@ -306,4 +316,8 @@ func (a *AuctionEngine) onInterest(args ndn.InterestHandlerArgs) {
 	}
 
 	log.Info(a, "Replied to bid interest", "name", n, "content", string(content))
+}
+
+func (a *AuctionEngine) SetOnAuctionWin(onWin func(string)) {
+	a.onWin = onWin
 }

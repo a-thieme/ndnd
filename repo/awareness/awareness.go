@@ -1,6 +1,7 @@
 package awareness
 
 import (
+	"math/rand"
 	"sync"
 	"time"
 
@@ -22,7 +23,7 @@ const (
 	// NumPartitions is the number of partitions in the system.
 	NumPartitions = 32 // TODO: this should be configurable or supplied by the higher layer
 	// NumReplicas is the minimum number of replicas per partition.
-	NumReplicas = 3 // TODO: this should be configurable or supplied by the higher
+	NumReplicas = 1 // TODO: this should be configurable or supplied by the higher
 )
 
 // Config passed to awareness module
@@ -41,7 +42,7 @@ type RepoAwareness struct {
 	name enc.Name
 
 	// awareness of the cluster
-	localState *RepoNodeAwareness // node awareness of the local repo
+	localState *RepoNodeAwareness // TODO: store local awareness with others
 	storage    *RepoAwarenessStore
 
 	// health ndn client
@@ -87,13 +88,6 @@ func NewRepoAwareness(repoNameN enc.Name, nodeNameN enc.Name, client ndn.Client)
 
 func (r *RepoAwareness) Start() (err error) {
 	log.Info(r, "Starting Repo Awareness SVS")
-
-	// DEBUG: start with an assigned partition
-	r.localState.partitions[0] = true
-	r.localState.partitions[3] = true
-	r.localState.partitions[5] = true
-	r.localState.partitions[7] = true
-	// TODO: remove this after testings
 
 	// Start awareness SVS
 	r.awarenessSvs, err = ndn_sync.NewSvsALO(ndn_sync.SvsAloOpts{
@@ -180,6 +174,32 @@ func (r *RepoAwareness) Start() (err error) {
 		log.Error(r, "Failed to start heartbeat", "err", err)
 	}
 
+	// DEBUG: start with an assigned partition
+	if rand.Float64() < 0.5 {
+		r.AddLocalPartition(0)
+	}
+	if rand.Float64() < 0.5 {
+		r.AddLocalPartition(1)
+	}
+	if rand.Float64() < 0.5 {
+		r.AddLocalPartition(2)
+	}
+	if rand.Float64() < 0.5 {
+		r.AddLocalPartition(3)
+	}
+	if rand.Float64() < 0.5 {
+		r.AddLocalPartition(4)
+	}
+	if rand.Float64() < 0.5 {
+		r.AddLocalPartition(5)
+	}
+	// TODO: remove this after testings
+
+	// TODO: set up initial replication checks
+	r.mutex.Lock()
+	r.storage.CheckReplications()
+	r.mutex.Unlock()
+
 	return err
 }
 
@@ -241,6 +261,7 @@ func (r *RepoAwareness) StartHeartbeat() (err error) {
 				log.Info(r, "Heartbeat published", "time", time.Now())
 				r.heartbeatSvs.IncrSeqNo(r.name)
 				r.publishAwarenessUpdate() // TODO: test: periodically publish awareness update
+				r.storage.CheckReplications()
 			case <-r.stop:
 				return
 			}
@@ -268,33 +289,49 @@ func (r *RepoAwareness) publishAwarenessUpdate() {
 	}
 }
 
-// UpdateLocalPartitions updates the local partitions and publishes an awareness update
-func (r *RepoAwareness) UpdateLocalPartitions(partitions *map[uint64]bool) {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	r.localState.partitions = *partitions // create a shallow copy of the partitions
-	r.publishAwarenessUpdate()
+// AddLocalPartition adds a partition to the local state and publishes an awareness update
+// TODO: update the storage to reflect the change
+func (r *RepoAwareness) AddLocalPartition(partitionId uint64) {
+	if _, exists := r.localState.partitions[partitionId]; !exists {
+		log.Info(r, "Adding local partition", "id", partitionId)
+		r.mutex.Lock()
+		r.localState.partitions[partitionId] = true
+		r.mutex.Unlock() // TODO: separate method
+		r.publishAwarenessUpdate()
+	}
 }
 
-// AddLocalPartition adds a partition to the local state and publishes an awareness update
-func (r *RepoAwareness) AddLocalPartition(partitionId uint64) {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	if _, exists := r.localState.partitions[partitionId]; !exists {
-		r.localState.partitions[partitionId] = true
+// DropLocalPartition drops a partition from the local state and publishes an awareness update
+// TODO: update the storage to reflect the change
+func (r *RepoAwareness) DropLocalPartition(partitionId uint64) {
+	if _, exists := r.localState.partitions[partitionId]; exists {
+		log.Info(r, "Dropping local partition", "id", partitionId)
+		r.mutex.Lock()
+		delete(r.localState.partitions, partitionId)
+		r.mutex.Unlock() // TODO: separate method
 		r.publishAwarenessUpdate()
 	}
 }
 
 // GetReplicas returns the replicas for a given partition (local awareness)
 func (r *RepoAwareness) GetReplicas(partitionId uint64) []enc.Name {
-	replicas := make([]enc.Name, 0)
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
 
-	// TODO: implement lookups
+	replicas := make([]enc.Name, 0)
+	for replica := range r.storage.replicaOwners[partitionId] {
+		replicaN, _ := enc.NameFromStr(replica)
+		replicas = append(replicas, replicaN)
+	}
 
 	return replicas
+}
+
+func (r *RepoAwareness) GetNumReplicas(partitionId uint64) int {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
+
+	return r.storage.replicaCounts[partitionId]
 }
 
 // GetOnlineNodes returns the nodes that are known to be online
