@@ -3,6 +3,7 @@ package auction
 import (
 	"fmt"
 	"math/rand"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -153,6 +154,11 @@ func (a *AuctionEngine) addBid(itemId string, node enc.Name, bid int) {
 		entry.numBids++
 		if entry.numBids == entry.expectedBids {
 			entry.determineWinners(a.repo.NumReplicas)
+
+			// if we are a winner, notify the management module
+			if slices.Contains(strings.Fields(entry.results), a.repo.NodeNameN.String()) {
+				a.onWin(itemId)
+			}
 		}
 		a.auctions[itemId] = entry
 	}
@@ -228,10 +234,8 @@ func (a *AuctionEngine) fetchResults(auctioneer []byte, itemId string, nonce str
 				// dName := data.Name()
 				winners := strings.Fields(string(data.Content().Join()))
 				log.Info(a, "Fetched winners", "itemId", itemId, "nonce", nonce, "auctioneer", auctioneerName, "winners", winners)
-				for _, winner := range winners {
-					if a.repo.NodeNameN.String() == winner {
-						a.onWin(itemId)
-					}
+				if slices.Contains(winners, a.repo.NodeNameN.String()) {
+					a.onWin(itemId)
 				}
 			case ndn.InterestCancelled:
 				log.Info(a, "Interest cancelled", "itemId", itemId, "auctioneer", auctioneerName, "nonce", nonce)

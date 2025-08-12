@@ -12,8 +12,10 @@ func (p *Partition) HandleCommand(command *tlv.RepoCommand) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
+	log.Info(p, "Partition handling command", "command", command, "partition", p.id)
+
 	// TODO: the naming of commands is not finalized
-	switch command.CommandName.Name.String() {
+	switch command.CommandType {
 	case "INSERT":
 		p.HandleInsert(command)
 	case "DELETE":

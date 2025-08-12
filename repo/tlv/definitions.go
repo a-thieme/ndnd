@@ -64,8 +64,8 @@ type RepoNotify struct {
 type RepoCommand struct {
 	//+field:natural
 	Nonce uint64 `tlv:"0x250"`
-	//+field:struct:spec.NameContainer
-	CommandName *spec.NameContainer `tlv:"0x252"`
+	//+field:string
+	CommandType string `tlv:"0x252"`
 	//+field:struct:spec.NameContainer
 	SrcName *spec.NameContainer `tlv:"0x253"`
 	//+field:sequence:*spec.NameContainer:struct:spec.NameContainer

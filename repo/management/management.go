@@ -113,6 +113,9 @@ func (m *RepoManagement) Stop() error {
 	return nil
 }
 
+// setupHandlers sets up all event handlers
+// RunHandler arguments are: eventType, handlerID, handler
+// (eventType, handlerID) are used to identify any handler. Attempts to register handlers with the same (eventType, handlerID) will be ignored.
 func (m *RepoManagement) setupHandlers() {
 	// Awareness handlers
 	m.awareness.SetOnUnderReplication(func(partition uint64) {
@@ -130,10 +133,10 @@ func (m *RepoManagement) setupHandlers() {
 
 	// Producer message handlers
 	m.producerFacing.SetOnNotifyReplicas(func(command *tlv.RepoCommand) {
-		go m.RunHandler(EventNotifyReplicas, command.CommandName.Name.String(), func() { m.NotifyReplicasHandler(command) })
+		go m.RunHandler(EventNotifyReplicas, command.SrcName.Name.String(), func() { m.NotifyReplicasHandler(command) })
 	})
 
 	m.producerFacing.SetOnProcessCommand(func(command *tlv.RepoCommand) {
-		go m.RunHandler(EventProcessCommand, command.CommandName.Name.String(), func() { m.ProcessCommandHandler(command) })
+		go m.RunHandler(EventProcessCommand, command.SrcName.Name.String(), func() { m.ProcessCommandHandler(command) })
 	})
 }

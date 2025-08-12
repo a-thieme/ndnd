@@ -1328,7 +1328,6 @@ func ParseRepoNotify(reader enc.WireView, ignoreCritical bool) (*RepoNotify, err
 type RepoCommandEncoder struct {
 	Length uint
 
-	CommandName_encoder         spec.NameContainerEncoder
 	SrcName_encoder             spec.NameContainerEncoder
 	RegisterPrefixes_subencoder []struct {
 		RegisterPrefixes_encoder spec.NameContainerEncoder
@@ -1336,16 +1335,12 @@ type RepoCommandEncoder struct {
 }
 
 type RepoCommandParsingContext struct {
-	CommandName_context      spec.NameContainerParsingContext
 	SrcName_context          spec.NameContainerParsingContext
 	RegisterPrefixes_context spec.NameContainerParsingContext
 }
 
 func (encoder *RepoCommandEncoder) Init(value *RepoCommand) {
 
-	if value.CommandName != nil {
-		encoder.CommandName_encoder.Init(value.CommandName)
-	}
 	if value.SrcName != nil {
 		encoder.SrcName_encoder.Init(value.SrcName)
 	}
@@ -1376,11 +1371,9 @@ func (encoder *RepoCommandEncoder) Init(value *RepoCommand) {
 	l := uint(0)
 	l += 3
 	l += uint(1 + enc.Nat(value.Nonce).EncodingLength())
-	if value.CommandName != nil {
-		l += 3
-		l += uint(enc.TLNum(encoder.CommandName_encoder.Length).EncodingLength())
-		l += encoder.CommandName_encoder.Length
-	}
+	l += 3
+	l += uint(enc.TLNum(len(value.CommandType)).EncodingLength())
+	l += uint(len(value.CommandType))
 	if value.SrcName != nil {
 		l += 3
 		l += uint(enc.TLNum(encoder.SrcName_encoder.Length).EncodingLength())
@@ -1413,7 +1406,6 @@ func (encoder *RepoCommandEncoder) Init(value *RepoCommand) {
 
 func (context *RepoCommandParsingContext) Init() {
 
-	context.CommandName_context.Init()
 	context.SrcName_context.Init()
 	context.RegisterPrefixes_context.Init()
 }
@@ -1428,16 +1420,12 @@ func (encoder *RepoCommandEncoder) EncodeInto(value *RepoCommand, buf []byte) {
 
 	buf[pos] = byte(enc.Nat(value.Nonce).EncodeInto(buf[pos+1:]))
 	pos += uint(1 + buf[pos])
-	if value.CommandName != nil {
-		buf[pos] = 253
-		binary.BigEndian.PutUint16(buf[pos+1:], uint16(594))
-		pos += 3
-		pos += uint(enc.TLNum(encoder.CommandName_encoder.Length).EncodeInto(buf[pos:]))
-		if encoder.CommandName_encoder.Length > 0 {
-			encoder.CommandName_encoder.EncodeInto(value.CommandName, buf[pos:])
-			pos += encoder.CommandName_encoder.Length
-		}
-	}
+	buf[pos] = 253
+	binary.BigEndian.PutUint16(buf[pos+1:], uint16(594))
+	pos += 3
+	pos += uint(enc.TLNum(len(value.CommandType)).EncodeInto(buf[pos:]))
+	copy(buf[pos:], value.CommandType)
+	pos += uint(len(value.CommandType))
 	if value.SrcName != nil {
 		buf[pos] = 253
 		binary.BigEndian.PutUint16(buf[pos+1:], uint16(595))
@@ -1489,7 +1477,7 @@ func (encoder *RepoCommandEncoder) Encode(value *RepoCommand) enc.Wire {
 func (context *RepoCommandParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*RepoCommand, error) {
 
 	var handled_Nonce bool = false
-	var handled_CommandName bool = false
+	var handled_CommandType bool = false
 	var handled_SrcName bool = false
 	var handled_RegisterPrefixes bool = false
 
@@ -1540,8 +1528,14 @@ func (context *RepoCommandParsingContext) Parse(reader enc.WireView, ignoreCriti
 			case 594:
 				if true {
 					handled = true
-					handled_CommandName = true
-					value.CommandName, err = context.CommandName_context.Parse(reader.Delegate(int(l)), ignoreCritical)
+					handled_CommandType = true
+					{
+						var builder strings.Builder
+						_, err = reader.CopyN(&builder, int(l))
+						if err == nil {
+							value.CommandType = builder.String()
+						}
+					}
 				}
 			case 595:
 				if true {
@@ -1590,8 +1584,8 @@ func (context *RepoCommandParsingContext) Parse(reader enc.WireView, ignoreCriti
 	if !handled_Nonce && err == nil {
 		err = enc.ErrSkipRequired{Name: "Nonce", TypeNum: 592}
 	}
-	if !handled_CommandName && err == nil {
-		value.CommandName = nil
+	if !handled_CommandType && err == nil {
+		err = enc.ErrSkipRequired{Name: "CommandType", TypeNum: 594}
 	}
 	if !handled_SrcName && err == nil {
 		value.SrcName = nil

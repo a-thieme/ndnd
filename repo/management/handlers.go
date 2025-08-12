@@ -12,12 +12,6 @@ import (
 	"github.com/named-data/ndnd/std/ndn"
 )
 
-// TODO: should rely on external configuration
-const (
-	NumPartitions = 128
-	NumReplicas   = 2
-)
-
 // TODO: we can make these strategy pattern, if desired in the future
 // under-replication handler, retries with exponential backoff
 // blocking, should be ran in a separate goroutine
@@ -32,7 +26,7 @@ func (m *RepoManagement) UnderReplicationHandler(partition uint64) {
 
 	time.Sleep(time.Duration(rand.Float64() * randomness))
 	for retries != 0 {
-		if m.awareness.GetNumReplicas(partition) >= NumReplicas {
+		if m.awareness.GetNumReplicas(partition) >= m.repo.NumReplicas {
 			break // early-termination if requirements met
 		}
 
@@ -51,7 +45,7 @@ func (m *RepoManagement) OverReplicationHandler(partition uint64) {
 	time.Sleep(time.Duration(rand.Float64() * randomness))
 
 	// TODO: check if the partition is still over-replicated
-	if m.awareness.GetNumReplicas(partition) <= NumReplicas {
+	if m.awareness.GetNumReplicas(partition) <= m.repo.NumReplicas {
 		return
 	}
 
@@ -78,11 +72,13 @@ func (m *RepoManagement) WonAuctionHandler(item string) {
 // Producer message handlers
 // TODO: handle repo command interest
 func (m *RepoManagement) NotifyReplicasHandler(command *tlv.RepoCommand) {
-	partitionId := utils.PartitionIdFromEncName(command.CommandName.Name, NumPartitions)
+	partitionId := utils.PartitionIdFromEncName(command.SrcName.Name, m.repo.NumPartitions)
 	replicas := m.awareness.GetPartitionReplicas(partitionId) // get relevant replicas
+	log.Info(m, "Notifying replicas", "partitionId", partitionId, "replicas", replicas)
 
 	for _, replica := range replicas {
 		if replica.Equal(m.repo.NodeNameN) { // if local node is responsible for the partition
+			log.Info(m, "Sending command to local replica", "replica", replica)
 			m.ProcessCommandHandler(command) // directly handles the command
 			continue
 		}
@@ -92,6 +88,7 @@ func (m *RepoManagement) NotifyReplicasHandler(command *tlv.RepoCommand) {
 			Append(enc.NewGenericComponent("command")).
 			Append(enc.NewGenericComponent(strconv.FormatUint(command.Nonce, 10)))
 
+		log.Info(m, "Sending command to replica", "replica", replica, "notifyReplicaPrefix", notifyReplicaPrefix)
 		m.repo.Client.ExpressR(ndn.ExpressRArgs{
 			Name: notifyReplicaPrefix,
 			Config: &ndn.InterestConfig{
@@ -104,7 +101,7 @@ func (m *RepoManagement) NotifyReplicasHandler(command *tlv.RepoCommand) {
 				switch args.Result {
 				// TODO: more granular error handling
 				default:
-					log.Info(m, "Replica notified", "replica", replica)
+					// log.Info(m, "Replica notified", "replica", replica)
 				}
 			},
 		})
@@ -113,7 +110,7 @@ func (m *RepoManagement) NotifyReplicasHandler(command *tlv.RepoCommand) {
 
 // TODO: handle node-level command interest
 func (m *RepoManagement) ProcessCommandHandler(command *tlv.RepoCommand) {
-	partitionId := utils.PartitionIdFromEncName(command.CommandName.Name, NumPartitions)
+	partitionId := utils.PartitionIdFromEncName(command.SrcName.Name, m.repo.NumPartitions)
 
 	// don't handle command if we are not responsible for it
 	// TODO: should this be handled by the storage module?

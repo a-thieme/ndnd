@@ -8,6 +8,9 @@ import (
 	"github.com/named-data/ndnd/std/ndn"
 )
 
+// RepoProducerFacing is the producer facing component of the repo
+// It is responsible for announcing the repo prefix and handling the notify interests
+// It also handles the direct command interests from the node
 type RepoProducerFacing struct {
 	repo                  *types.RepoShared
 	notifyPrefix          enc.Name
@@ -57,6 +60,7 @@ func (p *RepoProducerFacing) Stop() error {
 // onRepoNotify is called when a repo notify interest is received
 // This will distributes the command to responsible nodes
 func (p *RepoProducerFacing) onRepoNotify(args ndn.InterestHandlerArgs) {
+	log.Info(p, "Received repo notify interest", "interest", args.Interest.Name().String())
 	interest := args.Interest
 
 	if interest.AppParam() == nil {
@@ -64,17 +68,15 @@ func (p *RepoProducerFacing) onRepoNotify(args ndn.InterestHandlerArgs) {
 		return
 	}
 
-	notifyParam, err := tlv.ParseRepoNotify(enc.NewWireView(interest.AppParam()), true)
-
+	command, err := tlv.ParseRepoCommand(enc.NewWireView(interest.AppParam()), true)
 	if err != nil {
 		log.Warn(p, "Failed to parse notify app param", "err", err)
 		return
 	}
 
-	command := notifyParam.Command
-	commandName := command.CommandName.Name
+	commandType := command.CommandType
 	srcName := command.SrcName.Name
-	log.Info(p, "Received command", "commandName", commandName, "srcName", srcName)
+	log.Info(p, "Received command", "commandName", commandType, "srcName", srcName)
 
 	// TODO: check digest?
 
@@ -90,17 +92,16 @@ func (p *RepoProducerFacing) onNodeNotify(args ndn.InterestHandlerArgs) {
 		return
 	}
 
-	notifyParam, err := tlv.ParseRepoNotify(enc.NewWireView(interest.AppParam()), true)
+	command, err := tlv.ParseRepoCommand(enc.NewWireView(interest.AppParam()), true)
 
 	if err != nil {
 		log.Warn(p, "Failed to parse command", "err", err)
 		return
 	}
 
-	command := notifyParam.Command
-	commandName := command.CommandName.Name
+	commandType := command.CommandType
 	srcName := command.SrcName.Name
-	log.Info(p, "Received direct command", "commandName", commandName, "srcName", srcName) // TODO: need to come up with a better name
+	log.Info(p, "Received direct command", "commandName", commandType, "srcName", srcName) // TODO: need to come up with a better name
 
 	p.processCommandHandler(command)
 }

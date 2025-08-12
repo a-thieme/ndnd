@@ -44,6 +44,12 @@ func (s *RepoStorage) RegisterPartition(id uint64) (err error) {
 	// TODO: we can infer SVS prefix from partition id
 	//  this method handles svs part of partition registration, i.e. joining the group and fetch the right data
 
+	// check if partition already exists
+	if _, exists := s.partitions[id]; exists {
+		log.Info(s, "Partition already exists, no need to register", "id", id)
+		return nil
+	}
+
 	partition := NewPartition(id, s.repo)
 	s.partitions[id] = partition
 
@@ -100,10 +106,16 @@ func (s *RepoStorage) HandleCommand(command *tlv.RepoCommand) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
-	partitionId := utils.PartitionIdFromEncName(command.CommandName.Name, s.repo.NumPartitions)
+	partitionId := utils.PartitionIdFromEncName(command.SrcName.Name, s.repo.NumPartitions)
 	log.Info(s, "Handling command", "command", command, "partition", partitionId)
 
-	s.partitions[partitionId].HandleCommand(command)
+	partition, exists := s.partitions[partitionId]
+	if !exists {
+		log.Error(s, "Partition not found", "partitionId", partitionId)
+		return
+	}
+
+	partition.HandleCommand(command)
 }
 
 // Put puts data into the storage
