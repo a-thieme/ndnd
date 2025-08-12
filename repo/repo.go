@@ -7,6 +7,7 @@ import (
 	"github.com/named-data/ndnd/repo/auction"
 	"github.com/named-data/ndnd/repo/awareness"
 	"github.com/named-data/ndnd/repo/management"
+	facing "github.com/named-data/ndnd/repo/producer-facing"
 	"github.com/named-data/ndnd/repo/storage"
 
 	enc "github.com/named-data/ndnd/std/encoding"
@@ -31,6 +32,7 @@ type Repo struct {
 	awareness  *awareness.RepoAwareness
 	storage    *storage.RepoStorage
 	auction    *auction.AuctionEngine
+	facing     *facing.RepoProducerFacing
 	management *management.RepoManagement
 
 	groupsSvs map[string]*RepoSvs
@@ -126,8 +128,14 @@ func (r *Repo) Start() (err error) {
 	}
 	log.Info(r, "AuctionEngine started", "auction", r.auction)
 
+	// Create repo facing
+	r.facing = facing.NewProducerFacing(r.config.RepoNameN, r.config.NodeNameN, r.client)
+	if err := r.facing.Start(); err != nil {
+		return err
+	}
+
 	// Create repo management
-	r.management = management.NewRepoManagement(r.client, r.awareness, r.auction, r.storage)
+	r.management = management.NewRepoManagement(r.config.RepoNameN, r.config.NodeNameN, r.client, r.awareness, r.auction, r.storage, r.facing)
 	if err := r.management.Start(); err != nil {
 		return err
 	}
@@ -180,6 +188,13 @@ func (r *Repo) Stop() error {
 	if r.auction != nil {
 		if err := r.auction.Stop(); err != nil {
 			log.Warn(r, "Failed to stop auction", "err", err)
+		}
+	}
+
+	// Stop facing
+	if r.facing != nil {
+		if err := r.facing.Stop(); err != nil {
+			log.Warn(r, "Failed to stop facing", "err", err)
 		}
 	}
 

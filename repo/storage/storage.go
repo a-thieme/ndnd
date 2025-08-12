@@ -3,9 +3,16 @@ package storage
 import (
 	"sync"
 
+	"github.com/named-data/ndnd/repo/tlv"
+	"github.com/named-data/ndnd/repo/utils"
 	enc "github.com/named-data/ndnd/std/encoding"
 	"github.com/named-data/ndnd/std/log"
 	"github.com/named-data/ndnd/std/ndn"
+)
+
+// TODO: put in one configuration
+const (
+	NumPartitions = 128
 )
 
 // RepoStorage is the storage of the repo
@@ -42,6 +49,7 @@ func (s *RepoStorage) String() string {
 }
 
 // RegisterPartition registers a new partition
+// Thread-safe
 func (s *RepoStorage) RegisterPartition(id uint64) (err error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -63,6 +71,7 @@ func (s *RepoStorage) RegisterPartition(id uint64) (err error) {
 }
 
 // UnregisterPartition unregisters a partition
+// Thread-safe
 func (s *RepoStorage) UnregisterPartition(id uint64) (err error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -96,6 +105,18 @@ func (s *RepoStorage) Close() (err error) {
 	}
 
 	return nil
+}
+
+// Handle command commits a command to the responsible partition
+// Thread-safe
+func (s *RepoStorage) HandleCommand(command *tlv.RepoCommand) {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
+	partitionId := utils.PartitionIdFromEncName(command.CommandName.Name, NumPartitions)
+	log.Info(s, "Handling command", "command", command, "partition", partitionId)
+
+	s.partitions[partitionId].HandleCommand(command)
 }
 
 // Put puts data into the storage

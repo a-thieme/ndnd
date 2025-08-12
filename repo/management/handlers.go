@@ -5,10 +5,11 @@ import (
 	"strconv"
 	"time"
 
-	// "github.com/named-data/ndnd/repo/tlv"
-	// "github.com/named-data/ndnd/repo/utils"
-	// enc "github.com/named-data/ndnd/std/encoding"
+	"github.com/named-data/ndnd/repo/tlv"
+	"github.com/named-data/ndnd/repo/utils"
+	enc "github.com/named-data/ndnd/std/encoding"
 	"github.com/named-data/ndnd/std/log"
+	"github.com/named-data/ndnd/std/ndn"
 )
 
 // TODO: should rely on external configuration
@@ -76,12 +77,50 @@ func (m *RepoManagement) WonAuctionHandler(item string) {
 
 // Producer message handlers
 // TODO: handle repo command interest
-// func (m *RepoManagement) NotifyReplicasHandler(command *tlv.RepoCommand) {
-// 	partitionId := utils.PartitionIdFromEncName(command.CommandName.Name, NumPartitions)
-// 	replicas := m.awareness.GetReplicas(partitionId) // get relevant replicas
+func (m *RepoManagement) NotifyReplicasHandler(command *tlv.RepoCommand) {
+	partitionId := utils.PartitionIdFromEncName(command.CommandName.Name, NumPartitions)
+	replicas := m.awareness.GetReplicas(partitionId) // get relevant replicas
 
-// 	notifyReplicaPrefix := []enc.Name{} // TODO: construct notify name
-// 	for prefix := range notifyReplicaPrefix {
-// 		m.client.ExpressR()
-// 	}
-// }
+	for _, replica := range replicas {
+		if replica.Equal(m.nodeNameN) { // if local node is responsible for the partition
+			m.ProcessCommandHandler(command) // directly handles the command
+			continue
+		}
+
+		notifyReplicaPrefix := replica.Append(enc.NewGenericComponent(m.repoNameN.String())).
+			Append(enc.NewGenericComponent(strconv.FormatUint(partitionId, 10))).
+			Append(enc.NewGenericComponent("command")).
+			Append(enc.NewGenericComponent(strconv.FormatUint(command.Nonce, 10)))
+
+		m.client.ExpressR(ndn.ExpressRArgs{
+			Name: notifyReplicaPrefix,
+			Config: &ndn.InterestConfig{
+				CanBePrefix: false,
+				MustBeFresh: true,
+			},
+			Retries:  2, // TODO: configurable
+			AppParam: command.Encode(),
+			Callback: func(args ndn.ExpressCallbackArgs) {
+				switch args.Result {
+				// TODO: more granular error handling
+				default:
+					log.Info(m, "Replica notified", "replica", replica)
+				}
+			},
+		})
+	}
+}
+
+// TODO: handle node-level command interest
+func (m *RepoManagement) ProcessCommandHandler(command *tlv.RepoCommand) {
+	partitionId := utils.PartitionIdFromEncName(command.CommandName.Name, NumPartitions)
+
+	// don't handle command if we are not responsible for it
+	// TODO: should this be handled by the storage module?
+	if !m.awareness.OwnsPartition(partitionId) {
+		return
+	}
+
+	// handle the command
+	m.storage.HandleCommand(command)
+}

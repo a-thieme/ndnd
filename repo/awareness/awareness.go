@@ -363,6 +363,19 @@ func (r *RepoAwareness) GetOnlineNodes() []enc.Name {
 	return nameNs
 }
 
+// OwnsPartition returns if the local node owns a partition
+// Thread-safe
+func (r *RepoAwareness) OwnsPartition(partitionId uint64) bool {
+	r.storage.mutex.RLock()
+	defer r.storage.mutex.RUnlock()
+
+	if _, exists := r.storage.replicaOwners[partitionId][r.nodeName]; exists {
+		return true
+	} else {
+		return false
+	}
+}
+
 // SetOnOverReplication sets the callback for over-replication
 func (r *RepoAwareness) SetOnOverReplication(callback func(uint64)) {
 	r.storage.SetOnOverReplication(callback)

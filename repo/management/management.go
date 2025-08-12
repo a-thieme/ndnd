@@ -9,7 +9,8 @@ import (
 	"github.com/named-data/ndnd/repo/awareness"
 	face "github.com/named-data/ndnd/repo/producer-facing"
 	"github.com/named-data/ndnd/repo/storage"
-	// "github.com/named-data/ndnd/repo/tlv"
+	"github.com/named-data/ndnd/repo/tlv"
+	enc "github.com/named-data/ndnd/std/encoding"
 	"github.com/named-data/ndnd/std/log"
 	"github.com/named-data/ndnd/std/ndn"
 )
@@ -24,6 +25,7 @@ const (
 
 	// TODO: repo-producer communication
 	EventNotifyReplicas EventType = "notify_replicas"
+	EventProcessCommand EventType = "process_event"
 )
 
 // Event represents a Repo system event that needs handling
@@ -40,6 +42,9 @@ type RepoManagement struct {
 	handlers map[EventType]map[string]bool // check if the handler is registered for the event type
 	mutex    sync.RWMutex
 
+	repoNameN enc.Name
+	nodeNameN enc.Name
+
 	// client
 	client ndn.Client
 
@@ -55,13 +60,16 @@ func (m *RepoManagement) String() string {
 }
 
 // NewRepoManagement creates a new repo management instance
-func NewRepoManagement(client ndn.Client, awareness *awareness.RepoAwareness, auction *auction.AuctionEngine, storage *storage.RepoStorage) *RepoManagement {
+func NewRepoManagement(repoNameN enc.Name, nodeNameN enc.Name, client ndn.Client, awareness *awareness.RepoAwareness, auction *auction.AuctionEngine, storage *storage.RepoStorage, producerFacing *face.RepoProducerFacing) *RepoManagement {
 	return &RepoManagement{
-		handlers:  make(map[EventType]map[string]bool),
-		client:    client,
-		awareness: awareness,
-		auction:   auction,
-		storage:   storage,
+		handlers:       make(map[EventType]map[string]bool),
+		client:         client,
+		awareness:      awareness,
+		auction:        auction,
+		storage:        storage,
+		repoNameN:      repoNameN,
+		nodeNameN:      nodeNameN,
+		producerFacing: producerFacing,
 	}
 }
 
@@ -128,7 +136,11 @@ func (m *RepoManagement) setupHandlers() {
 	})
 
 	// Producer message handlers
-	// m.producerFacing.SetOnNotifyReplicas(func(command *tlv.RepoCommand) {
-	// 	go m.RunHandler(EventNotifyReplicas, command.CommandName.Name.String(), func() { m.NotifyReplicasHandler(command) })
-	// })
+	m.producerFacing.SetOnNotifyReplicas(func(command *tlv.RepoCommand) {
+		go m.RunHandler(EventNotifyReplicas, command.CommandName.Name.String(), func() { m.NotifyReplicasHandler(command) })
+	})
+
+	m.producerFacing.SetOnProcessCommand(func(command *tlv.RepoCommand) {
+		go m.RunHandler(EventProcessCommand, command.CommandName.Name.String(), func() { m.ProcessCommandHandler(command) })
+	})
 }

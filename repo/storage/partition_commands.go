@@ -25,7 +25,7 @@ func (p *Partition) HandleCommand(command *tlv.RepoCommand) {
 	}
 
 	// TODO: this assumes sync prefix can't be the same as data prefix
-	p.commands[command.TargetName.Name.String()] = command
+	p.commands[command.SrcName.Name.String()] = command
 }
 
 // HandleInsert handles an insert (data) command
@@ -42,12 +42,12 @@ func (p *Partition) HandleInsert(command *tlv.RepoCommand) {
 func (p *Partition) HandleDelete(command *tlv.RepoCommand) {
 	log.Info(p, "Deleting data", "command", command)
 
-	if err := p.store.Remove(command.TargetName.Name); err != nil {
+	if err := p.store.Remove(command.SrcName.Name); err != nil {
 		log.Error(p, "Unable to remove data", "err", err)
 	}
 
 	// Remove the previous insertion command if it exists
-	delete(p.commands, command.TargetName.Name.String())
+	delete(p.commands, command.SrcName.Name.String())
 }
 
 // HandleJoin handles a join (sync group) command
@@ -60,7 +60,7 @@ func (p *Partition) HandleJoin(command *tlv.RepoCommand) {
 		log.Error(p, "Unable to start partition SVS", "err", err)
 	}
 
-	p.userSyncGroups[command.TargetName.Name.String()] = partitionsvs
+	p.userSyncGroups[command.SrcName.Name.String()] = partitionsvs
 }
 
 // HandleLeave handles a leave (sync group) command
@@ -69,7 +69,7 @@ func (p *Partition) HandleLeave(command *tlv.RepoCommand) {
 	log.Info(p, "Leaving sync group", "command", command)
 
 	// Stop the user sync group
-	partitionsvs, ok := p.userSyncGroups[command.TargetName.Name.String()]
+	partitionsvs, ok := p.userSyncGroups[command.SrcName.Name.String()]
 	if !ok {
 		log.Error(p, "Sync group not found", "command", command)
 		return
@@ -80,8 +80,8 @@ func (p *Partition) HandleLeave(command *tlv.RepoCommand) {
 	}
 
 	// Remove the user sync group
-	delete(p.userSyncGroups, command.TargetName.Name.String())
+	delete(p.userSyncGroups, command.SrcName.Name.String())
 
 	// Remove the previous insertion command if it exists
-	delete(p.commands, command.TargetName.Name.String())
+	delete(p.commands, command.SrcName.Name.String())
 }

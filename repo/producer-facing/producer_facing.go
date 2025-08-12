@@ -13,6 +13,7 @@ type RepoProducerFacing struct {
 
 	notifyPrefix          enc.Name
 	notifyReplicasHandler func(*tlv.RepoCommand)
+	processCommandHandler func(*tlv.RepoCommand)
 
 	client ndn.Client
 }
@@ -33,11 +34,18 @@ func NewProducerFacing(repoNameN enc.Name, nodeNameN enc.Name, client ndn.Client
 func (p *RepoProducerFacing) Start() error {
 	log.Info(p, "Starting Repo Producer Facing")
 
-	p.client.Engine().AttachHandler(p.notifyPrefix, p.onNotify)
-	p.client.AnnouncePrefix(ndn.Announcement{
-		Name:   p.notifyPrefix,
-		Expose: true,
-	})
+	for _, prefix := range []enc.Name{
+		p.notifyPrefix,
+		p.nodeNameN.Append(enc.NewGenericComponent(p.repoNameN.String())),
+	} {
+		p.client.AnnouncePrefix(ndn.Announcement{
+			Name:   prefix,
+			Expose: true,
+		})
+	}
+
+	p.client.Engine().AttachHandler(p.notifyPrefix, p.onRepoNotify)
+	p.client.Engine().AttachHandler(p.nodeNameN.Append(enc.NewGenericComponent(p.repoNameN.String())), p.onNodeNotify)
 
 	return nil
 }
@@ -51,8 +59,9 @@ func (p *RepoProducerFacing) Stop() error {
 	return nil
 }
 
-func (p *RepoProducerFacing) onNotify(args ndn.InterestHandlerArgs) {
-	// I1: parse
+// onRepoNotify is called when a repo notify interest is received
+// This will distributes the command to responsible nodes
+func (p *RepoProducerFacing) onRepoNotify(args ndn.InterestHandlerArgs) {
 	interest := args.Interest
 
 	if interest.AppParam() == nil {
@@ -61,45 +70,51 @@ func (p *RepoProducerFacing) onNotify(args ndn.InterestHandlerArgs) {
 	}
 
 	notifyParam, err := tlv.ParseRepoNotify(enc.NewWireView(interest.AppParam()), true)
+
 	if err != nil {
-		log.Warn(p, "Failed to parse notify app param")
+		log.Warn(p, "Failed to parse notify app param", "err", err)
 		return
 	}
 
+	command := notifyParam.Command
+	commandName := command.CommandName.Name
+	srcName := command.SrcName.Name
+	log.Info(p, "Received command", "commandName", commandName, "srcName", srcName)
+
 	// TODO: check digest?
 
-	// I2: fetch command data
-	// TODO: retry fetching if failed, even across restarts
-	// TODO: do not fetch commands that are too large
-	go p.client.Consume(notifyParam.CommandName.Name, func(status ndn.ConsumeState) {
-		if status.Error() != nil {
-			log.Warn(p, "Command fetch error", "err", status.Error(), "name", notifyParam.CommandName.Name)
-			return
-		}
-		log.Info(p, "Command fetch success", "name", notifyParam.CommandName.Name)
-
-		command, err := tlv.ParseRepoCommand(enc.NewWireView(status.Content()), true)
-		if err != nil {
-			log.Info(p, "Failed to parse command data")
-			return
-		}
-
-		reply, err := p.onProducerCommand(command)
-		if err != nil {
-			log.Info(p, "Failed to parse repo command", err)
-			return
-		}
-
-		args.Reply(reply)
-	})
+	p.notifyReplicasHandler(command) // notify responsible replicas
 }
 
-func (p *RepoProducerFacing) onProducerCommand(command *tlv.RepoCommand) (enc.Wire, error) {
-	// forward commands to responsible replicas
-	p.notifyReplicasHandler(command)
-	return nil, nil
+// onNodeNotify is called when a node notify interest is received
+func (p *RepoProducerFacing) onNodeNotify(args ndn.InterestHandlerArgs) {
+	interest := args.Interest
+
+	if interest.AppParam() == nil {
+		log.Warn(p, "Notify interest has no app param, ignoring")
+		return
+	}
+
+	notifyParam, err := tlv.ParseRepoNotify(enc.NewWireView(interest.AppParam()), true)
+
+	if err != nil {
+		log.Warn(p, "Failed to parse command", "err", err)
+		return
+	}
+
+	command := notifyParam.Command
+	commandName := command.CommandName.Name
+	srcName := command.SrcName.Name
+	log.Info(p, "Received direct command", "commandName", commandName, "srcName", srcName) // TODO: need to come up with a better name
+
+	p.processCommandHandler(command)
 }
 
+// Handlers
 func (p *RepoProducerFacing) SetOnNotifyReplicas(onNotifyReplicas func(*tlv.RepoCommand)) {
 	p.notifyReplicasHandler = onNotifyReplicas
+}
+
+func (p *RepoProducerFacing) SetOnProcessCommand(onProcessCommand func(*tlv.RepoCommand)) {
+	p.processCommandHandler = onProcessCommand
 }

@@ -57,17 +57,19 @@ type AwarenessUpdate struct {
 }
 
 type RepoNotify struct {
-	//+field:struct:spec.NameContainer
-	CommandName *spec.NameContainer `tlv:"0x260"`
+	//+field:struct:RepoCommand
+	Command *RepoCommand `tlv:"0x260"`
 }
 
 type RepoCommand struct {
+	//+field:natural
+	Nonce uint64 `tlv:"0x250"`
 	//+field:struct:spec.NameContainer
-	CommandName *spec.NameContainer `tlv:"0x250"`
+	CommandName *spec.NameContainer `tlv:"0x252"`
 	//+field:struct:spec.NameContainer
-	TargetName *spec.NameContainer `tlv:"0x251"`
+	SrcName *spec.NameContainer `tlv:"0x253"`
 	//+field:sequence:*spec.NameContainer:struct:spec.NameContainer
-	RegisterPrefixes []*spec.NameContainer `tlv:"0x253"`
+	RegisterPrefixes []*spec.NameContainer `tlv:"0x254"`
 }
 
 type PartitionSnapshot struct {

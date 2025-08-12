@@ -1193,44 +1193,44 @@ func ParseAwarenessUpdate(reader enc.WireView, ignoreCritical bool) (*AwarenessU
 type RepoNotifyEncoder struct {
 	Length uint
 
-	CommandName_encoder spec.NameContainerEncoder
+	Command_encoder RepoCommandEncoder
 }
 
 type RepoNotifyParsingContext struct {
-	CommandName_context spec.NameContainerParsingContext
+	Command_context RepoCommandParsingContext
 }
 
 func (encoder *RepoNotifyEncoder) Init(value *RepoNotify) {
-	if value.CommandName != nil {
-		encoder.CommandName_encoder.Init(value.CommandName)
+	if value.Command != nil {
+		encoder.Command_encoder.Init(value.Command)
 	}
 
 	l := uint(0)
-	if value.CommandName != nil {
+	if value.Command != nil {
 		l += 3
-		l += uint(enc.TLNum(encoder.CommandName_encoder.Length).EncodingLength())
-		l += encoder.CommandName_encoder.Length
+		l += uint(enc.TLNum(encoder.Command_encoder.Length).EncodingLength())
+		l += encoder.Command_encoder.Length
 	}
 	encoder.Length = l
 
 }
 
 func (context *RepoNotifyParsingContext) Init() {
-	context.CommandName_context.Init()
+	context.Command_context.Init()
 }
 
 func (encoder *RepoNotifyEncoder) EncodeInto(value *RepoNotify, buf []byte) {
 
 	pos := uint(0)
 
-	if value.CommandName != nil {
+	if value.Command != nil {
 		buf[pos] = 253
 		binary.BigEndian.PutUint16(buf[pos+1:], uint16(608))
 		pos += 3
-		pos += uint(enc.TLNum(encoder.CommandName_encoder.Length).EncodeInto(buf[pos:]))
-		if encoder.CommandName_encoder.Length > 0 {
-			encoder.CommandName_encoder.EncodeInto(value.CommandName, buf[pos:])
-			pos += encoder.CommandName_encoder.Length
+		pos += uint(enc.TLNum(encoder.Command_encoder.Length).EncodeInto(buf[pos:]))
+		if encoder.Command_encoder.Length > 0 {
+			encoder.Command_encoder.EncodeInto(value.Command, buf[pos:])
+			pos += encoder.Command_encoder.Length
 		}
 	}
 }
@@ -1247,7 +1247,7 @@ func (encoder *RepoNotifyEncoder) Encode(value *RepoNotify) enc.Wire {
 
 func (context *RepoNotifyParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*RepoNotify, error) {
 
-	var handled_CommandName bool = false
+	var handled_Command bool = false
 
 	progress := -1
 	_ = progress
@@ -1277,8 +1277,8 @@ func (context *RepoNotifyParsingContext) Parse(reader enc.WireView, ignoreCritic
 			case 608:
 				if true {
 					handled = true
-					handled_CommandName = true
-					value.CommandName, err = context.CommandName_context.Parse(reader.Delegate(int(l)), ignoreCritical)
+					handled_Command = true
+					value.Command, err = context.Command_context.Parse(reader.Delegate(int(l)), ignoreCritical)
 				}
 			default:
 				if !ignoreCritical && ((typ <= 31) || ((typ & 1) == 1)) {
@@ -1298,8 +1298,8 @@ func (context *RepoNotifyParsingContext) Parse(reader enc.WireView, ignoreCritic
 	startPos = reader.Pos()
 	err = nil
 
-	if !handled_CommandName && err == nil {
-		value.CommandName = nil
+	if !handled_Command && err == nil {
+		value.Command = nil
 	}
 
 	if err != nil {
@@ -1329,7 +1329,7 @@ type RepoCommandEncoder struct {
 	Length uint
 
 	CommandName_encoder         spec.NameContainerEncoder
-	TargetName_encoder          spec.NameContainerEncoder
+	SrcName_encoder             spec.NameContainerEncoder
 	RegisterPrefixes_subencoder []struct {
 		RegisterPrefixes_encoder spec.NameContainerEncoder
 	}
@@ -1337,16 +1337,17 @@ type RepoCommandEncoder struct {
 
 type RepoCommandParsingContext struct {
 	CommandName_context      spec.NameContainerParsingContext
-	TargetName_context       spec.NameContainerParsingContext
+	SrcName_context          spec.NameContainerParsingContext
 	RegisterPrefixes_context spec.NameContainerParsingContext
 }
 
 func (encoder *RepoCommandEncoder) Init(value *RepoCommand) {
+
 	if value.CommandName != nil {
 		encoder.CommandName_encoder.Init(value.CommandName)
 	}
-	if value.TargetName != nil {
-		encoder.TargetName_encoder.Init(value.TargetName)
+	if value.SrcName != nil {
+		encoder.SrcName_encoder.Init(value.SrcName)
 	}
 	{
 		RegisterPrefixes_l := len(value.RegisterPrefixes)
@@ -1373,15 +1374,17 @@ func (encoder *RepoCommandEncoder) Init(value *RepoCommand) {
 	}
 
 	l := uint(0)
+	l += 3
+	l += uint(1 + enc.Nat(value.Nonce).EncodingLength())
 	if value.CommandName != nil {
 		l += 3
 		l += uint(enc.TLNum(encoder.CommandName_encoder.Length).EncodingLength())
 		l += encoder.CommandName_encoder.Length
 	}
-	if value.TargetName != nil {
+	if value.SrcName != nil {
 		l += 3
-		l += uint(enc.TLNum(encoder.TargetName_encoder.Length).EncodingLength())
-		l += encoder.TargetName_encoder.Length
+		l += uint(enc.TLNum(encoder.SrcName_encoder.Length).EncodingLength())
+		l += encoder.SrcName_encoder.Length
 	}
 	if value.RegisterPrefixes != nil {
 		for seq_i, seq_v := range value.RegisterPrefixes {
@@ -1409,8 +1412,9 @@ func (encoder *RepoCommandEncoder) Init(value *RepoCommand) {
 }
 
 func (context *RepoCommandParsingContext) Init() {
+
 	context.CommandName_context.Init()
-	context.TargetName_context.Init()
+	context.SrcName_context.Init()
 	context.RegisterPrefixes_context.Init()
 }
 
@@ -1418,9 +1422,15 @@ func (encoder *RepoCommandEncoder) EncodeInto(value *RepoCommand, buf []byte) {
 
 	pos := uint(0)
 
+	buf[pos] = 253
+	binary.BigEndian.PutUint16(buf[pos+1:], uint16(592))
+	pos += 3
+
+	buf[pos] = byte(enc.Nat(value.Nonce).EncodeInto(buf[pos+1:]))
+	pos += uint(1 + buf[pos])
 	if value.CommandName != nil {
 		buf[pos] = 253
-		binary.BigEndian.PutUint16(buf[pos+1:], uint16(592))
+		binary.BigEndian.PutUint16(buf[pos+1:], uint16(594))
 		pos += 3
 		pos += uint(enc.TLNum(encoder.CommandName_encoder.Length).EncodeInto(buf[pos:]))
 		if encoder.CommandName_encoder.Length > 0 {
@@ -1428,14 +1438,14 @@ func (encoder *RepoCommandEncoder) EncodeInto(value *RepoCommand, buf []byte) {
 			pos += encoder.CommandName_encoder.Length
 		}
 	}
-	if value.TargetName != nil {
+	if value.SrcName != nil {
 		buf[pos] = 253
-		binary.BigEndian.PutUint16(buf[pos+1:], uint16(593))
+		binary.BigEndian.PutUint16(buf[pos+1:], uint16(595))
 		pos += 3
-		pos += uint(enc.TLNum(encoder.TargetName_encoder.Length).EncodeInto(buf[pos:]))
-		if encoder.TargetName_encoder.Length > 0 {
-			encoder.TargetName_encoder.EncodeInto(value.TargetName, buf[pos:])
-			pos += encoder.TargetName_encoder.Length
+		pos += uint(enc.TLNum(encoder.SrcName_encoder.Length).EncodeInto(buf[pos:]))
+		if encoder.SrcName_encoder.Length > 0 {
+			encoder.SrcName_encoder.EncodeInto(value.SrcName, buf[pos:])
+			pos += encoder.SrcName_encoder.Length
 		}
 	}
 	if value.RegisterPrefixes != nil {
@@ -1451,7 +1461,7 @@ func (encoder *RepoCommandEncoder) EncodeInto(value *RepoCommand, buf []byte) {
 				value := &pseudoValue
 				if value.RegisterPrefixes != nil {
 					buf[pos] = 253
-					binary.BigEndian.PutUint16(buf[pos+1:], uint16(595))
+					binary.BigEndian.PutUint16(buf[pos+1:], uint16(596))
 					pos += 3
 					pos += uint(enc.TLNum(encoder.RegisterPrefixes_encoder.Length).EncodeInto(buf[pos:]))
 					if encoder.RegisterPrefixes_encoder.Length > 0 {
@@ -1478,8 +1488,9 @@ func (encoder *RepoCommandEncoder) Encode(value *RepoCommand) enc.Wire {
 
 func (context *RepoCommandParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*RepoCommand, error) {
 
+	var handled_Nonce bool = false
 	var handled_CommandName bool = false
-	var handled_TargetName bool = false
+	var handled_SrcName bool = false
 	var handled_RegisterPrefixes bool = false
 
 	progress := -1
@@ -1510,16 +1521,35 @@ func (context *RepoCommandParsingContext) Parse(reader enc.WireView, ignoreCriti
 			case 592:
 				if true {
 					handled = true
+					handled_Nonce = true
+					value.Nonce = uint64(0)
+					{
+						for i := 0; i < int(l); i++ {
+							x := byte(0)
+							x, err = reader.ReadByte()
+							if err != nil {
+								if err == io.EOF {
+									err = io.ErrUnexpectedEOF
+								}
+								break
+							}
+							value.Nonce = uint64(value.Nonce<<8) | uint64(x)
+						}
+					}
+				}
+			case 594:
+				if true {
+					handled = true
 					handled_CommandName = true
 					value.CommandName, err = context.CommandName_context.Parse(reader.Delegate(int(l)), ignoreCritical)
 				}
-			case 593:
+			case 595:
 				if true {
 					handled = true
-					handled_TargetName = true
-					value.TargetName, err = context.TargetName_context.Parse(reader.Delegate(int(l)), ignoreCritical)
+					handled_SrcName = true
+					value.SrcName, err = context.SrcName_context.Parse(reader.Delegate(int(l)), ignoreCritical)
 				}
-			case 595:
+			case 596:
 				if true {
 					handled = true
 					handled_RegisterPrefixes = true
@@ -1557,11 +1587,14 @@ func (context *RepoCommandParsingContext) Parse(reader enc.WireView, ignoreCriti
 	startPos = reader.Pos()
 	err = nil
 
+	if !handled_Nonce && err == nil {
+		err = enc.ErrSkipRequired{Name: "Nonce", TypeNum: 592}
+	}
 	if !handled_CommandName && err == nil {
 		value.CommandName = nil
 	}
-	if !handled_TargetName && err == nil {
-		value.TargetName = nil
+	if !handled_SrcName && err == nil {
+		value.SrcName = nil
 	}
 	if !handled_RegisterPrefixes && err == nil {
 		// sequence - skip
