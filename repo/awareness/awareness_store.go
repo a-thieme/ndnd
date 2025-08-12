@@ -260,7 +260,7 @@ func (s *RepoAwarenessStore) UpdateNodePartitions(node *RepoNodeAwareness, parti
 
 // CheckPartitionReplication checks if a partition is under-replicated or over-replicated
 // and calls the appropriate handler
-// thread safety is handled by the caller
+// Thread safety is handled by the caller
 func (s *RepoAwarenessStore) CheckPartitionReplication(partition uint64) {
 	log.Debug(s, "Checking partition replication", "partition", partition)
 
@@ -282,9 +282,77 @@ func (s *RepoAwarenessStore) CheckPartitionReplication(partition uint64) {
 }
 
 // CheckReplications checks all partitions for replication status
-// thread safety is handled by the caller
+// Thread-safe
 func (s *RepoAwarenessStore) CheckReplications() {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
 	for partition := range s.replicaCounts {
 		s.CheckPartitionReplication(uint64(partition))
+	}
+}
+
+// AddNodePartition adds a partition to a node's state
+// Thread-safe
+func (s *RepoAwarenessStore) AddNodePartition(partitionId uint64, nodeName string) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	if _, exists := s.nodeStates[nodeName].partitions[partitionId]; !exists {
+		log.Info(s, "Adding node partition", "id", partitionId, "node", nodeName)
+		s.nodeStates[nodeName].partitions[partitionId] = true
+		s.replicaOwners[partitionId][nodeName] = true
+		s.replicaCounts[partitionId]++
+	}
+}
+
+// RemoveNodePartition removes a partition from a node's state
+// Thread-safe
+func (s *RepoAwarenessStore) RemoveNodePartition(partitionId uint64, nodeName string) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	if _, exists := s.nodeStates[nodeName].partitions[partitionId]; exists {
+		log.Info(s, "Removing node partition", "id", partitionId, "node", nodeName)
+		delete(s.nodeStates[nodeName].partitions, partitionId)
+		delete(s.replicaOwners[partitionId], nodeName)
+		s.replicaCounts[partitionId]--
+	}
+}
+
+// GetReplicas returns the replicas for a given partition (local awareness)
+// Thread-safe
+func (s *RepoAwarenessStore) GetPartitionReplicas(partitionId uint64) []enc.Name {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
+	replicas := make([]enc.Name, 0)
+	for replica := range s.replicaOwners[partitionId] {
+		replicaN, _ := enc.NameFromStr(replica)
+		replicas = append(replicas, replicaN)
+	}
+
+	return replicas
+}
+
+// GetNumReplicas returns the number of replicas for a given partition
+// Thread-safe
+func (s *RepoAwarenessStore) GetNumReplicas(partitionId uint64) int {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
+	return s.replicaCounts[partitionId]
+}
+
+// NodeOwnsPartition returns true if a node owns a partition
+// Thread-safe
+func (s *RepoAwarenessStore) NodeOwnsPartition(partitionId uint64, nodeName string) bool {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
+	if _, exists := s.replicaOwners[partitionId][nodeName]; exists {
+		return true
+	} else {
+		return false
 	}
 }

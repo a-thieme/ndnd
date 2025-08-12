@@ -79,7 +79,7 @@ func (m *RepoManagement) WonAuctionHandler(item string) {
 // TODO: handle repo command interest
 func (m *RepoManagement) NotifyReplicasHandler(command *tlv.RepoCommand) {
 	partitionId := utils.PartitionIdFromEncName(command.CommandName.Name, NumPartitions)
-	replicas := m.awareness.GetReplicas(partitionId) // get relevant replicas
+	replicas := m.awareness.GetPartitionReplicas(partitionId) // get relevant replicas
 
 	for _, replica := range replicas {
 		if replica.Equal(m.nodeNameN) { // if local node is responsible for the partition

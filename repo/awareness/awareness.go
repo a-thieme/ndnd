@@ -2,7 +2,6 @@ package awareness
 
 import (
 	"math/rand"
-	"sync"
 	"time"
 
 	"github.com/named-data/ndnd/repo/tlv"
@@ -35,9 +34,6 @@ const (
 // }
 
 type RepoAwareness struct {
-	// single mutex
-	mutex sync.RWMutex
-
 	// name of the local node
 	nodeNameN enc.Name
 	nodeName  string // for convenience
@@ -49,7 +45,7 @@ type RepoAwareness struct {
 	client ndn.Client
 	// awareness sync group
 	awarenessSvs *ndn_sync.SvsALO
-	heartbeatSvs *ndn_sync.SvSync // TODO: we don't need alo guarantees for heartbeat
+	heartbeatSvs *ndn_sync.SvSync
 
 	// TODO: make put into a configuration struct
 	awarenessSvsPrefix enc.Name // group prefix for awareness SVS
@@ -66,7 +62,7 @@ func (r *RepoAwareness) String() string {
 	return "repo-awareness"
 }
 
-// TODO: create a new repo awareness object
+// NewRepoAwareness creates a new RepoAwareness object
 func NewRepoAwareness(repoNameN enc.Name, nodeNameN enc.Name, client ndn.Client) *RepoAwareness {
 	awarenessPrefix := repoNameN.Append(enc.NewGenericComponent("awareness"))
 	// awarenessPrefix, _ = enc.NameFromStr("ndnd/repo/awareness") // TODO: testing only
@@ -151,24 +147,14 @@ func (r *RepoAwareness) Start() (err error) {
 		})
 	}
 
-	// Partition handlers
-	// TODO: currently, just trivial handlers
-	r.storage.SetOnUnderReplication(func(id uint64) {
-		log.Info(r, "Partition under-replicated", "id", id)
-	})
-
-	r.storage.SetOnOverReplication(func(id uint64) {
-		log.Info(r, "Partition over-replicated", "id", id)
-	})
-
-	// Start awareness update
+	// Start awareness SVS
 	log.Info(r, "Starting awareness update")
 	if err := r.awarenessSvs.Start(); err != nil {
 		log.Error(r, "Failed to start awareness SVS", "err", err)
 		return err
 	}
 
-	// Start heartbeat
+	// Start heartbeat SVS
 	log.Info(r, "Starting heartbeat")
 	if err := r.StartHeartbeat(); err != nil {
 		log.Error(r, "Failed to start heartbeat", "err", err)
@@ -198,10 +184,8 @@ func (r *RepoAwareness) Start() (err error) {
 	}
 	// TODO: remove this after testings
 
-	// TODO: set up initial replication checks
-	r.mutex.Lock()
+	// Check initial replication
 	r.storage.CheckReplications()
-	r.mutex.Unlock()
 
 	return err
 }
@@ -268,9 +252,7 @@ func (r *RepoAwareness) StartHeartbeat() (err error) {
 
 				r.publishAwarenessUpdate() // TODO: test: periodically publish awareness update
 
-				r.mutex.Lock()
 				r.storage.CheckReplications()
-				r.mutex.Unlock()
 			case <-r.stop:
 				return
 			}
@@ -296,59 +278,28 @@ func (r *RepoAwareness) publishAwarenessUpdate() {
 
 // AddLocalPartition adds a partition to the local state and publishes an awareness update
 // Thread-safe
-// TODO: update the storage to reflect the change
 func (r *RepoAwareness) AddLocalPartition(partitionId uint64) {
-	r.mutex.Lock()
-	if _, exists := r.storage.nodeStates[r.nodeName].partitions[partitionId]; !exists {
-		log.Info(r, "Adding local partition", "id", partitionId)
-		r.storage.nodeStates[r.nodeName].partitions[partitionId] = true
-		r.storage.replicaOwners[partitionId][r.nodeName] = true
-		r.storage.replicaCounts[partitionId]++
-		r.mutex.Unlock() // TODO: separate method
-
-		r.publishAwarenessUpdate()
-	} else {
-		r.mutex.Unlock()
-	}
+	r.storage.AddNodePartition(partitionId, r.nodeName)
+	r.publishAwarenessUpdate()
 }
 
 // DropLocalPartition drops a partition from the local state and publishes an awareness update
 // Thread-safe
-// TODO: update the storage to reflect the change
 func (r *RepoAwareness) DropLocalPartition(partitionId uint64) {
-	r.mutex.Lock()
-	if _, exists := r.storage.nodeStates[r.nodeName].partitions[partitionId]; exists {
-		log.Info(r, "Dropping local partition", "id", partitionId)
-		delete(r.storage.nodeStates[r.nodeName].partitions, partitionId)
-		delete(r.storage.replicaOwners[partitionId], r.nodeName)
-		r.storage.replicaCounts[partitionId]--
-		r.mutex.Unlock() // TODO: separate method
-
-		r.publishAwarenessUpdate()
-	} else {
-		r.mutex.Unlock()
-	}
+	r.storage.RemoveNodePartition(partitionId, r.nodeName)
+	r.publishAwarenessUpdate()
 }
 
-// GetReplicas returns the replicas for a given partition (local awareness)
-func (r *RepoAwareness) GetReplicas(partitionId uint64) []enc.Name {
-	r.mutex.RLock()
-	defer r.mutex.RUnlock()
-
-	replicas := make([]enc.Name, 0)
-	for replica := range r.storage.replicaOwners[partitionId] {
-		replicaN, _ := enc.NameFromStr(replica)
-		replicas = append(replicas, replicaN)
-	}
-
-	return replicas
+// GetPartitionReplicas returns the replicas for a given partition (local awareness)
+// Thread-safe
+func (r *RepoAwareness) GetPartitionReplicas(partitionId uint64) []enc.Name {
+	return r.storage.GetPartitionReplicas(partitionId)
 }
 
+// GetNumReplicas returns the number of replicas for a given partition
+// Thread-safe
 func (r *RepoAwareness) GetNumReplicas(partitionId uint64) int {
-	r.mutex.RLock()
-	defer r.mutex.RUnlock()
-
-	return r.storage.replicaCounts[partitionId]
+	return r.storage.GetNumReplicas(partitionId)
 }
 
 // GetOnlineNodes returns the nodes that are known to be online
@@ -366,14 +317,7 @@ func (r *RepoAwareness) GetOnlineNodes() []enc.Name {
 // OwnsPartition returns if the local node owns a partition
 // Thread-safe
 func (r *RepoAwareness) OwnsPartition(partitionId uint64) bool {
-	r.storage.mutex.RLock()
-	defer r.storage.mutex.RUnlock()
-
-	if _, exists := r.storage.replicaOwners[partitionId][r.nodeName]; exists {
-		return true
-	} else {
-		return false
-	}
+	return r.storage.NodeOwnsPartition(partitionId, r.nodeName)
 }
 
 // SetOnOverReplication sets the callback for over-replication
