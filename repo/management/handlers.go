@@ -82,17 +82,17 @@ func (m *RepoManagement) NotifyReplicasHandler(command *tlv.RepoCommand) {
 	replicas := m.awareness.GetPartitionReplicas(partitionId) // get relevant replicas
 
 	for _, replica := range replicas {
-		if replica.Equal(m.nodeNameN) { // if local node is responsible for the partition
+		if replica.Equal(m.repo.NodeNameN) { // if local node is responsible for the partition
 			m.ProcessCommandHandler(command) // directly handles the command
 			continue
 		}
 
-		notifyReplicaPrefix := replica.Append(enc.NewGenericComponent(m.repoNameN.String())).
+		notifyReplicaPrefix := replica.Append(enc.NewGenericComponent(m.repo.RepoNameN.String())).
 			Append(enc.NewGenericComponent(strconv.FormatUint(partitionId, 10))).
 			Append(enc.NewGenericComponent("command")).
 			Append(enc.NewGenericComponent(strconv.FormatUint(command.Nonce, 10)))
 
-		m.client.ExpressR(ndn.ExpressRArgs{
+		m.repo.Client.ExpressR(ndn.ExpressRArgs{
 			Name: notifyReplicaPrefix,
 			Config: &ndn.InterestConfig{
 				CanBePrefix: false,

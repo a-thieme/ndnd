@@ -1,4 +1,4 @@
-package awareness
+package types
 
 type LRU[K comparable, V any] struct {
 	hash    map[K]*DoubleLinkedListNode[V]

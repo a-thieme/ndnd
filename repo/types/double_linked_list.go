@@ -1,4 +1,4 @@
-package awareness
+package types
 
 type DoubleLinkedListNode[V any] struct {
 	prev, next *DoubleLinkedListNode[V]

@@ -1,6 +1,4 @@
 repo:
-  # [required] Name of the repo service
-  repo_name: /ndn/repo
   # [required] Name of the node
   node_name: /ndn/node1
   # [required] Repo storage directory

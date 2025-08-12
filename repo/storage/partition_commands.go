@@ -42,7 +42,7 @@ func (p *Partition) HandleInsert(command *tlv.RepoCommand) {
 func (p *Partition) HandleDelete(command *tlv.RepoCommand) {
 	log.Info(p, "Deleting data", "command", command)
 
-	if err := p.store.Remove(command.SrcName.Name); err != nil {
+	if err := p.repo.Store.Remove(command.SrcName.Name); err != nil {
 		log.Error(p, "Unable to remove data", "err", err)
 	}
 

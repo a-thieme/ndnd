@@ -14,13 +14,13 @@ import (
 )
 
 type RepoSvs struct {
-	config *RepoConfig
+	config *RepoNodeConfig
 	client ndn.Client
 	cmd    *tlv.SyncJoin
 	svsalo *ndn_sync.SvsALO
 }
 
-func NewRepoSvs(config *RepoConfig, client ndn.Client, cmd *tlv.SyncJoin) *RepoSvs {
+func NewRepoSvs(config *RepoNodeConfig, client ndn.Client, cmd *tlv.SyncJoin) *RepoSvs {
 	return &RepoSvs{
 		config: config,
 		client: client,

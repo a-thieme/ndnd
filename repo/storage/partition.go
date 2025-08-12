@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/named-data/ndnd/repo/tlv"
+	"github.com/named-data/ndnd/repo/types"
 	enc "github.com/named-data/ndnd/std/encoding"
 	"github.com/named-data/ndnd/std/log"
 	"github.com/named-data/ndnd/std/ndn"
@@ -31,18 +32,19 @@ type Partition struct {
 	// SVS
 	svsPrefix enc.Name         // the prefix of the SVS group
 	svsGroup  *ndn_sync.SvsALO // the SVS group
-	client    ndn.Client
 
 	// commands
 	commands map[string]*tlv.RepoCommand
 
 	// storage
 	size           uint64 // the estimated size of the partition, in bytes
-	store          *RepoStorage
 	userSyncGroups map[string]*PartitionSvs
 
 	// status
 	status PartitionStatus // current status of the partition
+
+	// repo shared resource
+	repo *types.RepoShared
 }
 
 func (p *Partition) String() string {
@@ -51,17 +53,16 @@ func (p *Partition) String() string {
 
 // NewPartition creates a new partition
 // TODO: need more parameters to create a partition
-func NewPartition(id uint64, client ndn.Client, store *RepoStorage) *Partition {
+func NewPartition(id uint64, repo *types.RepoShared) *Partition {
 	return &Partition{
 		id:             id,
 		size:           0,
 		svsPrefix:      nil,
-		client:         client,
 		svsGroup:       nil,
-		store:          store,
 		status:         Registered,
 		commands:       make(map[string]*tlv.RepoCommand),
 		userSyncGroups: make(map[string]*PartitionSvs),
+		repo:           repo,
 	}
 }
 
@@ -70,16 +71,16 @@ func (p *Partition) Start() (err error) {
 	log.Info(p, "Starting partition SVS ALO")
 
 	// get the svs prefix from the configuration
-	p.svsPrefix = p.store.repoNameN.Append(enc.NewGenericComponent(strconv.FormatUint(p.id, 10)))
+	p.svsPrefix = p.repo.RepoNameN.Append(enc.NewGenericComponent(strconv.FormatUint(p.id, 10)))
 	if err != nil {
 		return err
 	}
 
 	// initialize the SVS group
 	p.svsGroup, err = ndn_sync.NewSvsALO(ndn_sync.SvsAloOpts{
-		Name: p.store.nodeNameN,
+		Name: p.repo.NodeNameN,
 		Svs: ndn_sync.SvSyncOpts{
-			Client:            p.client,
+			Client:            p.repo.Client,
 			GroupPrefix:       p.svsPrefix,
 			SuppressionPeriod: 500 * time.Millisecond, // TODO: should this be reactive to the heartbeat interval?
 			PeriodicTimeout:   30 * time.Second,       // TODO: this is the default value. To my understanding, periodic sync interests don't increase sequence numbers; it can be used as a redundancy to inform other nodes about the newest local state, but it can't replace the heartbeat mechanism
@@ -145,7 +146,7 @@ func (p *Partition) Start() (err error) {
 		p.svsGroup.SyncPrefix(),
 		p.svsGroup.DataPrefix(),
 	} {
-		p.client.AnnouncePrefix(ndn.Announcement{
+		p.repo.Client.AnnouncePrefix(ndn.Announcement{
 			Name:   route,
 			Expose: true,
 		})
@@ -175,7 +176,7 @@ func (p *Partition) Stop() (err error) {
 			p.svsGroup.SyncPrefix(),
 			p.svsGroup.DataPrefix(),
 		} {
-			p.client.WithdrawPrefix(route, nil)
+			p.repo.Client.WithdrawPrefix(route, nil)
 		}
 
 		p.svsGroup = nil

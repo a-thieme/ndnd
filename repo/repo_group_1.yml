@@ -1,0 +1,11 @@
+repo_group:
+  # [required] Name of the repo service
+  repo_name: /ndn/repo
+  # [required] Number of partitions
+  num_partitions: 128
+  # [required] Number of replicas
+  num_replicas: 2
+  # [required] Heartbeat interval
+  heartbeat_interval: 5
+  # [required] Heartbeat expiry
+  heartbeat_expiry: 20

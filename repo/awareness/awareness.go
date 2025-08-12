@@ -5,33 +5,12 @@ import (
 	"time"
 
 	"github.com/named-data/ndnd/repo/tlv"
+	"github.com/named-data/ndnd/repo/types"
 	enc "github.com/named-data/ndnd/std/encoding"
 	"github.com/named-data/ndnd/std/log"
 	"github.com/named-data/ndnd/std/ndn"
 	ndn_sync "github.com/named-data/ndnd/std/sync"
 )
-
-// TODO: variables in this section should be configurable or supplied by the higher layer
-// for now, we use hardcoded values to finish the implementation first
-const (
-	// HeartbeatInterval is the interval between heartbeats (at most).
-	HeartbeatInterval = 5 * time.Second
-	// HeartbeatExpiry is the time after which a node is considered down if no heartbeat is received.
-	HeartbeatExpiry = 20 * time.Second
-
-	// NumPartitions is the number of partitions in the system.
-	NumPartitions = 128 // TODO: this should be configurable or supplied by the higher layer
-	// NumReplicas is the minimum number of replicas per partition.
-	NumReplicas = 2 // TODO: this should be configurable or supplied by the higher
-)
-
-// Config passed to awareness module
-// type RepoAwarenessConfig struct {
-// 	HeartbeatInterval time.Duration
-// 	HeartbeatExpiry   time.Duration
-// 	NumPartitions     uint
-// 	NumReplicas       uint
-// }
 
 type RepoAwareness struct {
 	// name of the local node
@@ -50,6 +29,9 @@ type RepoAwareness struct {
 	// TODO: make put into a configuration struct
 	awarenessSvsPrefix enc.Name // group prefix for awareness SVS
 
+	// heartbeat interval
+	heartbeatInterval time.Duration
+
 	// heartbeat
 	ticker             *time.Ticker // ticker for heartbeat
 	heartbeatSvsPrefix enc.Name     // group prefix for heartbeat SVS
@@ -63,7 +45,12 @@ func (r *RepoAwareness) String() string {
 }
 
 // NewRepoAwareness creates a new RepoAwareness object
-func NewRepoAwareness(repoNameN enc.Name, nodeNameN enc.Name, client ndn.Client) *RepoAwareness {
+func NewRepoAwareness(repo *types.RepoShared) *RepoAwareness {
+	repoNameN := repo.RepoNameN
+	nodeNameN := repo.NodeNameN
+	client := repo.Client
+	heartbeatInterval := repo.HeartbeatInterval
+
 	awarenessPrefix := repoNameN.Append(enc.NewGenericComponent("awareness"))
 	// awarenessPrefix, _ = enc.NameFromStr("ndnd/repo/awareness") // TODO: testing only
 	heartbeatPrefix := repoNameN.Append(enc.NewGenericComponent("heartbeat"))
@@ -72,9 +59,10 @@ func NewRepoAwareness(repoNameN enc.Name, nodeNameN enc.Name, client ndn.Client)
 		nodeNameN:          nodeNameN,
 		nodeName:           nodeNameN.String(),
 		client:             client, // use Repo shared client
-		storage:            NewRepoAwarenessStore(),
+		storage:            NewRepoAwarenessStore(repo),
 		awarenessSvsPrefix: awarenessPrefix,
 		heartbeatSvsPrefix: heartbeatPrefix,
+		heartbeatInterval:  heartbeatInterval,
 		awarenessSvs:       nil,
 		heartbeatSvs:       nil,
 		ticker:             nil,
@@ -235,7 +223,7 @@ func (r *RepoAwareness) StartHeartbeat() (err error) {
 	log.Info(r, "Heartbeat started", "node", r.nodeNameN)
 
 	// start ticker
-	r.ticker = time.NewTicker(HeartbeatInterval)
+	r.ticker = time.NewTicker(r.heartbeatInterval)
 
 	// create stop channel
 	r.stop = make(chan struct{})

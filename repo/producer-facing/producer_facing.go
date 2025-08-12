@@ -2,32 +2,27 @@ package producerfacing
 
 import (
 	"github.com/named-data/ndnd/repo/tlv"
+	"github.com/named-data/ndnd/repo/types"
 	enc "github.com/named-data/ndnd/std/encoding"
 	"github.com/named-data/ndnd/std/log"
 	"github.com/named-data/ndnd/std/ndn"
 )
 
 type RepoProducerFacing struct {
-	repoNameN enc.Name
-	nodeNameN enc.Name
-
+	repo                  *types.RepoShared
 	notifyPrefix          enc.Name
 	notifyReplicasHandler func(*tlv.RepoCommand)
 	processCommandHandler func(*tlv.RepoCommand)
-
-	client ndn.Client
 }
 
 func (p *RepoProducerFacing) String() string {
 	return "producer-facing"
 }
 
-func NewProducerFacing(repoNameN enc.Name, nodeNameN enc.Name, client ndn.Client) *RepoProducerFacing {
+func NewProducerFacing(repo *types.RepoShared) *RepoProducerFacing {
 	return &RepoProducerFacing{
-		repoNameN:    repoNameN,
-		nodeNameN:    nodeNameN,
-		client:       client,
-		notifyPrefix: repoNameN.Append(enc.NewGenericComponent("notify")),
+		repo:         repo,
+		notifyPrefix: repo.RepoNameN.Append(enc.NewGenericComponent("notify")),
 	}
 }
 
@@ -36,16 +31,16 @@ func (p *RepoProducerFacing) Start() error {
 
 	for _, prefix := range []enc.Name{
 		p.notifyPrefix,
-		p.nodeNameN.Append(enc.NewGenericComponent(p.repoNameN.String())),
+		p.repo.NodeNameN.Append(enc.NewGenericComponent(p.repo.RepoNameN.String())),
 	} {
-		p.client.AnnouncePrefix(ndn.Announcement{
+		p.repo.Client.AnnouncePrefix(ndn.Announcement{
 			Name:   prefix,
 			Expose: true,
 		})
 	}
 
-	p.client.Engine().AttachHandler(p.notifyPrefix, p.onRepoNotify)
-	p.client.Engine().AttachHandler(p.nodeNameN.Append(enc.NewGenericComponent(p.repoNameN.String())), p.onNodeNotify)
+	p.repo.Engine.AttachHandler(p.notifyPrefix, p.onRepoNotify)
+	p.repo.Engine.AttachHandler(p.repo.NodeNameN.Append(enc.NewGenericComponent(p.repo.RepoNameN.String())), p.onNodeNotify)
 
 	return nil
 }
@@ -53,8 +48,8 @@ func (p *RepoProducerFacing) Start() error {
 func (p *RepoProducerFacing) Stop() error {
 	log.Info(p, "Stopping Repo Producer Facing")
 
-	p.client.Engine().DetachHandler(p.notifyPrefix)
-	p.client.WithdrawPrefix(p.notifyPrefix, nil)
+	p.repo.Engine.DetachHandler(p.notifyPrefix)
+	p.repo.Client.WithdrawPrefix(p.notifyPrefix, nil)
 
 	return nil
 }

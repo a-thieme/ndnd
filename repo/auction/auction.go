@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/named-data/ndnd/repo/types"
 	enc "github.com/named-data/ndnd/std/encoding"
 	"github.com/named-data/ndnd/std/log"
 	"github.com/named-data/ndnd/std/ndn"
@@ -62,15 +63,11 @@ type AuctionEngine struct {
 	mutex sync.RWMutex
 
 	// ndn communication
-	client         ndn.Client
-	engine         ndn.Engine
-	nodeNameN      enc.Name
-	repoNameN      enc.Name
+	repo           *types.RepoShared
 	availableNodes func() []enc.Name
 	auctions       map[string]Auction
 	interestCfg    ndn.InterestConfig
 	calculateBid   func(string) int
-	replications   int
 	onWin          func(string)
 
 	// auxiliary fields
@@ -83,12 +80,9 @@ func (a *AuctionEngine) String() string {
 	return "auction-engine"
 }
 
-func NewAuctionEngine(nodeNameN enc.Name, repoNameN enc.Name, replications int, client ndn.Client, availableNodes func() []enc.Name, calculateBid func(string) int, onWin func(string)) *AuctionEngine {
+func NewAuctionEngine(repo *types.RepoShared, availableNodes func() []enc.Name, calculateBid func(string) int, onWin func(string)) *AuctionEngine {
 	a := new(AuctionEngine)
-	a.client = client
-	a.engine = client.Engine()
-	a.nodeNameN = nodeNameN
-	a.repoNameN = repoNameN
+	a.repo = repo
 	a.auctions = make(map[string]Auction)
 	a.interestCfg = ndn.InterestConfig{
 		MustBeFresh: true,
@@ -96,10 +90,9 @@ func NewAuctionEngine(nodeNameN enc.Name, repoNameN enc.Name, replications int, 
 	}
 	a.availableNodes = availableNodes
 	a.calculateBid = calculateBid
-	a.replications = replications
 	a.onWin = onWin
 
-	a.auctionPrefix = nodeNameN.Append(repoNameN...)
+	a.auctionPrefix = repo.NodeNameN.Append(repo.RepoNameN...)
 	a.bidPrefix = a.auctionPrefix.Append(enc.NewGenericComponent("bid"))
 	a.resultsPrefix = a.auctionPrefix.Append(enc.NewGenericComponent("results"))
 
@@ -111,14 +104,14 @@ func (a *AuctionEngine) Start() error {
 
 	// Announce auction prefix
 	for _, prefix := range []enc.Name{a.auctionPrefix} {
-		a.client.AnnouncePrefix(ndn.Announcement{
+		a.repo.Client.AnnouncePrefix(ndn.Announcement{
 			Name:   prefix,
 			Expose: true,
 		})
 	}
 
 	// Auction engine interest handler
-	if err := a.client.Engine().AttachHandler(a.auctionPrefix, a.onInterest); err != nil {
+	if err := a.repo.Client.Engine().AttachHandler(a.auctionPrefix, a.onInterest); err != nil {
 		return err
 	}
 	// if err := a.client.Engine().AttachHandler(a.bidPrefix, a.onBidInterest); err != nil {
@@ -136,11 +129,11 @@ func (a *AuctionEngine) Stop() error {
 
 	// Withdraw auction prefix
 	for _, prefix := range []enc.Name{a.auctionPrefix} {
-		a.client.WithdrawPrefix(prefix, nil)
+		a.repo.Client.WithdrawPrefix(prefix, nil)
 	}
 
 	// Detach interest handler
-	if err := a.client.Engine().DetachHandler(a.auctionPrefix); err != nil {
+	if err := a.repo.Client.Engine().DetachHandler(a.auctionPrefix); err != nil {
 		return err
 	}
 	// a.client.Engine().DetachHandler(a.bidPrefix)
@@ -159,7 +152,7 @@ func (a *AuctionEngine) addBid(itemId string, node enc.Name, bid int) {
 		log.Info(a, "Adding bid", "itemId", itemId, "node", node, "bid", bid)
 		entry.numBids++
 		if entry.numBids == entry.expectedBids {
-			entry.determineWinners(a.replications)
+			entry.determineWinners(a.repo.NumReplicas)
 		}
 		a.auctions[itemId] = entry
 	}
@@ -177,20 +170,20 @@ func (a *AuctionEngine) AuctionItem(itemId string) {
 	a.mutex.Unlock()
 	// /<node>/<repo>/<itemID>/bid/<auctioneer>/<nonce>
 	for _, node := range nodes {
-		if node.Equal(a.nodeNameN) {
+		if node.Equal(a.repo.NodeNameN) {
 			a.addBid(itemId, node, a.calculateBid(itemId))
 			continue
 		}
 		// set up Interest
 		intCfg := a.interestCfg
-		intCfg.Nonce = utils.ConvertNonce(a.engine.Timer().Nonce())
+		intCfg.Nonce = utils.ConvertNonce(a.repo.Client.Engine().Timer().Nonce())
 
 		// probably a better way to do this
-		var n = node.String() + a.repoNameN.String() + "/" + itemId + "/bid/" + enc.Component{Typ: 8, Val: a.nodeNameN.Bytes()}.String() + "/" + nonce
+		var n = node.String() + a.repo.RepoNameN.String() + "/" + itemId + "/bid/" + enc.Component{Typ: 8, Val: a.repo.NodeNameN.Bytes()}.String() + "/" + nonce
 		iName, _ := enc.NameFromStr(n)
 
 		log.Info(a, "Sent bid interest", "itemId", itemId, "node", node, "nonce", nonce)
-		object.ExpressR(a.engine, ndn.ExpressRArgs{
+		object.ExpressR(a.repo.Engine, ndn.ExpressRArgs{
 			Name:    iName,
 			Retries: 5,
 			Config:  &intCfg,
@@ -220,11 +213,11 @@ func (a *AuctionEngine) AuctionItem(itemId string) {
 
 func (a *AuctionEngine) fetchResults(auctioneer []byte, itemId string, nonce string) {
 	auctioneerName, _ := enc.NameFromBytes(auctioneer)
-	iName, _ := enc.NameFromStr(auctioneerName.String() + a.repoNameN.String() + "/" + itemId + "/results/" + nonce)
+	iName, _ := enc.NameFromStr(auctioneerName.String() + a.repo.RepoNameN.String() + "/" + itemId + "/results/" + nonce)
 	log.Info(a, "Received results interest", "itemId", itemId, "auctioneer", auctioneerName, "nonce", nonce)
 	intCfg := a.interestCfg
-	intCfg.Nonce = utils.ConvertNonce(a.engine.Timer().Nonce())
-	object.ExpressR(a.engine, ndn.ExpressRArgs{
+	intCfg.Nonce = utils.ConvertNonce(a.repo.Engine.Timer().Nonce())
+	object.ExpressR(a.repo.Engine, ndn.ExpressRArgs{
 		Name:    iName,
 		Retries: 5,
 		Config:  &intCfg,
@@ -236,7 +229,7 @@ func (a *AuctionEngine) fetchResults(auctioneer []byte, itemId string, nonce str
 				winners := strings.Fields(string(data.Content().Join()))
 				log.Info(a, "Fetched winners", "itemId", itemId, "nonce", nonce, "auctioneer", auctioneerName, "winners", winners)
 				for _, winner := range winners {
-					if a.nodeNameN.String() == winner {
+					if a.repo.NodeNameN.String() == winner {
 						a.onWin(itemId)
 					}
 				}
@@ -299,11 +292,11 @@ func (a *AuctionEngine) onInterest(args ndn.InterestHandlerArgs) {
 	}
 
 	// Create data packet
-	data, err := a.engine.Spec().MakeData(
+	data, err := a.repo.Engine.Spec().MakeData(
 		n,
 		&ndn.DataConfig{},
 		enc.Wire{content},
-		a.client.SuggestSigner(n),
+		a.repo.Client.SuggestSigner(n),
 	)
 	if err != nil {
 		log.Error(a, "Failed to make data", "name", n, "error", err)

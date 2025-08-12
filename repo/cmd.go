@@ -16,23 +16,29 @@ var CmdRepo = &cobra.Command{
 	Short:   "Named Data Networking Data Repository",
 	GroupID: "run",
 	Version: utils.NDNdVersion,
-	Args:    cobra.ExactArgs(1),
+	Args:    cobra.ExactArgs(2),
 	Run:     run,
 }
 
 func run(cmd *cobra.Command, args []string) {
 	config := struct {
-		Repo *RepoConfig `json:"repo"`
+		Group *RepoGroupConfig `json:"repo_group"`
+		Repo  *RepoNodeConfig  `json:"repo"`
 	}{
-		Repo: DefaultConfig(),
+		Group: DefaultGroupConfig(),
+		Repo:  DefaultNodeConfig(),
 	}
 	toolutils.ReadYaml(&config, args[0])
+	toolutils.ReadYaml(&config, args[1])
 
-	if err := config.Repo.Parse(); err != nil {
+	if err := config.Group.ParseGroupConfig(); err != nil {
+		log.Fatal(nil, "Configuration error", "err", err)
+	}
+	if err := config.Repo.ParseNodeConfig(); err != nil {
 		log.Fatal(nil, "Configuration error", "err", err)
 	}
 
-	repo := NewRepo(config.Repo)
+	repo := NewRepo(config.Group, config.Repo)
 	err := repo.Start()
 	if err != nil {
 		log.Fatal(nil, "Failed to start repo", "err", err)

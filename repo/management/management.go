@@ -7,12 +7,11 @@ import (
 
 	"github.com/named-data/ndnd/repo/auction"
 	"github.com/named-data/ndnd/repo/awareness"
-	face "github.com/named-data/ndnd/repo/producer-facing"
+	pface "github.com/named-data/ndnd/repo/producer-facing"
 	"github.com/named-data/ndnd/repo/storage"
 	"github.com/named-data/ndnd/repo/tlv"
-	enc "github.com/named-data/ndnd/std/encoding"
+	"github.com/named-data/ndnd/repo/types"
 	"github.com/named-data/ndnd/std/log"
-	"github.com/named-data/ndnd/std/ndn"
 )
 
 type EventType string
@@ -42,17 +41,13 @@ type RepoManagement struct {
 	handlers map[EventType]map[string]bool // check if the handler is registered for the event type
 	mutex    sync.RWMutex
 
-	repoNameN enc.Name
-	nodeNameN enc.Name
-
-	// client
-	client ndn.Client
+	repo *types.RepoShared
 
 	// Module references for coordination
 	awareness      *awareness.RepoAwareness
 	auction        *auction.AuctionEngine
 	storage        *storage.RepoStorage
-	producerFacing *face.RepoProducerFacing
+	producerFacing *pface.RepoProducerFacing
 }
 
 func (m *RepoManagement) String() string {
@@ -60,15 +55,13 @@ func (m *RepoManagement) String() string {
 }
 
 // NewRepoManagement creates a new repo management instance
-func NewRepoManagement(repoNameN enc.Name, nodeNameN enc.Name, client ndn.Client, awareness *awareness.RepoAwareness, auction *auction.AuctionEngine, storage *storage.RepoStorage, producerFacing *face.RepoProducerFacing) *RepoManagement {
+func NewRepoManagement(repo *types.RepoShared, awareness *awareness.RepoAwareness, auction *auction.AuctionEngine, storage *storage.RepoStorage, producerFacing *pface.RepoProducerFacing) *RepoManagement {
 	return &RepoManagement{
 		handlers:       make(map[EventType]map[string]bool),
-		client:         client,
+		repo:           repo,
 		awareness:      awareness,
 		auction:        auction,
 		storage:        storage,
-		repoNameN:      repoNameN,
-		nodeNameN:      nodeNameN,
 		producerFacing: producerFacing,
 	}
 }

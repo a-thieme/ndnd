@@ -7,6 +7,7 @@ import (
 	"github.com/bits-and-blooms/bitset"
 
 	"github.com/named-data/ndnd/repo/tlv"
+	"github.com/named-data/ndnd/repo/types"
 	enc "github.com/named-data/ndnd/std/encoding"
 	"github.com/named-data/ndnd/std/log"
 )
@@ -27,6 +28,9 @@ type RepoAwarenessStore struct {
 	// TODO: we need to track replication events so they aren't repetitively called
 	//  a simple map between partition ID and its ongoing event (type) suffices
 
+	heartbeatExpiry time.Duration
+	numReplicas     int
+
 	// Callbacks for node state changes
 	onNodeUp        func(*RepoNodeAwareness)
 	onNodeFailed    func(*RepoNodeAwareness)
@@ -37,8 +41,8 @@ type RepoAwarenessStore struct {
 	overReplicationHandler  func(uint64) // called when a partition is over-replicated
 }
 
-func NewRepoAwarenessStore() *RepoAwarenessStore {
-	replicaOwners := make([]map[string]bool, NumPartitions)
+func NewRepoAwarenessStore(repo *types.RepoShared) *RepoAwarenessStore {
+	replicaOwners := make([]map[string]bool, repo.NumPartitions)
 	for i := range replicaOwners {
 		replicaOwners[i] = make(map[string]bool)
 	}
@@ -46,9 +50,11 @@ func NewRepoAwarenessStore() *RepoAwarenessStore {
 	return &RepoAwarenessStore{
 		nodeStates:      make(map[string]*RepoNodeAwareness),
 		expirationTimer: make(map[string]*time.Timer),
-		replicaCounts:   make([]int, NumPartitions),
-		underRepMask:    bitset.New(NumPartitions),
+		replicaCounts:   make([]int, repo.NumPartitions),
+		underRepMask:    bitset.New(uint(repo.NumPartitions)),
 		replicaOwners:   replicaOwners,
+		heartbeatExpiry: repo.HeartbeatExpiry,
+		numReplicas:     repo.NumReplicas,
 	}
 }
 
@@ -119,7 +125,7 @@ func (s *RepoAwarenessStore) ProcessHeartbeat(name enc.Name) {
 	}
 
 	// Set new expiration timer
-	s.expirationTimer[nodeName] = time.AfterFunc(HeartbeatExpiry, func() {
+	s.expirationTimer[nodeName] = time.AfterFunc(s.heartbeatExpiry, func() {
 		s.MarkNodeFailed(node)
 	})
 }
@@ -264,14 +270,14 @@ func (s *RepoAwarenessStore) UpdateNodePartitions(node *RepoNodeAwareness, parti
 func (s *RepoAwarenessStore) CheckPartitionReplication(partition uint64) {
 	log.Debug(s, "Checking partition replication", "partition", partition)
 
-	if s.replicaCounts[partition] < NumReplicas {
+	if s.replicaCounts[partition] < s.numReplicas {
 		s.underRepMask.Set(uint(partition))
 
 		// TODO: handle auction for under-replicated partitions
 		if s.underReplicationHandler != nil {
 			go s.underReplicationHandler(partition) // run in separate goroutine to avoid blocking
 		}
-	} else if s.replicaCounts[partition] > NumReplicas {
+	} else if s.replicaCounts[partition] > s.numReplicas {
 		s.underRepMask.Clear(uint(partition))
 
 		// TODO: handle auction for over-replicated partitions

@@ -9,6 +9,7 @@ import (
 	"github.com/named-data/ndnd/repo/management"
 	facing "github.com/named-data/ndnd/repo/producer-facing"
 	"github.com/named-data/ndnd/repo/storage"
+	"github.com/named-data/ndnd/repo/types"
 
 	enc "github.com/named-data/ndnd/std/encoding"
 	"github.com/named-data/ndnd/std/engine"
@@ -23,7 +24,8 @@ import (
 )
 
 type Repo struct {
-	config *RepoConfig
+	groupConfig *RepoGroupConfig
+	nodeConfig  *RepoNodeConfig
 
 	engine ndn.Engine
 	store  ndn.Store
@@ -39,10 +41,11 @@ type Repo struct {
 	mutex     sync.Mutex
 }
 
-func NewRepo(config *RepoConfig) *Repo {
+func NewRepo(groupConfig *RepoGroupConfig, nodeConfig *RepoNodeConfig) *Repo {
 	return &Repo{
-		config:    config,
-		groupsSvs: make(map[string]*RepoSvs),
+		groupConfig: groupConfig,
+		nodeConfig:  nodeConfig,
+		groupsSvs:   make(map[string]*RepoSvs),
 	}
 }
 
@@ -51,10 +54,10 @@ func (r *Repo) String() string {
 }
 
 func (r *Repo) Start() (err error) {
-	log.Info(r, "Starting NDN Data Repository", "dir", r.config.StorageDir)
+	log.Info(r, "Starting NDN Data Repository", "group", r.groupConfig, "node", r.nodeConfig)
 
 	// Make object store database
-	r.store, err = local_storage.NewBadgerStore(r.config.StorageDir + "/badger")
+	r.store, err = local_storage.NewBadgerStore(r.nodeConfig.StorageDir + "/badger")
 	if err != nil {
 		return err
 	}
@@ -68,7 +71,7 @@ func (r *Repo) Start() (err error) {
 
 	// TODO: Trust config may be specific to application
 	// This may need us to make a client for each app
-	kc, err := keychain.NewKeyChain(r.config.KeyChainUri, r.store)
+	kc, err := keychain.NewKeyChain(r.nodeConfig.KeyChainUri, r.store)
 	if err != nil {
 		return err
 	}
@@ -78,7 +81,7 @@ func (r *Repo) Start() (err error) {
 	schema := trust_schema.NewNullSchema()
 
 	// TODO: handle app-specific case
-	anchors := r.config.TrustAnchorNames()
+	anchors := r.nodeConfig.TrustAnchorNames()
 
 	// Create trust config
 	trust, err := sec.NewTrustConfig(kc, schema, anchors)
@@ -98,8 +101,20 @@ func (r *Repo) Start() (err error) {
 		return err
 	}
 
+	// Create repo shared
+	shared := types.NewRepoShared(r.groupConfig.RepoNameN,
+		r.nodeConfig.NodeNameN,
+		r.groupConfig.NumPartitions,
+		r.groupConfig.NumReplicas,
+		r.groupConfig.HeartbeatInterval,
+		r.groupConfig.HeartbeatExpiry,
+		r.client,
+		r.store,
+		r.engine,
+	)
+
 	// Attach managmemt interest handler
-	commandHandlerPreifx := r.config.RepoNameN.Append(enc.NewGenericComponent("cmd")) // TODO: unify command handler prefix
+	commandHandlerPreifx := r.groupConfig.RepoNameN.Append(enc.NewGenericComponent("cmd")) // TODO: unify command handler prefix
 	if err := r.client.AttachCommandHandler(commandHandlerPreifx, r.onMgmtCmd); err != nil {
 		return err
 	}
@@ -109,33 +124,33 @@ func (r *Repo) Start() (err error) {
 	})
 
 	// Create repo awareness
-	r.awareness = awareness.NewRepoAwareness(r.config.RepoNameN, r.config.NodeNameN, r.client)
+	r.awareness = awareness.NewRepoAwareness(shared)
 	if err := r.awareness.Start(); err != nil {
 		return err
 	}
 
 	// Create repo storage
-	r.storage = storage.NewRepoStorage(r.config.RepoNameN, r.config.NodeNameN, r.store, r.client)
+	r.storage = storage.NewRepoStorage(shared)
 
 	// Create repo auction
 	// TODO: currently we use trivial get bid & on win, etc.
 	testGetBid := func(name string) int {
 		return 100
 	}
-	r.auction = auction.NewAuctionEngine(r.config.NodeNameN, r.config.RepoNameN, 3, r.client, r.awareness.GetOnlineNodes, testGetBid, r.wonAuction)
+	r.auction = auction.NewAuctionEngine(shared, r.awareness.GetOnlineNodes, testGetBid, r.wonAuction)
 	if err := r.auction.Start(); err != nil {
 		return err
 	}
 	log.Info(r, "AuctionEngine started", "auction", r.auction)
 
 	// Create repo facing
-	r.facing = facing.NewProducerFacing(r.config.RepoNameN, r.config.NodeNameN, r.client)
+	r.facing = facing.NewProducerFacing(shared)
 	if err := r.facing.Start(); err != nil {
 		return err
 	}
 
 	// Create repo management
-	r.management = management.NewRepoManagement(r.config.RepoNameN, r.config.NodeNameN, r.client, r.awareness, r.auction, r.storage, r.facing)
+	r.management = management.NewRepoManagement(shared, r.awareness, r.auction, r.storage, r.facing)
 	if err := r.management.Start(); err != nil {
 		return err
 	}
@@ -151,8 +166,8 @@ func (r *Repo) Stop() error {
 	}
 	clear(r.groupsSvs)
 
-	r.client.WithdrawPrefix(r.config.RepoNameN, nil)
-	if err := r.client.DetachCommandHandler(r.config.RepoNameN); err != nil {
+	r.client.WithdrawPrefix(r.groupConfig.RepoNameN, nil)
+	if err := r.client.DetachCommandHandler(r.groupConfig.RepoNameN); err != nil {
 		log.Warn(r, "Failed to detach command handler", "err", err)
 	}
 

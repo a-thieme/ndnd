@@ -8,9 +8,57 @@ import (
 	enc "github.com/named-data/ndnd/std/encoding"
 )
 
-type RepoConfig struct {
-	// Name is the name of the repo service.
+type RepoGroupConfig struct {
+	// RepoName is the name of the repo service.
 	RepoName string `json:"repo_name"`
+	// Number of partitions
+	NumPartitions int `json:"num_partitions"`
+	// Number of replicas
+	NumReplicas int `json:"num_replicas"`
+	// Heartbeat interval
+	HeartbeatInterval float64 `json:"heartbeat_interval"`
+	// Heartbeat expiry
+	HeartbeatExpiry float64 `json:"heartbeat_expiry"`
+
+	// RepoNameN is the parsed name of the repo service.
+	RepoNameN enc.Name
+}
+
+func (c *RepoGroupConfig) ParseGroupConfig() (err error) {
+	c.RepoNameN, err = enc.NameFromStr(c.RepoName)
+	if err != nil || len(c.RepoNameN) == 0 {
+		return fmt.Errorf("failed to parse or invalid repo name (%s): %w", c.RepoName, err)
+	}
+
+	if c.NumPartitions <= 0 {
+		return fmt.Errorf("num_partitions must be positive")
+	}
+	if c.NumReplicas <= 0 {
+		return fmt.Errorf("num_replicas must be positive")
+	}
+	if c.HeartbeatInterval <= 0 {
+		return fmt.Errorf("heartbeat_interval must be positive")
+	}
+	if c.HeartbeatExpiry <= 0 {
+		return fmt.Errorf("heartbeat_expiry must be positive")
+	}
+
+	return nil
+}
+
+func DefaultGroupConfig() *RepoGroupConfig {
+	return &RepoGroupConfig{
+		RepoName:          "", // invalid
+		NumPartitions:     32,
+		NumReplicas:       3,
+		HeartbeatInterval: 5.0,
+		HeartbeatExpiry:   20.0,
+
+		RepoNameN: nil,
+	}
+}
+
+type RepoNodeConfig struct {
 	// NodeName is the name of the node
 	NodeName string `json:"node_name"`
 	// StorageDir is the directory to store data.
@@ -20,17 +68,11 @@ type RepoConfig struct {
 	// List of trust anchor full names.
 	TrustAnchors []string `json:"trust_anchors"`
 
-	// RepoNameN is the parsed name of the repo service.
-	RepoNameN enc.Name
 	// NodeNameN is the parsed name of the node
 	NodeNameN enc.Name
 }
 
-func (c *RepoConfig) Parse() (err error) {
-	c.RepoNameN, err = enc.NameFromStr(c.RepoName)
-	if err != nil || len(c.RepoNameN) == 0 {
-		return fmt.Errorf("failed to parse or invalid repo name (%s): %w", c.RepoName, err)
-	}
+func (c *RepoNodeConfig) ParseNodeConfig() (err error) {
 	c.NodeNameN, err = enc.NameFromStr(c.NodeName)
 	if err != nil || len(c.NodeNameN) == 0 {
 		return fmt.Errorf("failed to parse or invalid node name (%s): %w", c.NodeName, err)
@@ -51,7 +93,7 @@ func (c *RepoConfig) Parse() (err error) {
 	return nil
 }
 
-func (c *RepoConfig) TrustAnchorNames() []enc.Name {
+func (c *RepoNodeConfig) TrustAnchorNames() []enc.Name {
 	res := make([]enc.Name, len(c.TrustAnchors))
 	for i, ta := range c.TrustAnchors {
 		var err error
@@ -63,13 +105,11 @@ func (c *RepoConfig) TrustAnchorNames() []enc.Name {
 	return res
 }
 
-func DefaultConfig() *RepoConfig {
-	return &RepoConfig{
-		RepoName:   "", // invalid
+func DefaultNodeConfig() *RepoNodeConfig {
+	return &RepoNodeConfig{
 		NodeName:   "", // invalid
 		StorageDir: "", // invalid
 
-		RepoNameN: nil,
 		NodeNameN: nil,
 	}
 }

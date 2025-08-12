@@ -57,7 +57,7 @@ func (r *Repo) startSvs(cmd *tlv.SyncJoin) error {
 	}
 
 	// Start group
-	svs := NewRepoSvs(r.config, r.client, cmd)
+	svs := NewRepoSvs(r.nodeConfig, r.client, cmd)
 	if err := svs.Start(); err != nil {
 		return err
 	}

@@ -4,15 +4,10 @@ import (
 	"sync"
 
 	"github.com/named-data/ndnd/repo/tlv"
+	"github.com/named-data/ndnd/repo/types"
 	"github.com/named-data/ndnd/repo/utils"
 	enc "github.com/named-data/ndnd/std/encoding"
 	"github.com/named-data/ndnd/std/log"
-	"github.com/named-data/ndnd/std/ndn"
-)
-
-// TODO: put in one configuration
-const (
-	NumPartitions = 128
 )
 
 // RepoStorage is the storage of the repo
@@ -21,26 +16,18 @@ const (
 type RepoStorage struct {
 	mutex sync.RWMutex
 
-	store      ndn.Store             // the store of the repo
+	repo       *types.RepoShared
 	partitions map[uint64]*Partition // the partitions owned by the repo node
-
-	client ndn.Client
-
-	repoNameN enc.Name // name of the repo node
-	nodeNameN enc.Name // name of the local node
 }
 
 // NewRepoStorage creates a new repo storage
 // TODO: more parameters
-func NewRepoStorage(repoNameN enc.Name, nodeNameN enc.Name, store ndn.Store, client ndn.Client) *RepoStorage {
+func NewRepoStorage(repo *types.RepoShared) *RepoStorage {
 	log.Info(nil, "Created Repo Storage")
 
 	return &RepoStorage{
-		store:      store,
+		repo:       repo,
 		partitions: make(map[uint64]*Partition),
-		client:     client,
-		repoNameN:  repoNameN,
-		nodeNameN:  nodeNameN,
 	}
 }
 
@@ -57,7 +44,7 @@ func (s *RepoStorage) RegisterPartition(id uint64) (err error) {
 	// TODO: we can infer SVS prefix from partition id
 	//  this method handles svs part of partition registration, i.e. joining the group and fetch the right data
 
-	partition := NewPartition(id, s.client, s)
+	partition := NewPartition(id, s.repo)
 	s.partitions[id] = partition
 
 	if err := partition.Start(); err != nil {
@@ -113,7 +100,7 @@ func (s *RepoStorage) HandleCommand(command *tlv.RepoCommand) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
-	partitionId := utils.PartitionIdFromEncName(command.CommandName.Name, NumPartitions)
+	partitionId := utils.PartitionIdFromEncName(command.CommandName.Name, s.repo.NumPartitions)
 	log.Info(s, "Handling command", "command", command, "partition", partitionId)
 
 	s.partitions[partitionId].HandleCommand(command)
@@ -121,10 +108,10 @@ func (s *RepoStorage) HandleCommand(command *tlv.RepoCommand) {
 
 // Put puts data into the storage
 func (s *RepoStorage) Put(name enc.Name, data []byte) (err error) {
-	return s.store.Put(name, data)
+	return s.repo.Store.Put(name, data)
 }
 
 // Remove removes data from the storage
 func (s *RepoStorage) Remove(name enc.Name) (err error) {
-	return s.store.Remove(name)
+	return s.repo.Store.Remove(name)
 }
