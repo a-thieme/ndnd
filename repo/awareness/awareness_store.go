@@ -58,12 +58,35 @@ func (s *RepoAwarenessStore) String() string {
 
 // GetNode retrieves a node's awareness by its name.
 // Returns nil if the node does not exist.
+// Thread-safe.
 func (s *RepoAwarenessStore) GetNode(name string) *RepoNodeAwareness {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
 	node := s.nodeStates[name]
 	return node
+}
+
+// Thread-safe.
+func (s *RepoAwarenessStore) ProduceAwarenessUpdate(name enc.Name) *tlv.AwarenessUpdate {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
+	node := s.nodeStates[name.String()]
+	if node == nil {
+		return nil // node not found
+	}
+
+	// Produce a copy for concurrent operations
+	partitionsCopy := make(map[uint64]bool, len(node.partitions))
+	for k, v := range node.partitions {
+		partitionsCopy[k] = v
+	}
+
+	return &tlv.AwarenessUpdate{
+		NodeName:   node.name,
+		Partitions: partitionsCopy,
+	}
 }
 
 // ProcessHeartbeat processes a heartbeat from a node.
@@ -239,6 +262,8 @@ func (s *RepoAwarenessStore) UpdateNodePartitions(node *RepoNodeAwareness, parti
 // and calls the appropriate handler
 // thread safety is handled by the caller
 func (s *RepoAwarenessStore) CheckPartitionReplication(partition uint64) {
+	log.Debug(s, "Checking partition replication", "partition", partition)
+
 	if s.replicaCounts[partition] < NumReplicas {
 		s.underRepMask.Set(uint(partition))
 

@@ -13,8 +13,8 @@ import (
 
 // TODO: should rely on external configuration
 const (
-	NumPartitions = 32
-	NumReplicas   = 1
+	NumPartitions = 128
+	NumReplicas   = 2
 )
 
 // TODO: we can make these strategy pattern, if desired in the future

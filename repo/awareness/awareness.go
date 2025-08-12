@@ -21,9 +21,9 @@ const (
 	HeartbeatExpiry = 20 * time.Second
 
 	// NumPartitions is the number of partitions in the system.
-	NumPartitions = 32 // TODO: this should be configurable or supplied by the higher layer
+	NumPartitions = 128 // TODO: this should be configurable or supplied by the higher layer
 	// NumReplicas is the minimum number of replicas per partition.
-	NumReplicas = 1 // TODO: this should be configurable or supplied by the higher
+	NumReplicas = 2 // TODO: this should be configurable or supplied by the higher
 )
 
 // Config passed to awareness module
@@ -39,11 +39,11 @@ type RepoAwareness struct {
 	mutex sync.RWMutex
 
 	// name of the local node
-	name enc.Name
+	nodeNameN enc.Name
+	nodeName  string // for convenience
 
 	// awareness of the cluster
-	localState *RepoNodeAwareness // TODO: store local awareness with others
-	storage    *RepoAwarenessStore
+	storage *RepoAwarenessStore
 
 	// health ndn client
 	client ndn.Client
@@ -73,9 +73,9 @@ func NewRepoAwareness(repoNameN enc.Name, nodeNameN enc.Name, client ndn.Client)
 	heartbeatPrefix := repoNameN.Append(enc.NewGenericComponent("heartbeat"))
 
 	return &RepoAwareness{
-		name:               nodeNameN,
+		nodeNameN:          nodeNameN,
+		nodeName:           nodeNameN.String(),
 		client:             client, // use Repo shared client
-		localState:         NewRepoNodeAwareness(nodeNameN.String()),
 		storage:            NewRepoAwarenessStore(),
 		awarenessSvsPrefix: awarenessPrefix,
 		heartbeatSvsPrefix: heartbeatPrefix,
@@ -91,7 +91,7 @@ func (r *RepoAwareness) Start() (err error) {
 
 	// Start awareness SVS
 	r.awarenessSvs, err = ndn_sync.NewSvsALO(ndn_sync.SvsAloOpts{
-		Name: r.name,
+		Name: r.nodeNameN,
 		Svs: ndn_sync.SvSyncOpts{
 			Client:            r.client,
 			GroupPrefix:       r.awarenessSvsPrefix,
@@ -134,7 +134,7 @@ func (r *RepoAwareness) Start() (err error) {
 		Client:      r.client,
 		GroupPrefix: r.heartbeatSvsPrefix,
 		OnUpdate: func(pub ndn_sync.SvSyncUpdate) {
-			log.Info(r, "Received heartbeat", pub)
+			// log.Info(r, "Received heartbeat", pub)
 			r.storage.ProcessHeartbeat(pub.Name)
 		},
 	})
@@ -173,6 +173,9 @@ func (r *RepoAwareness) Start() (err error) {
 	if err := r.StartHeartbeat(); err != nil {
 		log.Error(r, "Failed to start heartbeat", "err", err)
 	}
+
+	// Mark our initial state as alive
+	r.storage.ProcessHeartbeat(r.nodeNameN) // the first heartbeat a node hears is its own
 
 	// DEBUG: start with an assigned partition
 	if rand.Float64() < 0.5 {
@@ -245,7 +248,7 @@ func (r *RepoAwareness) StartHeartbeat() (err error) {
 		log.Error(r, "Failed to start heartbeat SVS", "err", err)
 		return err
 	}
-	log.Info(r, "Heartbeat started", "node", r.name)
+	log.Info(r, "Heartbeat started", "node", r.nodeNameN)
 
 	// start ticker
 	r.ticker = time.NewTicker(HeartbeatInterval)
@@ -258,10 +261,16 @@ func (r *RepoAwareness) StartHeartbeat() (err error) {
 		for {
 			select {
 			case <-r.ticker.C:
+				r.storage.ProcessHeartbeat(r.nodeNameN) // it's a hack so the node knows itself is alive
+
 				log.Info(r, "Heartbeat published", "time", time.Now())
-				r.heartbeatSvs.IncrSeqNo(r.name)
+				r.heartbeatSvs.IncrSeqNo(r.nodeNameN)
+
 				r.publishAwarenessUpdate() // TODO: test: periodically publish awareness update
+
+				r.mutex.Lock()
 				r.storage.CheckReplications()
+				r.mutex.Unlock()
 			case <-r.stop:
 				return
 			}
@@ -272,17 +281,13 @@ func (r *RepoAwareness) StartHeartbeat() (err error) {
 }
 
 // PublishAwarenessUpdate publishes an awareness update with the current node state
+// Thread-safe
 func (r *RepoAwareness) publishAwarenessUpdate() {
 	// create awareness update
-	r.mutex.RLock()
-	awarenessUpdate := &tlv.AwarenessUpdate{
-		NodeName:   r.name.String(),
-		Partitions: r.localState.partitions, // Get partitions this node is responsible for
-	}
-	r.mutex.RUnlock()
+	awarenessUpdate := r.storage.ProduceAwarenessUpdate(r.nodeNameN)
 
 	// publish to awareness SVS
-	log.Info(r, "Publishing awareness update", "time", time.Now(), "src", r.name, "partitions", awarenessUpdate.Partitions)
+	log.Info(r, "Publishing awareness update", "time", time.Now(), "src", r.nodeNameN, "partitions", awarenessUpdate.Partitions)
 	_, _, err := r.awarenessSvs.Publish(awarenessUpdate.Encode())
 	if err != nil {
 		log.Error(r, "Error publishing awareness update", "err", err, "time", time.Now())
@@ -290,26 +295,38 @@ func (r *RepoAwareness) publishAwarenessUpdate() {
 }
 
 // AddLocalPartition adds a partition to the local state and publishes an awareness update
+// Thread-safe
 // TODO: update the storage to reflect the change
 func (r *RepoAwareness) AddLocalPartition(partitionId uint64) {
-	if _, exists := r.localState.partitions[partitionId]; !exists {
+	r.mutex.Lock()
+	if _, exists := r.storage.nodeStates[r.nodeName].partitions[partitionId]; !exists {
 		log.Info(r, "Adding local partition", "id", partitionId)
-		r.mutex.Lock()
-		r.localState.partitions[partitionId] = true
+		r.storage.nodeStates[r.nodeName].partitions[partitionId] = true
+		r.storage.replicaOwners[partitionId][r.nodeName] = true
+		r.storage.replicaCounts[partitionId]++
 		r.mutex.Unlock() // TODO: separate method
+
 		r.publishAwarenessUpdate()
+	} else {
+		r.mutex.Unlock()
 	}
 }
 
 // DropLocalPartition drops a partition from the local state and publishes an awareness update
+// Thread-safe
 // TODO: update the storage to reflect the change
 func (r *RepoAwareness) DropLocalPartition(partitionId uint64) {
-	if _, exists := r.localState.partitions[partitionId]; exists {
+	r.mutex.Lock()
+	if _, exists := r.storage.nodeStates[r.nodeName].partitions[partitionId]; exists {
 		log.Info(r, "Dropping local partition", "id", partitionId)
-		r.mutex.Lock()
-		delete(r.localState.partitions, partitionId)
+		delete(r.storage.nodeStates[r.nodeName].partitions, partitionId)
+		delete(r.storage.replicaOwners[partitionId], r.nodeName)
+		r.storage.replicaCounts[partitionId]--
 		r.mutex.Unlock() // TODO: separate method
+
 		r.publishAwarenessUpdate()
+	} else {
+		r.mutex.Unlock()
 	}
 }
 
@@ -343,7 +360,6 @@ func (r *RepoAwareness) GetOnlineNodes() []enc.Name {
 			nameNs = append(nameNs, nameN)
 		}
 	}
-	nameNs = append(nameNs, r.name) // add self to the list
 	return nameNs
 }
 
