@@ -1,11 +1,14 @@
 package producerfacing
 
 import (
+	"time"
+
 	"github.com/named-data/ndnd/repo/tlv"
 	"github.com/named-data/ndnd/repo/types"
 	enc "github.com/named-data/ndnd/std/encoding"
 	"github.com/named-data/ndnd/std/log"
 	"github.com/named-data/ndnd/std/ndn"
+	"github.com/named-data/ndnd/std/types/optional"
 )
 
 // RepoProducerFacing is the producer facing component of the repo
@@ -81,6 +84,22 @@ func (p *RepoProducerFacing) onRepoNotify(args ndn.InterestHandlerArgs) {
 	// TODO: check digest?
 
 	p.notifyReplicasHandler(command) // notify responsible replicas
+
+	// Reply to the command - "Repo has received the command"
+	data, err := p.repo.Engine.Spec().MakeData(
+		interest.Name(),
+		&ndn.DataConfig{
+			ContentType: optional.Some(ndn.ContentTypeBlob),
+			Freshness:   optional.Some(10 * time.Second),
+		},
+		enc.Wire{[]byte{}},
+		nil,
+	)
+	if err != nil {
+		log.Error(p, "Failed to make reply data", "err", err)
+		return
+	}
+	args.Reply(data.Wire)
 }
 
 // onNodeNotify is called when a node notify interest is received
@@ -101,7 +120,7 @@ func (p *RepoProducerFacing) onNodeNotify(args ndn.InterestHandlerArgs) {
 
 	commandType := command.CommandType
 	srcName := command.SrcName.Name
-	log.Info(p, "Received direct command", "commandName", commandType, "srcName", srcName) // TODO: need to come up with a better name
+	log.Info(p, "Received responsible node command", "commandName", commandType, "srcName", srcName) // TODO: need a better name
 
 	p.processCommandHandler(command)
 }

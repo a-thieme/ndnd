@@ -2,7 +2,10 @@ package main
 
 import (
 	"crypto/rand"
+	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/named-data/ndnd/repo/tlv"
@@ -97,27 +100,42 @@ func (p *TestRepoProducer) Stop() error {
 }
 
 func (p *TestRepoProducer) OnInterest(args ndn.InterestHandlerArgs) {
+	log.Info(p, "OnInterest", "name", args.Interest.Name())
+
 	name := args.Interest.Name()
-	data, err := p.store.Get(name, false)
-	if err != nil {
+	wire, err := p.store.Get(name, args.Interest.CanBePrefix())
+	if err != nil || wire == nil {
 		log.Warn(p, "No data", "name", name)
 		return
 	}
 
-	args.Reply(enc.Wire{data})
+	log.Info(p, "Replied data", "name", name)
+	args.Reply(enc.Wire{wire})
 }
 
 // insertData inserts a randomly generated data of certain size to repo
 func (p *TestRepoProducer) insertData(name enc.Name, size int) {
 	log.Info(p, "Inserting data", "name", name, "size", size)
 
-	data := make([]byte, size)
-	rand.Read(data)
+	content := make([]byte, size)
+	rand.Read(content)
 
-	// Put data in the store
-	p.client.Store().Put(name, data)
+	// Put data in the store & announce prefix
+	p.client.AnnouncePrefix(ndn.Announcement{
+		Name:   name,
+		Expose: true,
+	})
 
-	p.sendCommand(CommandTypeInsert, name)
+	finalNameN, err := p.client.Produce(ndn.ProduceArgs{
+		Name:    name.WithVersion(enc.VersionUnixMicro),
+		Content: enc.Wire{content},
+	})
+	if err != nil {
+		log.Error(p, "Failed to produce data", "finalName", finalNameN, "err", err)
+		return
+	}
+
+	p.sendCommand(CommandTypeInsert, finalNameN)
 }
 
 // deleteData sends a command to the repo to delete a data packet
@@ -162,6 +180,13 @@ func (p *TestRepoProducer) sendCommand(commandType CommandType, name enc.Name) {
 			Lifetime:    optional.Some(10 * time.Second),
 		},
 		Retries: 0,
+		Callback: func(args ndn.ExpressCallbackArgs) {
+			if args.Result == ndn.InterestResultData {
+				log.Info(p, "Command received by Repo", "command", commandType, "name", name)
+			} else {
+				log.Error(p, "Command error", "command", commandType, "name", name, "result", args.Result)
+			}
+		},
 	})
 }
 
@@ -171,11 +196,15 @@ func main() {
 	defer producer.Stop()
 
 	for i := 0; i < 10; i++ {
-		dataNameN, err := enc.NameFromStr("/test/data/" + strconv.Itoa(i))
+		dataNameN, err := enc.NameFromStr(producerName + "/data/" + strconv.Itoa(i))
 		if err != nil {
-			log.Error(producer, "Failed to parse name", "name", "/test/data/"+strconv.Itoa(i), "err", err)
+			log.Error(producer, "Failed to parse name", "name", dataNameN, "err", err)
 			continue
 		}
 		producer.insertData(dataNameN, 1024)
 	}
+
+	sigChannel := make(chan os.Signal, 1)
+	signal.Notify(sigChannel, os.Interrupt, syscall.SIGTERM)
+	<-sigChannel
 }

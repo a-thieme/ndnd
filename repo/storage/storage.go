@@ -18,6 +18,8 @@ type RepoStorage struct {
 
 	repo       *types.RepoShared
 	partitions map[uint64]*Partition // the partitions owned by the repo node
+
+	fetchDataHandler func(name enc.Name)
 }
 
 // NewRepoStorage creates a new repo storage
@@ -50,7 +52,7 @@ func (s *RepoStorage) RegisterPartition(id uint64) (err error) {
 		return nil
 	}
 
-	partition := NewPartition(id, s.repo)
+	partition := NewPartition(id, s.repo, s) // TODO: very ugly design, need to refactor
 	s.partitions[id] = partition
 
 	if err := partition.Start(); err != nil {
@@ -115,7 +117,7 @@ func (s *RepoStorage) HandleCommand(command *tlv.RepoCommand) {
 		return
 	}
 
-	partition.HandleCommand(command)
+	partition.CommitCommand(command)
 }
 
 // Put puts data into the storage
@@ -126,4 +128,63 @@ func (s *RepoStorage) Put(name enc.Name, data []byte) (err error) {
 // Remove removes data from the storage
 func (s *RepoStorage) Remove(name enc.Name) (err error) {
 	return s.repo.Store.Remove(name)
+}
+
+func (s *RepoStorage) GetPartition(name enc.Name) *Partition {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
+	partitionId := utils.PartitionIdFromEncName(name, s.repo.NumPartitions)
+	partition, exists := s.partitions[partitionId]
+
+	if !exists {
+		return nil
+	} else {
+		return partition
+	}
+}
+
+// CommitInsert puts an insertion command and relevant data into the storage, and updates partition state
+func (s *RepoStorage) CommitInsert(name enc.Name, command *tlv.RepoCommand, data enc.Wire) (err error) {
+	partition := s.GetPartition(name)
+	err = partition.CommitInsert(command)
+
+	// All incoming data are automatically stored in the store (setupEngineHook), so we don't need to do it explicitly here.
+	// s.Put(name, data.Join())
+
+	return err
+}
+
+func (s *RepoStorage) CommitDelete(name enc.Name, command *tlv.RepoCommand) (err error) {
+	partition := s.GetPartition(name)
+	err = partition.CommitDelete(command)
+
+	s.repo.Store.Remove(name) // remove data from the store
+
+	return err
+}
+
+func (s *RepoStorage) CommitJoin(name enc.Name, command *tlv.RepoCommand) (err error) {
+	partition := s.GetPartition(name)
+	err = partition.CommitJoin(command)
+
+	// User sync groups are handled by each partition independently, and only the data uses shared storage
+
+	return err
+}
+
+func (s *RepoStorage) CommitLeave(name enc.Name, command *tlv.RepoCommand) (err error) {
+	partition := s.GetPartition(name)
+	err = partition.CommitLeave(command)
+
+	// TODO: remove all data in the user sync group from the store
+
+	return err
+}
+
+func (s *RepoStorage) SetFetchDataHandler(handler func(name enc.Name)) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	s.fetchDataHandler = handler
 }

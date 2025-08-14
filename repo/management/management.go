@@ -11,6 +11,7 @@ import (
 	"github.com/named-data/ndnd/repo/storage"
 	"github.com/named-data/ndnd/repo/tlv"
 	"github.com/named-data/ndnd/repo/types"
+	enc "github.com/named-data/ndnd/std/encoding"
 	"github.com/named-data/ndnd/std/log"
 )
 
@@ -25,6 +26,7 @@ const (
 	// TODO: repo-producer communication
 	EventNotifyReplicas EventType = "notify_replicas"
 	EventProcessCommand EventType = "process_event"
+	EventFetchData      EventType = "fetch_data"
 )
 
 // Event represents a Repo system event that needs handling
@@ -116,6 +118,7 @@ func (m *RepoManagement) Stop() error {
 // setupHandlers sets up all event handlers
 // RunHandler arguments are: eventType, handlerID, handler
 // (eventType, handlerID) are used to identify any handler. Attempts to register handlers with the same (eventType, handlerID) will be ignored.
+// Handlers will be ran in a separate goroutine, so blocking is not a concern
 func (m *RepoManagement) setupHandlers() {
 	// Awareness handlers
 	m.awareness.SetOnUnderReplication(func(partition uint64) {
@@ -138,5 +141,10 @@ func (m *RepoManagement) setupHandlers() {
 
 	m.producerFacing.SetOnProcessCommand(func(command *tlv.RepoCommand) {
 		go m.RunHandler(EventProcessCommand, command.SrcName.Name.String(), func() { m.ProcessCommandHandler(command) })
+	})
+
+	// Storage handlers
+	m.storage.SetFetchDataHandler(func(name enc.Name) { // TODO: this is a hack to allow running the same handler multiple times for the same data name
+		go m.RunHandler(EventFetchData, name.String()+time.Now().String(), func() { m.FetchDataHandler(name) })
 	})
 }

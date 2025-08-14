@@ -12,6 +12,8 @@ import (
 	"github.com/named-data/ndnd/std/ndn"
 )
 
+// NOTE: every handler registered by the management module will be ran in a separate goroutine, so blocking is not a concern
+
 // TODO: we can make these strategy pattern, if desired in the future
 // under-replication handler, retries with exponential backoff
 // blocking, should be ran in a separate goroutine
@@ -79,7 +81,7 @@ func (m *RepoManagement) NotifyReplicasHandler(command *tlv.RepoCommand) {
 	for _, replica := range replicas {
 		if replica.Equal(m.repo.NodeNameN) { // if local node is responsible for the partition
 			log.Info(m, "Sending command to local replica", "replica", replica)
-			m.ProcessCommandHandler(command) // directly handles the command
+			m.storage.HandleCommand(command) // directly handles the command
 			continue
 		}
 
@@ -120,4 +122,47 @@ func (m *RepoManagement) ProcessCommandHandler(command *tlv.RepoCommand) {
 
 	// handle the command
 	m.storage.HandleCommand(command)
+}
+
+// Launches a job to fetch a data from the network
+func (m *RepoManagement) FetchDataHandler(dataNameN enc.Name) {
+	partitionId := utils.PartitionIdFromEncName(dataNameN, m.repo.NumPartitions)
+
+	if !m.awareness.OwnsPartition(partitionId) {
+		return
+	}
+
+	log.Info(m, "Fetching data", "name", dataNameN)
+
+	retries := -1 // -1 means infinite retries - the job is considered successful only if the relevant data is received
+	waitPeriod := 5 * time.Second
+	maxBackoff := 30 * time.Second
+	randomness := 2.0 // TODO: make this configurable, factory?
+
+	ch := make(chan ndn.ConsumeState, 1)
+
+	for retries != 0 {
+		// if _, ok := m.repo.Store.Get(dataNameN, true); ok != nil {
+		// 	break // early-termination if data is already in the store
+		// }
+
+		// Fetch data blob
+		m.repo.Client.Consume(dataNameN, func(status ndn.ConsumeState) {
+			ch <- status
+		})
+
+		status := <-ch
+		if status.Error() != nil {
+			log.Warn(m, "BlobFetch error, retrying", "err", status.Error(), "name", dataNameN)
+			time.Sleep(min(waitPeriod, maxBackoff) + time.Duration(rand.Float64()*randomness))
+			waitPeriod *= 2
+			retries--
+		} else {
+			log.Info(m, "Data fetched", "name", dataNameN)
+			break // early-termination if data is received
+			// we don't need to specifically handle the content since there is an engine hook to store all received data
+		}
+	}
+
+	// TODO: the assumption here is that command can be committed to the group state before the data is available, hence we keep retrying to fetch the relevant data. This, however, cause unnecessary traffics. Also, if the producer, for any reason, send the command again, we need to fetch the data again immediately, so the handler's id should not be tied to the data name.
 }
