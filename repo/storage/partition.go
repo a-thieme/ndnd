@@ -36,7 +36,7 @@ type Partition struct {
 	svsGroup  *ndn_sync.SvsALO // the SVS group
 
 	// commands
-	commands *types.RandomAccessDoubleLinkedList[string, *tlv.RepoCommand]
+	commands *CommandStore
 
 	// storage
 	size           uint64 // the estimated size of the partition, in bytes
@@ -63,7 +63,7 @@ func NewPartition(id uint64, repo *types.RepoShared, storage *RepoStorage) *Part
 		svsPrefix:      nil,
 		svsGroup:       nil,
 		status:         Registered,
-		commands:       types.NewRandomAccessDoubleLinkedList[string, *tlv.RepoCommand](),
+		commands:       NewCommandStore(),
 		userSyncGroups: make(map[string]*PartitionSvs),
 		repo:           repo,
 		storage:        storage,
@@ -101,6 +101,11 @@ func (p *Partition) Start() (err error) {
 	if err != nil {
 		return err
 	}
+
+	// set on insertion handler
+	p.commands.SetOnInsertion(func(command *tlv.RepoCommand) {
+		p.svsGroup.Publish(command.Encode())
+	})
 
 	// Set error handler
 	p.svsGroup.SetOnError(func(error) {
@@ -191,25 +196,18 @@ func (p *Partition) Stop() (err error) {
 
 // Snap takes a snapshot of this partition
 // TODO: this is probably buggy and needs to be fixed
-func (p *Partition) Snap() enc.Wire {
-	p.mutex.RLock()
-	defer p.mutex.RUnlock()
+// func (p *Partition) Snap() enc.Wire {
+// 	p.mutex.RLock()
+// 	defer p.mutex.RUnlock()
 
-	snap := tlv.PartitionSnapshot{
-		Commands: make([]*tlv.RepoCommand, 0),
-	}
-
-	// TODO: optimization: if there is a delete command after insert, we don't need to include either in the snapshot
-	for it := p.commands.Begin(); it != p.commands.End(); it = it.Next() {
-		snap.Commands = append(snap.Commands, it.Value())
-	}
-
-	return snap.Encode()
-}
+// 	return enc.Wire{p.commands.Snap()}
+// }
 
 // Commit operations ensure commands are persisted to the commands list
 // However, it doesn't ensure the data is available yet. (i.e. the client could still be fetching data)
 func (p *Partition) CommitCommand(command *tlv.RepoCommand) (err error) {
+	log.Info(p, "Committing command", "command", command)
+
 	switch command.CommandType {
 	case "INSERT":
 		return p.CommitInsert(command)
@@ -235,9 +233,20 @@ func (p *Partition) CommitInsert(command *tlv.RepoCommand) (err error) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
+	// Check if the data is already in the store, otherwise launch a fetch job on it
+	if wire, _ := p.repo.Store.Get(command.SrcName.Name, true); wire == nil {
+		p.storage.fetchDataHandler(command.SrcName.Name)
+	}
+
 	// Push to commands
-	p.commands.PushBack(command.SrcName.Name.String(), command)
-	p.storage.fetchDataHandler(command.SrcName.Name)
+	key := command.SrcName.Name.String()
+	if p.commands.Contains(key) {
+		// if we already have the command, ignore
+		return nil
+	}
+
+	// otherwise, push to the command store
+	p.commands.Insert(command)
 
 	return nil
 }
@@ -261,20 +270,21 @@ func (p *Partition) CommitJoin(command *tlv.RepoCommand) (err error) {
 	defer p.mutex.RUnlock()
 
 	// Check if already started
-	hash := command.SrcName.Name.String()
-	if _, exists := p.userSyncGroups[hash]; exists {
+	key := command.SrcName.Name.String()
+	if _, exists := p.userSyncGroups[key]; exists {
+		// if we are already in the sync group, ignore
 		return nil
 	}
 
 	// Push to commands
-	p.commands.PushBack(command.SrcName.Name.String(), command)
+	p.commands.Insert(command)
 
 	// Start partition svs group
 	svs := NewPartitionSvs(p.id, p.repo, command)
 	if err := svs.Start(); err != nil {
 		return err
 	}
-	p.userSyncGroups[hash] = svs
+	p.userSyncGroups[key] = svs
 
 	return nil
 }

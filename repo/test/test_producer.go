@@ -120,14 +120,14 @@ func (p *TestRepoProducer) OnInterest(args ndn.InterestHandlerArgs) {
 func (p *TestRepoProducer) insertData(name enc.Name, size int) enc.Name {
 	log.Info(p, "Inserting data", "name", name, "size", size)
 
-	content := make([]byte, size)
-	rand.Read(content)
-
 	// Put data in the store & announce prefix
 	p.client.AnnouncePrefix(ndn.Announcement{
 		Name:   name,
 		Expose: true,
 	})
+
+	content := make([]byte, size)
+	rand.Read(content)
 
 	finalNameN, err := p.client.Produce(ndn.ProduceArgs{
 		Name:    name.WithVersion(enc.VersionUnixMicro),
@@ -227,7 +227,7 @@ func (p *TestRepoProducer) sendStatusRequest(name enc.Name) {
 					log.Error(p, "Failed to parse status reply", "name", name, "err", err)
 					return
 				}
-				log.Info(p, "Status request received by Repo", "name", name, "status", reply.Status)
+				log.Info(p, "Received status request from Repo", "name", name, "status", reply.Status)
 			} else {
 				log.Error(p, "Status request error", "name", name, "result", args.Result)
 			}
@@ -245,15 +245,25 @@ func main() {
 	checkData := make([]enc.Name, totalData)
 
 	for i := 0; i < totalData; i++ {
+		dataNameN, _ := enc.NameFromStr(producerName + "/data/" + strconv.Itoa(i))
+		producer.client.AnnouncePrefix(ndn.Announcement{
+			Name:   dataNameN,
+			Expose: true,
+		})
+	}
+
+	time.Sleep(3 * time.Second)
+
+	for i := 0; i < totalData; i++ {
 		dataNameN, err := enc.NameFromStr(producerName + "/data/" + strconv.Itoa(i))
 		if err != nil {
 			log.Error(producer, "Failed to parse name", "name", dataNameN, "err", err)
 			continue
 		}
-		checkData[i] = producer.insertData(dataNameN, 1024)
+		checkData[i] = producer.insertData(dataNameN, 1024*1024) // 1MB
 	}
 
-	time.Sleep(20 * time.Second) // So the repo has time to process the data
+	time.Sleep(4 * time.Second) // So the repo has time to process the data
 	for i := 0; i < totalData; i++ {
 		dataNameN, err := enc.NameFromStr(producerName + "/data/" + strconv.Itoa(i))
 		if err != nil {

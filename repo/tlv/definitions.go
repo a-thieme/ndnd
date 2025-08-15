@@ -2,8 +2,11 @@
 package tlv
 
 import (
+	"time"
+
 	enc "github.com/named-data/ndnd/std/encoding"
 	spec "github.com/named-data/ndnd/std/ndn/spec_2022"
+	// "github.com/named-data/ndnd/std/types/optional"
 )
 
 var SyncProtocolSvsV3 = enc.Name{
@@ -88,6 +91,15 @@ type RepoStatusReply struct {
 	Status uint64 `tlv:"0x281"`
 }
 
+// TODO: for now this is just a wrapper of RepoCommand
+type InternalCommandEntry struct {
+	//+field:struct:RepoCommand
+	Command *RepoCommand `tlv:"0x290"`
+	//+field:time
+	Timestamp time.Duration `tlv:"0x291"`
+}
+
+// TODO: need to replace it with internal command entry
 type PartitionSnapshot struct {
 	//+field:sequence:*RepoCommand:struct:RepoCommand
 	Commands []*RepoCommand `tlv:"0x2A0"`

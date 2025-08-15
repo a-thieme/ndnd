@@ -6,6 +6,8 @@ import (
 	"io"
 	"strings"
 
+	"time"
+
 	enc "github.com/named-data/ndnd/std/encoding"
 	spec "github.com/named-data/ndnd/std/ndn/spec_2022"
 )
@@ -1981,6 +1983,177 @@ func (value *RepoStatusReply) Bytes() []byte {
 
 func ParseRepoStatusReply(reader enc.WireView, ignoreCritical bool) (*RepoStatusReply, error) {
 	context := RepoStatusReplyParsingContext{}
+	context.Init()
+	return context.Parse(reader, ignoreCritical)
+}
+
+type InternalCommandEntryEncoder struct {
+	Length uint
+
+	Command_encoder RepoCommandEncoder
+}
+
+type InternalCommandEntryParsingContext struct {
+	Command_context RepoCommandParsingContext
+}
+
+func (encoder *InternalCommandEntryEncoder) Init(value *InternalCommandEntry) {
+	if value.Command != nil {
+		encoder.Command_encoder.Init(value.Command)
+	}
+
+	l := uint(0)
+	if value.Command != nil {
+		l += 3
+		l += uint(enc.TLNum(encoder.Command_encoder.Length).EncodingLength())
+		l += encoder.Command_encoder.Length
+	}
+	l += 3
+	l += uint(1 + enc.Nat(uint64(value.Timestamp/time.Millisecond)).EncodingLength())
+	encoder.Length = l
+
+}
+
+func (context *InternalCommandEntryParsingContext) Init() {
+	context.Command_context.Init()
+
+}
+
+func (encoder *InternalCommandEntryEncoder) EncodeInto(value *InternalCommandEntry, buf []byte) {
+
+	pos := uint(0)
+
+	if value.Command != nil {
+		buf[pos] = 253
+		binary.BigEndian.PutUint16(buf[pos+1:], uint16(656))
+		pos += 3
+		pos += uint(enc.TLNum(encoder.Command_encoder.Length).EncodeInto(buf[pos:]))
+		if encoder.Command_encoder.Length > 0 {
+			encoder.Command_encoder.EncodeInto(value.Command, buf[pos:])
+			pos += encoder.Command_encoder.Length
+		}
+	}
+	buf[pos] = 253
+	binary.BigEndian.PutUint16(buf[pos+1:], uint16(657))
+	pos += 3
+
+	buf[pos] = byte(enc.Nat(uint64(value.Timestamp / time.Millisecond)).EncodeInto(buf[pos+1:]))
+	pos += uint(1 + buf[pos])
+}
+
+func (encoder *InternalCommandEntryEncoder) Encode(value *InternalCommandEntry) enc.Wire {
+
+	wire := make(enc.Wire, 1)
+	wire[0] = make([]byte, encoder.Length)
+	buf := wire[0]
+	encoder.EncodeInto(value, buf)
+
+	return wire
+}
+
+func (context *InternalCommandEntryParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*InternalCommandEntry, error) {
+
+	var handled_Command bool = false
+	var handled_Timestamp bool = false
+
+	progress := -1
+	_ = progress
+
+	value := &InternalCommandEntry{}
+	var err error
+	var startPos int
+	for {
+		startPos = reader.Pos()
+		if startPos >= reader.Length() {
+			break
+		}
+		typ := enc.TLNum(0)
+		l := enc.TLNum(0)
+		typ, err = reader.ReadTLNum()
+		if err != nil {
+			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
+		}
+		l, err = reader.ReadTLNum()
+		if err != nil {
+			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
+		}
+
+		err = nil
+		if handled := false; true {
+			switch typ {
+			case 656:
+				if true {
+					handled = true
+					handled_Command = true
+					value.Command, err = context.Command_context.Parse(reader.Delegate(int(l)), ignoreCritical)
+				}
+			case 657:
+				if true {
+					handled = true
+					handled_Timestamp = true
+					{
+						timeInt := uint64(0)
+						timeInt = uint64(0)
+						{
+							for i := 0; i < int(l); i++ {
+								x := byte(0)
+								x, err = reader.ReadByte()
+								if err != nil {
+									if err == io.EOF {
+										err = io.ErrUnexpectedEOF
+									}
+									break
+								}
+								timeInt = uint64(timeInt<<8) | uint64(x)
+							}
+						}
+						value.Timestamp = time.Duration(timeInt) * time.Millisecond
+					}
+				}
+			default:
+				if !ignoreCritical && ((typ <= 31) || ((typ & 1) == 1)) {
+					return nil, enc.ErrUnrecognizedField{TypeNum: typ}
+				}
+				handled = true
+				err = reader.Skip(int(l))
+			}
+			if err == nil && !handled {
+			}
+			if err != nil {
+				return nil, enc.ErrFailToParse{TypeNum: typ, Err: err}
+			}
+		}
+	}
+
+	startPos = reader.Pos()
+	err = nil
+
+	if !handled_Command && err == nil {
+		value.Command = nil
+	}
+	if !handled_Timestamp && err == nil {
+		err = enc.ErrSkipRequired{Name: "Timestamp", TypeNum: 657}
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return value, nil
+}
+
+func (value *InternalCommandEntry) Encode() enc.Wire {
+	encoder := InternalCommandEntryEncoder{}
+	encoder.Init(value)
+	return encoder.Encode(value)
+}
+
+func (value *InternalCommandEntry) Bytes() []byte {
+	return value.Encode().Join()
+}
+
+func ParseInternalCommandEntry(reader enc.WireView, ignoreCritical bool) (*InternalCommandEntry, error) {
+	context := InternalCommandEntryParsingContext{}
 	context.Init()
 	return context.Parse(reader, ignoreCritical)
 }

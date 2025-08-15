@@ -97,13 +97,13 @@ func (p *RepoProducerFacing) onExternalNotify(args ndn.InterestHandlerArgs) {
 	interest := args.Interest
 
 	if interest.AppParam() == nil {
-		log.Warn(p, "Notify interest has no app param, ignoring")
+		log.Trace(p, "Notify interest has no app param, ignoring")
 		return
 	}
 
 	command, err := tlv.ParseRepoCommand(enc.NewWireView(interest.AppParam()), true)
 	if err != nil {
-		log.Warn(p, "Failed to parse notify app param", "err", err)
+		log.Trace(p, "Failed to parse notify app param", "err", err)
 		return
 	}
 
@@ -137,20 +137,20 @@ func (p *RepoProducerFacing) onInternalNotify(args ndn.InterestHandlerArgs) {
 	interest := args.Interest
 
 	if interest.AppParam() == nil {
-		log.Warn(p, "Notify interest has no app param, ignoring")
+		log.Trace(p, "Notify interest has no app param, ignoring")
 		return
 	}
 
 	command, err := tlv.ParseRepoCommand(enc.NewWireView(interest.AppParam()), true)
 
 	if err != nil {
-		log.Warn(p, "Failed to parse command", "err", err)
+		log.Trace(p, "Failed to parse command", "err", err)
 		return
 	}
 
 	commandType := command.CommandType
 	srcName := command.SrcName.Name
-	log.Info(p, "Received responsible internal command", "commandName", commandType, "srcName", srcName) // TODO: need a better name
+	log.Info(p, "Received interneal notify command", "commandName", commandType, "srcName", srcName) // TODO: need a better name
 
 	p.processCommandHandler(command)
 }

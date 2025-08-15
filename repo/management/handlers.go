@@ -138,9 +138,9 @@ func (m *RepoManagement) FetchDataHandler(dataNameN enc.Name) {
 	log.Info(m, "Fetching data", "name", dataNameN)
 
 	retries := -1 // -1 means infinite retries - the job is considered successful only if the relevant data is received
-	waitPeriod := 5 * time.Second
+	waitPeriod := 500 * time.Millisecond
 	maxBackoff := 30 * time.Second
-	randomness := 2.0 // TODO: make this configurable, factory?
+	randomness := 5.0 // TODO: make this configurable, factory?
 
 	ch := make(chan ndn.ConsumeState, 1)
 
@@ -148,6 +148,7 @@ func (m *RepoManagement) FetchDataHandler(dataNameN enc.Name) {
 		// This line checks if the data object is in store, not any segments
 		if wire, _ := m.repo.Store.Get(dataNameN, false); wire != nil {
 			break // early-termination if data is already in the store
+			// TODO: this is not very efficient - we should have a method to check if a data object is in store
 		}
 
 		// Fetch data blob
@@ -161,7 +162,7 @@ func (m *RepoManagement) FetchDataHandler(dataNameN enc.Name) {
 
 		if status.Error() != nil {
 			log.Warn(m, "BlobFetch error, retrying", "err", status.Error(), "name", dataNameN)
-			time.Sleep(min(waitPeriod, maxBackoff) + time.Duration(rand.Float64()*randomness))
+			time.Sleep(min(waitPeriod, maxBackoff) + time.Duration(rand.Float64()*randomness*float64(time.Second)))
 			waitPeriod *= 2
 			retries--
 		} else {
@@ -197,7 +198,7 @@ func (m *RepoManagement) ExternalStatusRequestHandler(interestHandler *ndn.Inter
 	}()
 
 	// Track responses
-	quorumRatio := 0.7
+	quorumRatio := 0.5
 	quorum := int(math.Ceil(quorumRatio * float64(m.repo.NumReplicas))) // TODO: make this configurable, and it should be a percentage (with rounding) of the replication factor
 
 	// Counter for success
