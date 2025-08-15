@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/named-data/ndnd/repo/tlv"
+	"github.com/named-data/ndnd/repo/types"
 	"github.com/named-data/ndnd/repo/utils"
 	enc "github.com/named-data/ndnd/std/encoding"
 	"github.com/named-data/ndnd/std/log"
@@ -248,7 +249,7 @@ func (m *RepoManagement) ExternalStatusRequestHandler(interestHandler *ndn.Inter
 	go func() {
 		wg.Wait()
 		close(responseCh)
-		log.Info(m, "Status request coordination completed", "successes", successes, "quorum", quorum)
+		log.Info(m, "Status request coordination completed", "target", resourceNameN, "quorum", quorum)
 	}()
 
 	// Collect results
@@ -259,7 +260,7 @@ func (m *RepoManagement) ExternalStatusRequestHandler(interestHandler *ndn.Inter
 		switch r.Result {
 		case ndn.InterestResultData:
 			replicaStatus, _ := tlv.ParseRepoStatusReply(enc.NewWireView(r.Data.Content()), false)
-			if replicaStatus.Status == 200 {
+			if replicaStatus.Status == types.ReplyStatusSuccess {
 				successes++
 			}
 		default:
@@ -269,11 +270,11 @@ func (m *RepoManagement) ExternalStatusRequestHandler(interestHandler *ndn.Inter
 
 	// Check final result
 	if successes >= quorum {
-		reply.Status = 200
-		log.Info(m, "Status request completed successfully", "successes", successes, "quorum", quorum)
+		reply.Status = types.ReplyStatusSuccess
+		log.Info(m, "Status request completed successfully", "successes", successes, "quorum", quorum, "status-code", reply.Status)
 	} else {
-		reply.Status = 400 // TODO: say 400 is unsuccessful. Should put this in an enumeration
-		log.Error(m, "Status request failed - insufficient quorum", "successes", successes, "quorum", quorum)
+		reply.Status = types.ReplyStatusInProgress
+		log.Error(m, "Status request failed - insufficient quorum", "successes", successes, "quorum", quorum, "status-code", reply.Status)
 	}
 
 	// TODO: reply to the original interest

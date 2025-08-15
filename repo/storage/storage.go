@@ -134,7 +134,7 @@ func (s *RepoStorage) HandleStatus(statusRequest *tlv.RepoStatus) tlv.RepoStatus
 	}
 
 	if partition == nil {
-		reply.Status = 400 // TODO: enumeration
+		reply.Status = types.ReplyStatusNotFound
 		log.Error(s, "Can't handle status request: partition not found", "status request", statusRequest)
 		return reply
 	}
@@ -144,7 +144,7 @@ func (s *RepoStorage) HandleStatus(statusRequest *tlv.RepoStatus) tlv.RepoStatus
 	// TODO: ideally we should know if the check is about a sync group or a data object. However, we will just handle both cases here by checking both storage, given that data objects and svs groups can not share the same name
 	wire, _ := s.repo.Store.Get(statusRequest.Name.Name, false)
 	if wire != nil || partition.OwnsSvsGroup(statusRequest.Name.Name.String()) {
-		reply.Status = 200
+		reply.Status = types.ReplyStatusSuccess
 	}
 
 	return reply

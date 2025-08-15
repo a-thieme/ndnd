@@ -1,7 +1,6 @@
 package awareness
 
 import (
-	"math/rand"
 	"time"
 
 	"github.com/named-data/ndnd/repo/tlv"
@@ -150,27 +149,6 @@ func (r *RepoAwareness) Start() (err error) {
 
 	// Mark our initial state as alive
 	r.storage.ProcessHeartbeat(r.nodeNameN) // the first heartbeat a node hears is its own
-
-	// DEBUG: start with an assigned partition
-	if rand.Float64() < 0.5 {
-		r.AddLocalPartition(0)
-	}
-	if rand.Float64() < 0.5 {
-		r.AddLocalPartition(1)
-	}
-	if rand.Float64() < 0.5 {
-		r.AddLocalPartition(2)
-	}
-	if rand.Float64() < 0.5 {
-		r.AddLocalPartition(3)
-	}
-	if rand.Float64() < 0.5 {
-		r.AddLocalPartition(4)
-	}
-	if rand.Float64() < 0.5 {
-		r.AddLocalPartition(5)
-	}
-	// TODO: remove this after testings
 
 	// Check initial replication
 	r.storage.CheckReplications()
