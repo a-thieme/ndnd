@@ -291,6 +291,7 @@ func (p *Partition) CommitLeave(command *tlv.RepoCommand) (err error) {
 }
 
 // OwnsSvsGroup checks if the partition owns the given SVS group
+// Thread-safe
 func (p *Partition) OwnsSvsGroup(groupPrefix string) bool {
 	p.mutex.RLock()
 	defer p.mutex.RUnlock()

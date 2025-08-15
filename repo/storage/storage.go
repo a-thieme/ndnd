@@ -123,23 +123,20 @@ func (s *RepoStorage) HandleCommand(command *tlv.RepoCommand) {
 // Handle status request checks local state and reply with the result
 // Thread-safe
 func (s *RepoStorage) HandleStatus(statusRequest *tlv.RepoStatus) tlv.RepoStatusReply {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
-
-	partitionId := utils.PartitionIdFromEncName(statusRequest.Name.Name, s.repo.NumPartitions)
-	log.Info(s, "Handling status request", "status request", statusRequest, "partition", partitionId)
+	partition := s.GetPartition(statusRequest.Name.Name)
 
 	reply := tlv.RepoStatusReply{
 		Name:  statusRequest.Name,
 		Nonce: statusRequest.Nonce,
 	}
 
-	partition, exists := s.partitions[partitionId]
-	if !exists {
+	if partition == nil {
 		reply.Status = 400 // TODO: enumeration
-		log.Error(s, "Partition not found", "partitionId", partitionId)
+		log.Error(s, "Can't handle status request: partition not found", "status request", statusRequest)
 		return reply
 	}
+
+	log.Info(s, "Handling status request", "status request", statusRequest, "partitionId", partition.id)
 
 	// TODO: ideally we should know if the check is about a sync group or a data object. However, we will just handle both cases here by checking both storage, given that data objects and svs groups can not share the same name
 	wire, _ := s.repo.Store.Get(statusRequest.Name.Name, false)
@@ -160,6 +157,8 @@ func (s *RepoStorage) Remove(name enc.Name) (err error) {
 	return s.repo.Store.Remove(name)
 }
 
+// GetPartition gets the partition that owns the resource
+// Thread-safe
 func (s *RepoStorage) GetPartition(name enc.Name) *Partition {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
@@ -212,6 +211,18 @@ func (s *RepoStorage) CommitLeave(name enc.Name, command *tlv.RepoCommand) (err 
 	return err
 }
 
+// OwnsResource checks if the storage owns the resource (data or svs group)
+func (s *RepoStorage) OwnsResource(name enc.Name) bool {
+	partition := s.GetPartition(name)
+	if partition == nil {
+		return false
+	}
+
+	wire, _ := s.repo.Store.Get(name, false)
+	return partition.OwnsSvsGroup(name.String()) || wire != nil
+}
+
+// Handlers
 func (s *RepoStorage) SetFetchDataHandler(handler func(name enc.Name)) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()

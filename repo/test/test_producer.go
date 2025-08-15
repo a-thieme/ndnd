@@ -2,10 +2,10 @@ package main
 
 import (
 	"crypto/rand"
-	// "os"
-	// "os/signal"
+	"os"
+	"os/signal"
 	"strconv"
-	// "syscall"
+	"syscall"
 	"time"
 
 	"github.com/named-data/ndnd/repo/tlv"
@@ -40,6 +40,7 @@ type TestRepoProducer struct {
 	repoNameN     enc.Name
 	producerNameN enc.Name
 	notifyPrefix  enc.Name
+	statusPrefix  enc.Name
 }
 
 func (p *TestRepoProducer) String() string {
@@ -50,11 +51,13 @@ func NewTestRepoProducer() *TestRepoProducer {
 	repoNameN, _ := enc.NameFromStr(repoName)
 	producerNameN, _ := enc.NameFromStr(producerName)
 	notifyPrefix := repoNameN.Append(enc.NewGenericComponent("notify"))
+	statusPrefix := repoNameN.Append(enc.NewGenericComponent("status"))
 
 	return &TestRepoProducer{
 		repoNameN:     repoNameN,
 		producerNameN: producerNameN,
 		notifyPrefix:  notifyPrefix,
+		statusPrefix:  statusPrefix,
 	}
 }
 
@@ -114,7 +117,7 @@ func (p *TestRepoProducer) OnInterest(args ndn.InterestHandlerArgs) {
 }
 
 // insertData inserts a randomly generated data of certain size to repo
-func (p *TestRepoProducer) insertData(name enc.Name, size int) {
+func (p *TestRepoProducer) insertData(name enc.Name, size int) enc.Name {
 	log.Info(p, "Inserting data", "name", name, "size", size)
 
 	content := make([]byte, size)
@@ -132,10 +135,11 @@ func (p *TestRepoProducer) insertData(name enc.Name, size int) {
 	})
 	if err != nil {
 		log.Error(p, "Failed to produce data", "finalName", finalNameN, "err", err)
-		return
+		return finalNameN
 	}
 
 	p.sendCommand(CommandTypeInsert, finalNameN)
+	return finalNameN
 }
 
 // deleteData sends a command to the repo to delete a data packet
@@ -190,21 +194,76 @@ func (p *TestRepoProducer) sendCommand(commandType CommandType, name enc.Name) {
 	})
 }
 
-// func main() {
-// 	producer := NewTestRepoProducer()
-// 	producer.Start()
-// 	defer producer.Stop()
+// sendStatusRequest sends a status request to the repo
+func (p *TestRepoProducer) sendStatusRequest(name enc.Name) {
+	log.Info(p, "Sending status request", "name", name)
 
-// 	for i := 0; i < 10; i++ {
-// 		dataNameN, err := enc.NameFromStr(producerName + "/data/" + strconv.Itoa(i))
-// 		if err != nil {
-// 			log.Error(producer, "Failed to parse name", "name", dataNameN, "err", err)
-// 			continue
-// 		}
-// 		producer.insertData(dataNameN, 1024)
-// 	}
+	// Add nil check to prevent segmentation fault
+	if name == nil {
+		log.Error(p, "Cannot send status request with nil name")
+		return
+	}
 
-// 	sigChannel := make(chan os.Signal, 1)
-// 	signal.Notify(sigChannel, os.Interrupt, syscall.SIGTERM)
-// 	<-sigChannel
-// }
+	statusRequest := &tlv.RepoStatus{
+		Name:  &spec_2022.NameContainer{Name: name},
+		Nonce: name.Hash(),
+	}
+
+	statusRequestInterestName := p.statusPrefix.Append(enc.NewGenericComponent(strconv.FormatUint(name.Hash(), 10)))
+	log.Info(p, "Sending status request", "name", name, "statusRequestInterestName", statusRequestInterestName)
+
+	p.client.ExpressR(ndn.ExpressRArgs{
+		Name:     statusRequestInterestName,
+		AppParam: statusRequest.Encode(),
+		Config: &ndn.InterestConfig{
+			MustBeFresh: true,
+			Lifetime:    optional.Some(10 * time.Second),
+		},
+		Retries: 0,
+		Callback: func(args ndn.ExpressCallbackArgs) {
+			if args.Result == ndn.InterestResultData {
+				reply, err := tlv.ParseRepoStatusReply(enc.NewWireView(args.Data.Content()), false)
+				if err != nil {
+					log.Error(p, "Failed to parse status reply", "name", name, "err", err)
+					return
+				}
+				log.Info(p, "Status request received by Repo", "name", name, "status", reply.Status)
+			} else {
+				log.Error(p, "Status request error", "name", name, "result", args.Result)
+			}
+		},
+	})
+
+}
+
+func main() {
+	producer := NewTestRepoProducer()
+	producer.Start()
+	defer producer.Stop()
+
+	totalData := 10
+	checkData := make([]enc.Name, totalData)
+
+	for i := 0; i < totalData; i++ {
+		dataNameN, err := enc.NameFromStr(producerName + "/data/" + strconv.Itoa(i))
+		if err != nil {
+			log.Error(producer, "Failed to parse name", "name", dataNameN, "err", err)
+			continue
+		}
+		checkData[i] = producer.insertData(dataNameN, 1024)
+	}
+
+	time.Sleep(20 * time.Second) // So the repo has time to process the data
+	for i := 0; i < totalData; i++ {
+		dataNameN, err := enc.NameFromStr(producerName + "/data/" + strconv.Itoa(i))
+		if err != nil {
+			log.Error(producer, "Failed to parse name", "name", dataNameN, "err", err)
+			continue
+		}
+		producer.sendStatusRequest(checkData[i])
+	}
+
+	sigChannel := make(chan os.Signal, 1)
+	signal.Notify(sigChannel, os.Interrupt, syscall.SIGTERM)
+	<-sigChannel
+}

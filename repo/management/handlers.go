@@ -12,6 +12,7 @@ import (
 	enc "github.com/named-data/ndnd/std/encoding"
 	"github.com/named-data/ndnd/std/log"
 	"github.com/named-data/ndnd/std/ndn"
+	"github.com/named-data/ndnd/std/types/optional"
 )
 
 // NOTE: every handler registered by the management module will be ran in a separate goroutine, so blocking is not a concern
@@ -170,15 +171,6 @@ func (m *RepoManagement) FetchDataHandler(dataNameN enc.Name) {
 		}
 	}
 
-	// DEBUG: test the store
-	wire, _ := m.repo.Store.Get(dataNameN, false)
-	if wire != nil {
-		log.Info(m, "Data in store", "name", dataNameN)
-		return
-	} else {
-		log.Info(m, "Data not in store", "name", dataNameN)
-	}
-
 	// TODO: the assumption here is that command can be committed to the group state before the data is available, hence we keep retrying to fetch the relevant data. This, however, cause unnecessary traffics. Also, if the producer, for any reason, send the command again, we need to fetch the data again immediately, so the handler's id should not be tied to the data name.
 }
 
@@ -211,11 +203,21 @@ func (m *RepoManagement) ExternalStatusRequestHandler(interestHandler *ndn.Inter
 	// Counter for success
 	successes := 0
 
+	// Wait group to coordinate job finish
+	var wg sync.WaitGroup
+	wg.Add(nonlocalReplicas)
+
 	// Send requests to remote replicas
 	for _, replica := range replicas {
 		if replica.Equal(m.repo.NodeNameN) {
 			// TODO: check local status
-			nonlocalReplicas-- // we can get the status locally without needing to wait for a goroutine
+			if m.storage.OwnsResource(resourceNameN) {
+				log.Info(m, "Local status request successful", "name", resourceNameN)
+				successes++
+			} else {
+				log.Info(m, "Local status request failed: no content", "name", resourceNameN)
+			}
+			wg.Done()
 			continue
 		}
 
@@ -230,29 +232,29 @@ func (m *RepoManagement) ExternalStatusRequestHandler(interestHandler *ndn.Inter
 			Config: &ndn.InterestConfig{
 				CanBePrefix: false,
 				MustBeFresh: true,
+				Lifetime:    optional.Some(5 * time.Second),
 			},
 			Retries:  0, // No retries for status requests
 			AppParam: appParam,
 			Callback: func(args ndn.ExpressCallbackArgs) {
 				responseCh <- args // shouldn't block since responseCh is sized properly
+				wg.Done()
 			},
 		})
 	}
-
-	// Wait group to coordinate job finish
-	var wg sync.WaitGroup
-	wg.Add(nonlocalReplicas)
 
 	// Close results when all goroutines are finished
 	go func() {
 		wg.Wait()
 		close(responseCh)
+		log.Info(m, "Status request coordination completed", "successes", successes, "quorum", quorum)
 	}()
 
 	// Collect results
 	// TODO: currently we only return success / unsuccessful. We can do more complicated parsings here
 	// before that, we need to carefully separate inner-Repo and outer-Repo communication
 	for r := range responseCh {
+		log.Info(m, "Status request response received", "result", r.Result)
 		switch r.Result {
 		case ndn.InterestResultData:
 			replicaStatus, _ := tlv.ParseRepoStatusReply(enc.NewWireView(r.Data.Content()), false)
@@ -274,10 +276,24 @@ func (m *RepoManagement) ExternalStatusRequestHandler(interestHandler *ndn.Inter
 	}
 
 	// TODO: reply to the original interest
-	interestHandler.Reply(reply.Encode())
+	data, _ := m.repo.Engine.Spec().MakeData(
+		interestHandler.Interest.Name(),
+		&ndn.DataConfig{},
+		reply.Encode(),
+		nil, // TODO: security
+	)
+
+	interestHandler.Reply(data.Wire)
 }
 
 func (m *RepoManagement) InternalStatusRequestHandler(interestHandler *ndn.InterestHandlerArgs, status *tlv.RepoStatus) {
 	reply := m.storage.HandleStatus(status)
-	interestHandler.Reply(reply.Encode())
+	data, _ := m.repo.Engine.Spec().MakeData(
+		interestHandler.Interest.Name(),
+		&ndn.DataConfig{},
+		reply.Encode(),
+		nil, // TODO: security
+	)
+
+	interestHandler.Reply(data.Wire)
 }

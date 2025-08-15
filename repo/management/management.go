@@ -155,10 +155,10 @@ func (m *RepoManagement) setupHandlers() {
 
 	// Internal communication handlers
 	m.producerFacing.SetOnExternalStatusRequest(func(interestHandler *ndn.InterestHandlerArgs, status *tlv.RepoStatus) {
-		go m.RunHandler(EventExternalStatusRequest, status.Name.Name.String(), func() { m.ExternalStatusRequestHandler(interestHandler, status) })
+		go m.RunHandler(EventExternalStatusRequest, strconv.FormatUint(status.Nonce, 10), func() { m.ExternalStatusRequestHandler(interestHandler, status) })
 	})
 
 	m.producerFacing.SetOnInternalStatusRequest(func(interestHandler *ndn.InterestHandlerArgs, status *tlv.RepoStatus) {
-		go m.RunHandler(EventInternalStatusRequest, status.Name.Name.String(), func() { m.InternalStatusRequestHandler(interestHandler, status) })
+		go m.RunHandler(EventInternalStatusRequest, strconv.FormatUint(status.Nonce, 10), func() { m.InternalStatusRequestHandler(interestHandler, status) })
 	})
 }

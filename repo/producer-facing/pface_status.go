@@ -9,6 +9,7 @@ import (
 
 // onExternalStatusRequest processes an incoming status check interest
 func (p *RepoProducerFacing) onExternalStatusRequest(args ndn.InterestHandlerArgs) {
+	log.Info(p, "Received repo status request interest", "interest", args.Interest.Name().String())
 	interest := args.Interest
 
 	if interest.AppParam() == nil {

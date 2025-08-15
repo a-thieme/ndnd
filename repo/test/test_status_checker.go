@@ -72,6 +72,6 @@ func run(cmd *cobra.Command, args []string) {
 	}
 }
 
-func main() {
-	cmdTestStatusChecker.Execute()
-}
+// func main() {
+// 	cmdTestStatusChecker.Execute()
+// }

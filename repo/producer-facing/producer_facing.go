@@ -94,7 +94,6 @@ func (p *RepoProducerFacing) Stop() error {
 // onExternalNotify is called when a repo notify interest is received
 // This will distributes the command to responsible nodes
 func (p *RepoProducerFacing) onExternalNotify(args ndn.InterestHandlerArgs) {
-	log.Info(p, "Received repo notify interest", "interest", args.Interest.Name().String())
 	interest := args.Interest
 
 	if interest.AppParam() == nil {
@@ -110,7 +109,7 @@ func (p *RepoProducerFacing) onExternalNotify(args ndn.InterestHandlerArgs) {
 
 	commandType := command.CommandType
 	srcName := command.SrcName.Name
-	log.Info(p, "Received external command", "commandName", commandType, "srcName", srcName)
+	log.Info(p, "Received external notify command", "commandName", commandType, "srcName", srcName)
 
 	// TODO: check digest?
 
