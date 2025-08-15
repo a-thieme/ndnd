@@ -126,6 +126,9 @@ func (a *AuctionEngine) Start() error {
 }
 
 func (a *AuctionEngine) Stop() error {
+	a.mutex.RLock()
+	defer a.mutex.RUnlock()
+
 	log.Info(a, "Stopping Repo Auction Engine")
 
 	// Withdraw auction prefix

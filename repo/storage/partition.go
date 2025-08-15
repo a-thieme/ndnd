@@ -172,6 +172,9 @@ func (p *Partition) Start() (err error) {
 
 // Stops the partition sync group
 func (p *Partition) Stop() (err error) {
+	p.mutex.RLock()
+	defer p.mutex.RUnlock()
+
 	log.Info(p, "Stopping partition SVS ALO")
 
 	// TODO: leave the SVS group
@@ -191,11 +194,16 @@ func (p *Partition) Stop() (err error) {
 		p.svsGroup = nil
 	}
 
-	// leave user SVS groups
-	for _, svs := range p.userSyncGroups {
-		if err := svs.Stop(); err != nil {
-			log.Error(p, "Unable to stop user SVS ALO", "err", err)
-		}
+	// leave user SVS groups asynchronously to prevent blocking
+	// TODO: for now, the program doesn't wait for all of them to close. We should improve this behavior for graceful termination in the future.
+	if len(p.userSyncGroups) > 0 {
+		go func() {
+			for _, svs := range p.userSyncGroups {
+				if err := svs.Stop(); err != nil {
+					log.Error(p, "Unable to stop user SVS ALO", "err", err)
+				}
+			}
+		}()
 	}
 
 	return nil

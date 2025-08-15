@@ -18,6 +18,7 @@ import (
 
 const (
 	multicastPrefix = "/ndn/multicast" // TODO: ideally we should get this from command. But ideally we shouldn't need to specify this either.
+	repoRouteCost   = 1000             // TODO: this should be higher so repo is only used as a fallback option
 )
 
 // UserSvs handles a SVS group specified by a join sync command
@@ -104,33 +105,40 @@ func (p *UserSvs) Start() (err error) {
 		log.Error(p, "User SVS ALO error", "err", err)
 	})
 
-	// This covers both the sync prefix and all producers' data prefixes.
-	p.repo.Client.AnnouncePrefix(ndn.Announcement{
-		Name:    p.svs_alo.GroupPrefix(),
-		Cost:    1000,
-		Expose:  true,
-		OnError: nil, // TODO
-	})
-
-	// If multicast prefix is specified, we need to announce sync prefix separately
-	p.repo.Client.AnnouncePrefix(ndn.Announcement{
-		Name:    p.svs_alo.SyncPrefix(),
-		Cost:    1000,
-		Expose:  true,
-		OnError: nil, // TODO
-	})
+	// Announce prefixes
+	for _, prefix := range []enc.Name{
+		p.svs_alo.GroupPrefix(),
+		p.svs_alo.SyncPrefix(),
+	} {
+		p.repo.Client.AnnouncePrefix(ndn.Announcement{
+			Name:    prefix,
+			Cost:    repoRouteCost,
+			Expose:  true,
+			OnError: nil, // TODO
+		})
+	}
 
 	return nil
 }
 
 func (p *UserSvs) Stop() (err error) {
 	// TODO: stop the svsalo
-	return nil
 	log.Info(p, "Stopping user SVS", "group", p.svs_alo.SyncPrefix())
 
-	if err := p.svs_alo.Stop(); err != nil {
-		log.Error(p, "Failed to stop user SVS", "err", err)
-		return err
+	// Withdraw handlers
+	for _, prefix := range []enc.Name{
+		p.svs_alo.GroupPrefix(),
+		p.svs_alo.SyncPrefix(),
+	} {
+		p.repo.Client.WithdrawPrefix(prefix, nil)
+	}
+
+	if p.svs_alo != nil {
+		// Stop sync groups
+		if err := p.svs_alo.Stop(); err != nil {
+			log.Error(p, "Failed to stop user SVS", "err", err)
+			return err
+		}
 	}
 
 	p.svs_alo = nil

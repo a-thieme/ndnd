@@ -89,6 +89,9 @@ func (s *RepoStorage) UnregisterPartition(id uint64) (err error) {
 
 // Close stops all partitions and deletes them from the storage
 func (s *RepoStorage) Close() (err error) {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
 	log.Info(s, "Closed Repo Storage")
 
 	for id, partition := range s.partitions {
