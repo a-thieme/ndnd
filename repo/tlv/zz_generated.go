@@ -1617,6 +1617,374 @@ func ParseRepoCommand(reader enc.WireView, ignoreCritical bool) (*RepoCommand, e
 	return context.Parse(reader, ignoreCritical)
 }
 
+type RepoStatusEncoder struct {
+	Length uint
+
+	Name_encoder spec.NameContainerEncoder
+}
+
+type RepoStatusParsingContext struct {
+	Name_context spec.NameContainerParsingContext
+}
+
+func (encoder *RepoStatusEncoder) Init(value *RepoStatus) {
+
+	if value.Name != nil {
+		encoder.Name_encoder.Init(value.Name)
+	}
+
+	l := uint(0)
+	l += 3
+	l += uint(1 + enc.Nat(value.Nonce).EncodingLength())
+	if value.Name != nil {
+		l += 3
+		l += uint(enc.TLNum(encoder.Name_encoder.Length).EncodingLength())
+		l += encoder.Name_encoder.Length
+	}
+	encoder.Length = l
+
+}
+
+func (context *RepoStatusParsingContext) Init() {
+
+	context.Name_context.Init()
+}
+
+func (encoder *RepoStatusEncoder) EncodeInto(value *RepoStatus, buf []byte) {
+
+	pos := uint(0)
+
+	buf[pos] = 253
+	binary.BigEndian.PutUint16(buf[pos+1:], uint16(625))
+	pos += 3
+
+	buf[pos] = byte(enc.Nat(value.Nonce).EncodeInto(buf[pos+1:]))
+	pos += uint(1 + buf[pos])
+	if value.Name != nil {
+		buf[pos] = 253
+		binary.BigEndian.PutUint16(buf[pos+1:], uint16(624))
+		pos += 3
+		pos += uint(enc.TLNum(encoder.Name_encoder.Length).EncodeInto(buf[pos:]))
+		if encoder.Name_encoder.Length > 0 {
+			encoder.Name_encoder.EncodeInto(value.Name, buf[pos:])
+			pos += encoder.Name_encoder.Length
+		}
+	}
+}
+
+func (encoder *RepoStatusEncoder) Encode(value *RepoStatus) enc.Wire {
+
+	wire := make(enc.Wire, 1)
+	wire[0] = make([]byte, encoder.Length)
+	buf := wire[0]
+	encoder.EncodeInto(value, buf)
+
+	return wire
+}
+
+func (context *RepoStatusParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*RepoStatus, error) {
+
+	var handled_Nonce bool = false
+	var handled_Name bool = false
+
+	progress := -1
+	_ = progress
+
+	value := &RepoStatus{}
+	var err error
+	var startPos int
+	for {
+		startPos = reader.Pos()
+		if startPos >= reader.Length() {
+			break
+		}
+		typ := enc.TLNum(0)
+		l := enc.TLNum(0)
+		typ, err = reader.ReadTLNum()
+		if err != nil {
+			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
+		}
+		l, err = reader.ReadTLNum()
+		if err != nil {
+			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
+		}
+
+		err = nil
+		if handled := false; true {
+			switch typ {
+			case 625:
+				if true {
+					handled = true
+					handled_Nonce = true
+					value.Nonce = uint64(0)
+					{
+						for i := 0; i < int(l); i++ {
+							x := byte(0)
+							x, err = reader.ReadByte()
+							if err != nil {
+								if err == io.EOF {
+									err = io.ErrUnexpectedEOF
+								}
+								break
+							}
+							value.Nonce = uint64(value.Nonce<<8) | uint64(x)
+						}
+					}
+				}
+			case 624:
+				if true {
+					handled = true
+					handled_Name = true
+					value.Name, err = context.Name_context.Parse(reader.Delegate(int(l)), ignoreCritical)
+				}
+			default:
+				if !ignoreCritical && ((typ <= 31) || ((typ & 1) == 1)) {
+					return nil, enc.ErrUnrecognizedField{TypeNum: typ}
+				}
+				handled = true
+				err = reader.Skip(int(l))
+			}
+			if err == nil && !handled {
+			}
+			if err != nil {
+				return nil, enc.ErrFailToParse{TypeNum: typ, Err: err}
+			}
+		}
+	}
+
+	startPos = reader.Pos()
+	err = nil
+
+	if !handled_Nonce && err == nil {
+		err = enc.ErrSkipRequired{Name: "Nonce", TypeNum: 625}
+	}
+	if !handled_Name && err == nil {
+		value.Name = nil
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return value, nil
+}
+
+func (value *RepoStatus) Encode() enc.Wire {
+	encoder := RepoStatusEncoder{}
+	encoder.Init(value)
+	return encoder.Encode(value)
+}
+
+func (value *RepoStatus) Bytes() []byte {
+	return value.Encode().Join()
+}
+
+func ParseRepoStatus(reader enc.WireView, ignoreCritical bool) (*RepoStatus, error) {
+	context := RepoStatusParsingContext{}
+	context.Init()
+	return context.Parse(reader, ignoreCritical)
+}
+
+type RepoStatusReplyEncoder struct {
+	Length uint
+
+	Name_encoder spec.NameContainerEncoder
+}
+
+type RepoStatusReplyParsingContext struct {
+	Name_context spec.NameContainerParsingContext
+}
+
+func (encoder *RepoStatusReplyEncoder) Init(value *RepoStatusReply) {
+
+	if value.Name != nil {
+		encoder.Name_encoder.Init(value.Name)
+	}
+
+	l := uint(0)
+	l += 3
+	l += uint(1 + enc.Nat(value.Nonce).EncodingLength())
+	if value.Name != nil {
+		l += 3
+		l += uint(enc.TLNum(encoder.Name_encoder.Length).EncodingLength())
+		l += encoder.Name_encoder.Length
+	}
+	l += 3
+	l += uint(1 + enc.Nat(value.Status).EncodingLength())
+	encoder.Length = l
+
+}
+
+func (context *RepoStatusReplyParsingContext) Init() {
+
+	context.Name_context.Init()
+
+}
+
+func (encoder *RepoStatusReplyEncoder) EncodeInto(value *RepoStatusReply, buf []byte) {
+
+	pos := uint(0)
+
+	buf[pos] = 253
+	binary.BigEndian.PutUint16(buf[pos+1:], uint16(642))
+	pos += 3
+
+	buf[pos] = byte(enc.Nat(value.Nonce).EncodeInto(buf[pos+1:]))
+	pos += uint(1 + buf[pos])
+	if value.Name != nil {
+		buf[pos] = 253
+		binary.BigEndian.PutUint16(buf[pos+1:], uint16(640))
+		pos += 3
+		pos += uint(enc.TLNum(encoder.Name_encoder.Length).EncodeInto(buf[pos:]))
+		if encoder.Name_encoder.Length > 0 {
+			encoder.Name_encoder.EncodeInto(value.Name, buf[pos:])
+			pos += encoder.Name_encoder.Length
+		}
+	}
+	buf[pos] = 253
+	binary.BigEndian.PutUint16(buf[pos+1:], uint16(641))
+	pos += 3
+
+	buf[pos] = byte(enc.Nat(value.Status).EncodeInto(buf[pos+1:]))
+	pos += uint(1 + buf[pos])
+}
+
+func (encoder *RepoStatusReplyEncoder) Encode(value *RepoStatusReply) enc.Wire {
+
+	wire := make(enc.Wire, 1)
+	wire[0] = make([]byte, encoder.Length)
+	buf := wire[0]
+	encoder.EncodeInto(value, buf)
+
+	return wire
+}
+
+func (context *RepoStatusReplyParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*RepoStatusReply, error) {
+
+	var handled_Nonce bool = false
+	var handled_Name bool = false
+	var handled_Status bool = false
+
+	progress := -1
+	_ = progress
+
+	value := &RepoStatusReply{}
+	var err error
+	var startPos int
+	for {
+		startPos = reader.Pos()
+		if startPos >= reader.Length() {
+			break
+		}
+		typ := enc.TLNum(0)
+		l := enc.TLNum(0)
+		typ, err = reader.ReadTLNum()
+		if err != nil {
+			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
+		}
+		l, err = reader.ReadTLNum()
+		if err != nil {
+			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
+		}
+
+		err = nil
+		if handled := false; true {
+			switch typ {
+			case 642:
+				if true {
+					handled = true
+					handled_Nonce = true
+					value.Nonce = uint64(0)
+					{
+						for i := 0; i < int(l); i++ {
+							x := byte(0)
+							x, err = reader.ReadByte()
+							if err != nil {
+								if err == io.EOF {
+									err = io.ErrUnexpectedEOF
+								}
+								break
+							}
+							value.Nonce = uint64(value.Nonce<<8) | uint64(x)
+						}
+					}
+				}
+			case 640:
+				if true {
+					handled = true
+					handled_Name = true
+					value.Name, err = context.Name_context.Parse(reader.Delegate(int(l)), ignoreCritical)
+				}
+			case 641:
+				if true {
+					handled = true
+					handled_Status = true
+					value.Status = uint64(0)
+					{
+						for i := 0; i < int(l); i++ {
+							x := byte(0)
+							x, err = reader.ReadByte()
+							if err != nil {
+								if err == io.EOF {
+									err = io.ErrUnexpectedEOF
+								}
+								break
+							}
+							value.Status = uint64(value.Status<<8) | uint64(x)
+						}
+					}
+				}
+			default:
+				if !ignoreCritical && ((typ <= 31) || ((typ & 1) == 1)) {
+					return nil, enc.ErrUnrecognizedField{TypeNum: typ}
+				}
+				handled = true
+				err = reader.Skip(int(l))
+			}
+			if err == nil && !handled {
+			}
+			if err != nil {
+				return nil, enc.ErrFailToParse{TypeNum: typ, Err: err}
+			}
+		}
+	}
+
+	startPos = reader.Pos()
+	err = nil
+
+	if !handled_Nonce && err == nil {
+		err = enc.ErrSkipRequired{Name: "Nonce", TypeNum: 642}
+	}
+	if !handled_Name && err == nil {
+		value.Name = nil
+	}
+	if !handled_Status && err == nil {
+		err = enc.ErrSkipRequired{Name: "Status", TypeNum: 641}
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return value, nil
+}
+
+func (value *RepoStatusReply) Encode() enc.Wire {
+	encoder := RepoStatusReplyEncoder{}
+	encoder.Init(value)
+	return encoder.Encode(value)
+}
+
+func (value *RepoStatusReply) Bytes() []byte {
+	return value.Encode().Join()
+}
+
+func ParseRepoStatusReply(reader enc.WireView, ignoreCritical bool) (*RepoStatusReply, error) {
+	context := RepoStatusReplyParsingContext{}
+	context.Init()
+	return context.Parse(reader, ignoreCritical)
+}
+
 type PartitionSnapshotEncoder struct {
 	Length uint
 
@@ -1701,7 +2069,7 @@ func (encoder *PartitionSnapshotEncoder) EncodeInto(value *PartitionSnapshot, bu
 				value := &pseudoValue
 				if value.Commands != nil {
 					buf[pos] = 253
-					binary.BigEndian.PutUint16(buf[pos+1:], uint16(596))
+					binary.BigEndian.PutUint16(buf[pos+1:], uint16(672))
 					pos += 3
 					pos += uint(enc.TLNum(encoder.Commands_encoder.Length).EncodeInto(buf[pos:]))
 					if encoder.Commands_encoder.Length > 0 {
@@ -1755,7 +2123,7 @@ func (context *PartitionSnapshotParsingContext) Parse(reader enc.WireView, ignor
 		err = nil
 		if handled := false; true {
 			switch typ {
-			case 596:
+			case 672:
 				if true {
 					handled = true
 					handled_Commands = true

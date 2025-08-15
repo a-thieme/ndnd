@@ -13,6 +13,7 @@ import (
 	"github.com/named-data/ndnd/repo/types"
 	enc "github.com/named-data/ndnd/std/encoding"
 	"github.com/named-data/ndnd/std/log"
+	"github.com/named-data/ndnd/std/ndn"
 )
 
 type EventType string
@@ -27,6 +28,10 @@ const (
 	EventNotifyReplicas EventType = "notify_replicas"
 	EventProcessCommand EventType = "process_event"
 	EventFetchData      EventType = "fetch_data"
+
+	// status request handlers
+	EventExternalStatusRequest EventType = "external_status_request"
+	EventInternalStatusRequest EventType = "internal_status_request"
 )
 
 // Event represents a Repo system event that needs handling
@@ -144,7 +149,16 @@ func (m *RepoManagement) setupHandlers() {
 	})
 
 	// Storage handlers
-	m.storage.SetFetchDataHandler(func(name enc.Name) { // TODO: this is a hack to allow running the same handler multiple times for the same data name
-		go m.RunHandler(EventFetchData, name.String()+time.Now().String(), func() { m.FetchDataHandler(name) })
+	m.storage.SetFetchDataHandler(func(name enc.Name) {
+		go m.RunHandler(EventFetchData, name.String(), func() { m.FetchDataHandler(name) })
+	})
+
+	// Internal communication handlers
+	m.producerFacing.SetOnExternalStatusRequest(func(interestHandler *ndn.InterestHandlerArgs, status *tlv.RepoStatus) {
+		go m.RunHandler(EventExternalStatusRequest, status.Name.Name.String(), func() { m.ExternalStatusRequestHandler(interestHandler, status) })
+	})
+
+	m.producerFacing.SetOnInternalStatusRequest(func(interestHandler *ndn.InterestHandlerArgs, status *tlv.RepoStatus) {
+		go m.RunHandler(EventInternalStatusRequest, status.Name.Name.String(), func() { m.InternalStatusRequestHandler(interestHandler, status) })
 	})
 }

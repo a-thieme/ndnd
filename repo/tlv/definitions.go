@@ -72,7 +72,23 @@ type RepoCommand struct {
 	RegisterPrefixes []*spec.NameContainer `tlv:"0x254"`
 }
 
+type RepoStatus struct {
+	//+field:natural
+	Nonce uint64 `tlv:"0x271"`
+	//+field:struct:spec.NameContainer
+	Name *spec.NameContainer `tlv:"0x270"`
+}
+
+type RepoStatusReply struct {
+	//+field:natural
+	Nonce uint64 `tlv:"0x282"`
+	//+field:struct:spec.NameContainer
+	Name *spec.NameContainer `tlv:"0x280"`
+	//+field:natural
+	Status uint64 `tlv:"0x281"`
+}
+
 type PartitionSnapshot struct {
 	//+field:sequence:*RepoCommand:struct:RepoCommand
-	Commands []*RepoCommand `tlv:"0x254"`
+	Commands []*RepoCommand `tlv:"0x2A0"`
 }

@@ -1,8 +1,10 @@
 package management
 
 import (
+	"math"
 	"math/rand"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/named-data/ndnd/repo/tlv"
@@ -85,9 +87,9 @@ func (m *RepoManagement) NotifyReplicasHandler(command *tlv.RepoCommand) {
 			continue
 		}
 
-		notifyReplicaPrefix := replica.Append(enc.NewGenericComponent(m.repo.RepoNameN.String())).
-			Append(enc.NewGenericComponent(strconv.FormatUint(partitionId, 10))).
-			Append(enc.NewGenericComponent("command")).
+		notifyReplicaPrefix := replica.Append(m.repo.RepoNameN...).
+			// Append(enc.NewGenericComponent(strconv.FormatUint(partitionId, 10))).
+			Append(enc.NewGenericComponent("notify")).
 			Append(enc.NewGenericComponent(strconv.FormatUint(command.Nonce, 10)))
 
 		log.Info(m, "Sending command to replica", "replica", replica, "notifyReplicaPrefix", notifyReplicaPrefix)
@@ -142,9 +144,10 @@ func (m *RepoManagement) FetchDataHandler(dataNameN enc.Name) {
 	ch := make(chan ndn.ConsumeState, 1)
 
 	for retries != 0 {
-		// if _, ok := m.repo.Store.Get(dataNameN, true); ok != nil {
-		// 	break // early-termination if data is already in the store
-		// }
+		// This line checks if the data object is in store, not any segments
+		if wire, _ := m.repo.Store.Get(dataNameN, false); wire != nil {
+			break // early-termination if data is already in the store
+		}
 
 		// Fetch data blob
 		m.repo.Client.Consume(dataNameN, func(status ndn.ConsumeState) {
@@ -152,6 +155,9 @@ func (m *RepoManagement) FetchDataHandler(dataNameN enc.Name) {
 		})
 
 		status := <-ch
+		m.repo.Store.RemovePrefix(status.Name())                 // remove all fetched segments
+		m.repo.Store.Put(status.Name(), status.Content().Join()) // put the full data object in instead
+
 		if status.Error() != nil {
 			log.Warn(m, "BlobFetch error, retrying", "err", status.Error(), "name", dataNameN)
 			time.Sleep(min(waitPeriod, maxBackoff) + time.Duration(rand.Float64()*randomness))
@@ -164,5 +170,114 @@ func (m *RepoManagement) FetchDataHandler(dataNameN enc.Name) {
 		}
 	}
 
+	// DEBUG: test the store
+	wire, _ := m.repo.Store.Get(dataNameN, false)
+	if wire != nil {
+		log.Info(m, "Data in store", "name", dataNameN)
+		return
+	} else {
+		log.Info(m, "Data not in store", "name", dataNameN)
+	}
+
 	// TODO: the assumption here is that command can be committed to the group state before the data is available, hence we keep retrying to fetch the relevant data. This, however, cause unnecessary traffics. Also, if the producer, for any reason, send the command again, we need to fetch the data again immediately, so the handler's id should not be tied to the data name.
+}
+
+// Launches a coordination job to check the status from responsible node
+func (m *RepoManagement) ExternalStatusRequestHandler(interestHandler *ndn.InterestHandlerArgs, statusRequest *tlv.RepoStatus) {
+	resourceNameN := statusRequest.Name.Name
+	partitionId := utils.PartitionIdFromEncName(resourceNameN, m.repo.NumPartitions)
+
+	replicas := m.awareness.GetPartitionReplicas(partitionId) // get relevant replicas
+	nonlocalReplicas := len(replicas)
+	log.Info(m, "Requesting status from replicas", "partitionId", partitionId, "replicas", replicas)
+
+	appParam := statusRequest.Encode()
+
+	// Create a channel for each replica to handle responses
+	responseCh := make(chan ndn.ExpressCallbackArgs, len(replicas))
+
+	// Prepare reply
+	reply := tlv.RepoStatusReply{
+		Name: statusRequest.Name,
+	}
+	defer func() {
+		interestHandler.Reply(reply.Encode())
+	}()
+
+	// Track responses
+	quorumRatio := 0.7
+	quorum := int(math.Ceil(quorumRatio * float64(m.repo.NumReplicas))) // TODO: make this configurable, and it should be a percentage (with rounding) of the replication factor
+
+	// Counter for success
+	successes := 0
+
+	// Send requests to remote replicas
+	for _, replica := range replicas {
+		if replica.Equal(m.repo.NodeNameN) {
+			// TODO: check local status
+			nonlocalReplicas-- // we can get the status locally without needing to wait for a goroutine
+			continue
+		}
+
+		statusRequestReplicaPrefix := replica.Append(m.repo.RepoNameN...).
+			// Append(enc.NewGenericComponent(strconv.FormatUint(partitionId, 10))).
+			Append(enc.NewGenericComponent("status")).
+			Append(enc.NewGenericComponent(strconv.FormatUint(statusRequest.Nonce, 10)))
+
+		log.Info(m, "Sending status request to replica", "replica", replica, "statusRequestReplicaPrefix", statusRequestReplicaPrefix)
+		m.repo.Client.ExpressR(ndn.ExpressRArgs{
+			Name: statusRequestReplicaPrefix,
+			Config: &ndn.InterestConfig{
+				CanBePrefix: false,
+				MustBeFresh: true,
+			},
+			Retries:  0, // No retries for status requests
+			AppParam: appParam,
+			Callback: func(args ndn.ExpressCallbackArgs) {
+				responseCh <- args // shouldn't block since responseCh is sized properly
+			},
+		})
+	}
+
+	// Wait group to coordinate job finish
+	var wg sync.WaitGroup
+	wg.Add(nonlocalReplicas)
+
+	// Close results when all goroutines are finished
+	go func() {
+		wg.Wait()
+		close(responseCh)
+	}()
+
+	// Collect results
+	// TODO: currently we only return success / unsuccessful. We can do more complicated parsings here
+	// before that, we need to carefully separate inner-Repo and outer-Repo communication
+	for r := range responseCh {
+		switch r.Result {
+		case ndn.InterestResultData:
+			replicaStatus, _ := tlv.ParseRepoStatusReply(enc.NewWireView(r.Data.Content()), false)
+			if replicaStatus.Status == 200 {
+				successes++
+			}
+		default:
+			// pass
+		}
+	}
+
+	// Check final result
+	if successes >= quorum {
+		reply.Status = 200
+		log.Info(m, "Status request completed successfully", "successes", successes, "quorum", quorum)
+	} else {
+		reply.Status = 400 // TODO: say 400 is unsuccessful. Should put this in an enumeration
+		log.Error(m, "Status request failed - insufficient quorum", "successes", successes, "quorum", quorum)
+	}
+
+	// TODO: reply to the original interest
+	interestHandler.Reply(reply.Encode())
+}
+
+func (m *RepoManagement) InternalStatusRequestHandler(interestHandler *ndn.InterestHandlerArgs, status *tlv.RepoStatus) {
+	reply := m.storage.HandleStatus(status)
+	interestHandler.Reply(reply.Encode())
 }

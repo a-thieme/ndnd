@@ -289,3 +289,32 @@ func (p *Partition) CommitLeave(command *tlv.RepoCommand) (err error) {
 
 	return nil
 }
+
+// OwnsSvsGroup checks if the partition owns the given SVS group
+func (p *Partition) OwnsSvsGroup(groupPrefix string) bool {
+	p.mutex.RLock()
+	defer p.mutex.RUnlock()
+
+	svs, exists := p.userSyncGroups[groupPrefix]
+	return exists && svs.svs_alo != nil
+}
+
+// Checks if there are any commands that have not been fetched
+// If there are, it will call the handler to fetch the relevant data
+// TODO: actually call this periodically / on failure
+func (p *Partition) CheckUnfetchedData() {
+	p.mutex.RLock()
+	defer p.mutex.RUnlock()
+
+	// Check if there are any commands that have not been fetched
+	for it := p.commands.Begin(); it != p.commands.End(); it = it.Next() {
+		command := it.Value()
+		if command.CommandType == "INSERT" {
+			if wire, _ := p.repo.Store.Get(command.SrcName.Name, true); wire == nil {
+				p.storage.fetchDataHandler(command.SrcName.Name)
+			}
+		}
+	}
+}
+
+// TODO: we need to have a similar method as CheckUnfetchedData for user sync groups

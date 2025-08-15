@@ -224,16 +224,21 @@ func (r *Repo) Stop() error {
 }
 
 // setupEngineHook sets up the hook to persist all data.
+// TODO: this is useful in case of sync groups, but there is a complication in case of directly inserting data object. This is because we fetch data object by segments,
+// so what will be put into the store are segments, which causes additional complexity in check if an object is entirely in the store, for example. If we explicitly store
+// data objects in the store when we fetched it wholly, their segments will also be stored which leads to duplication of data. -> we can maybe tolerate this, and remove all segments storage when we have the full object?
+// TODO: we temporarily disable this. Let's see how things work out
+// TODO: this is also used to preserve all sync group data -> we can explicitly store them when we setup partition svs
 func (r *Repo) setupEngineHook() {
 	r.engine.(*basic.Engine).OnDataHook = func(data ndn.Data, raw enc.Wire, sigCov enc.Wire) error {
 		// This is very hacky, improve if possible.
 		// Assume that if there is a version it is the second-last component.
 		// We might not want to store non-versioned data anyway (?)
 		if ver := data.Name().At(-2); ver.IsVersion() {
-			log.Trace(r, "Storing data", "name", data.Name())
+			log.Info(r, "Storing data", "name", data.Name())
 			return r.store.Put(data.Name(), raw.Join())
 		} else {
-			log.Trace(r, "Ignoring non-versioned data", "name", data.Name())
+			log.Info(r, "Ignoring non-versioned data", "name", data.Name())
 		}
 		return nil
 	}

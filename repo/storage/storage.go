@@ -120,6 +120,36 @@ func (s *RepoStorage) HandleCommand(command *tlv.RepoCommand) {
 	partition.CommitCommand(command)
 }
 
+// Handle status request checks local state and reply with the result
+// Thread-safe
+func (s *RepoStorage) HandleStatus(statusRequest *tlv.RepoStatus) tlv.RepoStatusReply {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
+	partitionId := utils.PartitionIdFromEncName(statusRequest.Name.Name, s.repo.NumPartitions)
+	log.Info(s, "Handling status request", "status request", statusRequest, "partition", partitionId)
+
+	reply := tlv.RepoStatusReply{
+		Name:  statusRequest.Name,
+		Nonce: statusRequest.Nonce,
+	}
+
+	partition, exists := s.partitions[partitionId]
+	if !exists {
+		reply.Status = 400 // TODO: enumeration
+		log.Error(s, "Partition not found", "partitionId", partitionId)
+		return reply
+	}
+
+	// TODO: ideally we should know if the check is about a sync group or a data object. However, we will just handle both cases here by checking both storage, given that data objects and svs groups can not share the same name
+	wire, _ := s.repo.Store.Get(statusRequest.Name.Name, false)
+	if wire != nil || partition.OwnsSvsGroup(statusRequest.Name.Name.String()) {
+		reply.Status = 200
+	}
+
+	return reply
+}
+
 // Put puts data into the storage
 func (s *RepoStorage) Put(name enc.Name, data []byte) (err error) {
 	return s.repo.Store.Put(name, data)

@@ -2,10 +2,10 @@ package main
 
 import (
 	"crypto/rand"
-	"os"
-	"os/signal"
+	// "os"
+	// "os/signal"
 	"strconv"
-	"syscall"
+	// "syscall"
 	"time"
 
 	"github.com/named-data/ndnd/repo/tlv"
@@ -190,21 +190,21 @@ func (p *TestRepoProducer) sendCommand(commandType CommandType, name enc.Name) {
 	})
 }
 
-func main() {
-	producer := NewTestRepoProducer()
-	producer.Start()
-	defer producer.Stop()
+// func main() {
+// 	producer := NewTestRepoProducer()
+// 	producer.Start()
+// 	defer producer.Stop()
 
-	for i := 0; i < 10; i++ {
-		dataNameN, err := enc.NameFromStr(producerName + "/data/" + strconv.Itoa(i))
-		if err != nil {
-			log.Error(producer, "Failed to parse name", "name", dataNameN, "err", err)
-			continue
-		}
-		producer.insertData(dataNameN, 1024)
-	}
+// 	for i := 0; i < 10; i++ {
+// 		dataNameN, err := enc.NameFromStr(producerName + "/data/" + strconv.Itoa(i))
+// 		if err != nil {
+// 			log.Error(producer, "Failed to parse name", "name", dataNameN, "err", err)
+// 			continue
+// 		}
+// 		producer.insertData(dataNameN, 1024)
+// 	}
 
-	sigChannel := make(chan os.Signal, 1)
-	signal.Notify(sigChannel, os.Interrupt, syscall.SIGTERM)
-	<-sigChannel
-}
+// 	sigChannel := make(chan os.Signal, 1)
+// 	signal.Notify(sigChannel, os.Interrupt, syscall.SIGTERM)
+// 	<-sigChannel
+// }

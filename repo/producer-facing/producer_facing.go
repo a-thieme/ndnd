@@ -16,9 +16,15 @@ import (
 // It also handles the direct command interests from the node
 type RepoProducerFacing struct {
 	repo                  *types.RepoShared
-	notifyPrefix          enc.Name
-	notifyReplicasHandler func(*tlv.RepoCommand)
-	processCommandHandler func(*tlv.RepoCommand)
+	externalNotifyPrefixN enc.Name
+	internalNotifyPrefixN enc.Name
+	externalStatusPrefixN enc.Name
+	internalStatusPrefixN enc.Name
+
+	notifyReplicasHandler        func(*tlv.RepoCommand)
+	processCommandHandler        func(*tlv.RepoCommand)
+	externalStatusRequestHandler func(*ndn.InterestHandlerArgs, *tlv.RepoStatus)
+	internalStatusRequestHandler func(*ndn.InterestHandlerArgs, *tlv.RepoStatus)
 }
 
 func (p *RepoProducerFacing) String() string {
@@ -26,18 +32,30 @@ func (p *RepoProducerFacing) String() string {
 }
 
 func NewProducerFacing(repo *types.RepoShared) *RepoProducerFacing {
+	externalNotifyPrefixN := repo.RepoNameN.Append(enc.NewGenericComponent("notify"))
+	internalNotifyPrefixN := repo.NodeNameN.Append(externalNotifyPrefixN...)
+
+	externalStatusPrefixN := repo.RepoNameN.Append(enc.NewGenericComponent("status"))
+	internalStatusPrefixN := repo.NodeNameN.Append(externalStatusPrefixN...)
+
 	return &RepoProducerFacing{
-		repo:         repo,
-		notifyPrefix: repo.RepoNameN.Append(enc.NewGenericComponent("notify")),
+		repo:                  repo,
+		externalNotifyPrefixN: externalNotifyPrefixN,
+		internalNotifyPrefixN: internalNotifyPrefixN,
+		externalStatusPrefixN: externalStatusPrefixN,
+		internalStatusPrefixN: internalStatusPrefixN,
 	}
 }
 
 func (p *RepoProducerFacing) Start() error {
 	log.Info(p, "Starting Repo Producer Facing")
 
+	// Announce command & status request handler prefixes
 	for _, prefix := range []enc.Name{
-		p.notifyPrefix,
-		p.repo.NodeNameN.Append(enc.NewGenericComponent(p.repo.RepoNameN.String())),
+		p.externalNotifyPrefixN,
+		p.internalNotifyPrefixN,
+		p.externalStatusPrefixN,
+		p.internalStatusPrefixN,
 	} {
 		p.repo.Client.AnnouncePrefix(ndn.Announcement{
 			Name:   prefix,
@@ -45,8 +63,13 @@ func (p *RepoProducerFacing) Start() error {
 		})
 	}
 
-	p.repo.Engine.AttachHandler(p.notifyPrefix, p.onRepoNotify)
-	p.repo.Engine.AttachHandler(p.repo.NodeNameN.Append(enc.NewGenericComponent(p.repo.RepoNameN.String())), p.onNodeNotify)
+	// Register command handler prefixes
+	p.repo.Engine.AttachHandler(p.externalNotifyPrefixN, p.onExternalNotify)
+	p.repo.Engine.AttachHandler(p.internalNotifyPrefixN, p.onInternalNotify)
+
+	// Register status request handler prefixes
+	p.repo.Engine.AttachHandler(p.externalStatusPrefixN, p.onExternalStatusRequest)
+	p.repo.Engine.AttachHandler(p.internalStatusPrefixN, p.onInternalStatusRequest)
 
 	return nil
 }
@@ -54,15 +77,23 @@ func (p *RepoProducerFacing) Start() error {
 func (p *RepoProducerFacing) Stop() error {
 	log.Info(p, "Stopping Repo Producer Facing")
 
-	p.repo.Engine.DetachHandler(p.notifyPrefix)
-	p.repo.Client.WithdrawPrefix(p.notifyPrefix, nil)
+	// Unregister command & status request handler prefixes
+	for _, prefix := range []enc.Name{
+		p.externalNotifyPrefixN,
+		p.internalNotifyPrefixN,
+		p.externalStatusPrefixN,
+		p.internalStatusPrefixN,
+	} {
+		p.repo.Engine.DetachHandler(prefix)
+		p.repo.Client.WithdrawPrefix(prefix, nil)
+	}
 
 	return nil
 }
 
-// onRepoNotify is called when a repo notify interest is received
+// onExternalNotify is called when a repo notify interest is received
 // This will distributes the command to responsible nodes
-func (p *RepoProducerFacing) onRepoNotify(args ndn.InterestHandlerArgs) {
+func (p *RepoProducerFacing) onExternalNotify(args ndn.InterestHandlerArgs) {
 	log.Info(p, "Received repo notify interest", "interest", args.Interest.Name().String())
 	interest := args.Interest
 
@@ -79,7 +110,7 @@ func (p *RepoProducerFacing) onRepoNotify(args ndn.InterestHandlerArgs) {
 
 	commandType := command.CommandType
 	srcName := command.SrcName.Name
-	log.Info(p, "Received command", "commandName", commandType, "srcName", srcName)
+	log.Info(p, "Received external command", "commandName", commandType, "srcName", srcName)
 
 	// TODO: check digest?
 
@@ -102,8 +133,8 @@ func (p *RepoProducerFacing) onRepoNotify(args ndn.InterestHandlerArgs) {
 	args.Reply(data.Wire)
 }
 
-// onNodeNotify is called when a node notify interest is received
-func (p *RepoProducerFacing) onNodeNotify(args ndn.InterestHandlerArgs) {
+// onInternalNotify is called when an internal notify interest is received
+func (p *RepoProducerFacing) onInternalNotify(args ndn.InterestHandlerArgs) {
 	interest := args.Interest
 
 	if interest.AppParam() == nil {
@@ -120,7 +151,7 @@ func (p *RepoProducerFacing) onNodeNotify(args ndn.InterestHandlerArgs) {
 
 	commandType := command.CommandType
 	srcName := command.SrcName.Name
-	log.Info(p, "Received responsible node command", "commandName", commandType, "srcName", srcName) // TODO: need a better name
+	log.Info(p, "Received responsible internal command", "commandName", commandType, "srcName", srcName) // TODO: need a better name
 
 	p.processCommandHandler(command)
 }
