@@ -1334,11 +1334,13 @@ type RepoCommandEncoder struct {
 	RegisterPrefixes_subencoder []struct {
 		RegisterPrefixes_encoder spec.NameContainerEncoder
 	}
+	HistorySnapshot_encoder HistorySnapshotConfigEncoder
 }
 
 type RepoCommandParsingContext struct {
 	SrcName_context          spec.NameContainerParsingContext
 	RegisterPrefixes_context spec.NameContainerParsingContext
+	HistorySnapshot_context  HistorySnapshotConfigParsingContext
 }
 
 func (encoder *RepoCommandEncoder) Init(value *RepoCommand) {
@@ -1368,6 +1370,9 @@ func (encoder *RepoCommandEncoder) Init(value *RepoCommand) {
 				_ = value
 			}
 		}
+	}
+	if value.HistorySnapshot != nil {
+		encoder.HistorySnapshot_encoder.Init(value.HistorySnapshot)
 	}
 
 	l := uint(0)
@@ -1402,6 +1407,11 @@ func (encoder *RepoCommandEncoder) Init(value *RepoCommand) {
 			}
 		}
 	}
+	if value.HistorySnapshot != nil {
+		l += 3
+		l += uint(enc.TLNum(encoder.HistorySnapshot_encoder.Length).EncodingLength())
+		l += encoder.HistorySnapshot_encoder.Length
+	}
 	encoder.Length = l
 
 }
@@ -1410,6 +1420,7 @@ func (context *RepoCommandParsingContext) Init() {
 
 	context.SrcName_context.Init()
 	context.RegisterPrefixes_context.Init()
+	context.HistorySnapshot_context.Init()
 }
 
 func (encoder *RepoCommandEncoder) EncodeInto(value *RepoCommand, buf []byte) {
@@ -1464,6 +1475,16 @@ func (encoder *RepoCommandEncoder) EncodeInto(value *RepoCommand, buf []byte) {
 			}
 		}
 	}
+	if value.HistorySnapshot != nil {
+		buf[pos] = 253
+		binary.BigEndian.PutUint16(buf[pos+1:], uint16(597))
+		pos += 3
+		pos += uint(enc.TLNum(encoder.HistorySnapshot_encoder.Length).EncodeInto(buf[pos:]))
+		if encoder.HistorySnapshot_encoder.Length > 0 {
+			encoder.HistorySnapshot_encoder.EncodeInto(value.HistorySnapshot, buf[pos:])
+			pos += encoder.HistorySnapshot_encoder.Length
+		}
+	}
 }
 
 func (encoder *RepoCommandEncoder) Encode(value *RepoCommand) enc.Wire {
@@ -1482,6 +1503,7 @@ func (context *RepoCommandParsingContext) Parse(reader enc.WireView, ignoreCriti
 	var handled_CommandType bool = false
 	var handled_SrcName bool = false
 	var handled_RegisterPrefixes bool = false
+	var handled_HistorySnapshot bool = false
 
 	progress := -1
 	_ = progress
@@ -1565,6 +1587,12 @@ func (context *RepoCommandParsingContext) Parse(reader enc.WireView, ignoreCriti
 					}
 					progress--
 				}
+			case 597:
+				if true {
+					handled = true
+					handled_HistorySnapshot = true
+					value.HistorySnapshot, err = context.HistorySnapshot_context.Parse(reader.Delegate(int(l)), ignoreCritical)
+				}
 			default:
 				if !ignoreCritical && ((typ <= 31) || ((typ & 1) == 1)) {
 					return nil, enc.ErrUnrecognizedField{TypeNum: typ}
@@ -1594,6 +1622,9 @@ func (context *RepoCommandParsingContext) Parse(reader enc.WireView, ignoreCriti
 	}
 	if !handled_RegisterPrefixes && err == nil {
 		// sequence - skip
+	}
+	if !handled_HistorySnapshot && err == nil {
+		value.HistorySnapshot = nil
 	}
 
 	if err != nil {

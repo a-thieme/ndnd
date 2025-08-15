@@ -73,6 +73,8 @@ type RepoCommand struct {
 	SrcName *spec.NameContainer `tlv:"0x253"`
 	//+field:sequence:*spec.NameContainer:struct:spec.NameContainer
 	RegisterPrefixes []*spec.NameContainer `tlv:"0x254"`
+	//+field:struct:HistorySnapshotConfig
+	HistorySnapshot *HistorySnapshotConfig `tlv:"0x255"`
 }
 
 type RepoStatus struct {

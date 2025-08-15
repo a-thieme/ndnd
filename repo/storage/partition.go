@@ -40,7 +40,7 @@ type Partition struct {
 
 	// storage
 	size           uint64 // the estimated size of the partition, in bytes
-	userSyncGroups map[string]*PartitionSvs
+	userSyncGroups map[string]*UserSvs
 
 	// status
 	status PartitionStatus // current status of the partition
@@ -64,7 +64,7 @@ func NewPartition(id uint64, repo *types.RepoShared, storage *RepoStorage) *Part
 		svsGroup:       nil,
 		status:         Registered,
 		commands:       NewCommandStore(),
-		userSyncGroups: make(map[string]*PartitionSvs),
+		userSyncGroups: make(map[string]*UserSvs),
 		repo:           repo,
 		storage:        storage,
 	}
@@ -191,6 +191,13 @@ func (p *Partition) Stop() (err error) {
 		p.svsGroup = nil
 	}
 
+	// leave user SVS groups
+	for _, svs := range p.userSyncGroups {
+		if err := svs.Stop(); err != nil {
+			log.Error(p, "Unable to stop user SVS ALO", "err", err)
+		}
+	}
+
 	return nil
 }
 
@@ -266,8 +273,8 @@ func (p *Partition) CommitJoin(command *tlv.RepoCommand) (err error) {
 		return fmt.Errorf("missing group name")
 	}
 
-	p.mutex.RLock()
-	defer p.mutex.RUnlock()
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
 
 	// Check if already started
 	key := command.SrcName.Name.String()
@@ -280,7 +287,7 @@ func (p *Partition) CommitJoin(command *tlv.RepoCommand) (err error) {
 	p.commands.Insert(command)
 
 	// Start partition svs group
-	svs := NewPartitionSvs(p.id, p.repo, command)
+	svs := NewUserSvs(p.id, p.repo, command)
 	if err := svs.Start(); err != nil {
 		return err
 	}
@@ -290,8 +297,8 @@ func (p *Partition) CommitJoin(command *tlv.RepoCommand) (err error) {
 }
 
 func (p *Partition) CommitLeave(command *tlv.RepoCommand) (err error) {
-	p.mutex.RLock()
-	defer p.mutex.RUnlock()
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
 
 	// TODO: leave user sync group
 

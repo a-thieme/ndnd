@@ -148,14 +148,14 @@ func (p *TestRepoProducer) deleteData(name enc.Name) {
 	p.sendCommand(CommandTypeDelete, name)
 }
 
-// joinRepo sends a command to the repo to join the repo
-func (p *TestRepoProducer) joinRepo(groupName enc.Name) {
+// joinGroup sends a command to the repo to join the sync group
+func (p *TestRepoProducer) joinGroup(groupName enc.Name) {
 	log.Info(p, "Joining repo", "groupName", groupName)
 	p.sendCommand(CommandTypeJoin, groupName)
 }
 
-// leaveRepo sends a command to the repo to leave the repo
-func (p *TestRepoProducer) leaveRepo(groupName enc.Name) {
+// leaveGroup sends a command to the repo to leave the sync group
+func (p *TestRepoProducer) leaveGroup(groupName enc.Name) {
 	log.Info(p, "Leaving repo", "groupName", groupName)
 	p.sendCommand(CommandTypeLeave, groupName)
 }
@@ -172,6 +172,9 @@ func (p *TestRepoProducer) sendCommand(commandType CommandType, name enc.Name) {
 		CommandType: string(commandType),
 		SrcName:     &spec_2022.NameContainer{Name: name},
 		Nonce:       name.Hash(),
+		HistorySnapshot: &tlv.HistorySnapshotConfig{ // TODO: configurable
+			Threshold: 10,
+		},
 	}
 
 	notifyInterestName := p.notifyPrefix.Append(enc.NewGenericComponent(strconv.FormatUint(name.Hash(), 10))) // TODO: embed a nonce
@@ -271,6 +274,26 @@ func main() {
 			continue
 		}
 		producer.sendStatusRequest(checkData[i])
+	}
+
+	time.Sleep(4 * time.Second)
+	for i := 0; i < totalData; i++ {
+		groupNameN, err := enc.NameFromStr("/test/group/" + strconv.Itoa(i))
+		if err != nil {
+			log.Error(producer, "Failed to parse name", "name", groupNameN, "err", err)
+			continue
+		}
+		producer.joinGroup(groupNameN)
+	}
+
+	time.Sleep(4 * time.Second)
+	for i := 0; i < totalData; i++ {
+		groupNameN, err := enc.NameFromStr("/test/group/" + strconv.Itoa(i))
+		if err != nil {
+			log.Error(producer, "Failed to parse name", "name", groupNameN, "err", err)
+			continue
+		}
+		producer.sendStatusRequest(groupNameN)
 	}
 
 	sigChannel := make(chan os.Signal, 1)
