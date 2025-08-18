@@ -153,6 +153,10 @@ func (r *RepoAwareness) Start() (err error) {
 	// Check initial replication
 	r.storage.CheckReplications()
 
+	// Publish initial awareness update
+	// Note: other node will assume this node starts with no responsibility; this is for failure recovery where the local node starts with non-empty partition assignment
+	r.publishAwarenessUpdate()
+
 	return err
 }
 
@@ -216,7 +220,7 @@ func (r *RepoAwareness) StartHeartbeat() (err error) {
 				log.Info(r, "Heartbeat published", "time", time.Now())
 				r.heartbeatSvs.IncrSeqNo(r.nodeNameN)
 
-				r.publishAwarenessUpdate() // TODO: test: periodically publish awareness update
+				// r.publishAwarenessUpdate() // TODO: test: periodically publish awareness update
 
 				r.storage.CheckReplications()
 			case <-r.stop:
@@ -229,7 +233,9 @@ func (r *RepoAwareness) StartHeartbeat() (err error) {
 }
 
 // PublishAwarenessUpdate publishes an awareness update with the current node state
+// This method is called on-event, i.e. whenever local responsibility changes
 // Thread-safe
+// TODO: optimization: time-based aggregation
 func (r *RepoAwareness) publishAwarenessUpdate() {
 	// create awareness update
 	awarenessUpdate := r.storage.ProduceAwarenessUpdate(r.nodeNameN)
