@@ -53,6 +53,13 @@ func (l *RandomAccessDoubleLinkedList[K, V]) Begin() *DoubleLinkedListNode[V] {
 	return l.doubleLinkedList.Begin()
 }
 
+// This returns the last element in the linked list
+func (l *RandomAccessDoubleLinkedList[K, V]) Back() *DoubleLinkedListNode[V] {
+	return l.doubleLinkedList.Back()
+}
+
+// This returns the element after the last element in the linked list, checking != End() gives the whole content of the linked list
+// Note: this is different from Back()
 func (l *RandomAccessDoubleLinkedList[K, V]) End() *DoubleLinkedListNode[V] {
 	return l.doubleLinkedList.End()
 }

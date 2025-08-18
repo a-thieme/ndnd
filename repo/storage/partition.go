@@ -167,6 +167,9 @@ func (p *Partition) Start() (err error) {
 		return err
 	}
 
+	// Failure recovery
+	p.ExecuteCommandStore()
+
 	return nil
 }
 
@@ -325,22 +328,31 @@ func (p *Partition) OwnsSvsGroup(groupPrefix string) bool {
 	return exists && svs.svs_alo != nil
 }
 
-// Checks if there are any commands that have not been fetched
-// If there are, it will call the handler to fetch the relevant data
+// ExecuteCommandStore executes stored commands again, ignoring repeated requests. It is mainly used in recovery
 // TODO: actually call this periodically / on failure
-func (p *Partition) CheckUnfetchedData() {
-	p.mutex.RLock()
-	defer p.mutex.RUnlock()
+func (p *Partition) ExecuteCommandStore() {
+	iter := p.commands.Iterator()
+	defer iter.Close() // To avoid copying the whole contents again
 
-	// Check if there are any commands that have not been fetched
-	for it := p.commands.Begin(); it != p.commands.End(); it = it.Next() {
-		command := it.Value()
-		if command.CommandType == "INSERT" {
-			if wire, _ := p.repo.Store.Get(command.SrcName.Name, true); wire == nil {
-				p.storage.fetchDataHandler(command.SrcName.Name)
-			}
-		}
+	for iter.Next() {
+		command := iter.Value()
+		p.CommitCommand(command)
 	}
 }
 
-// TODO: we need to have a similar method as CheckUnfetchedData for user sync groups
+// func (p *Partition) commitCommandStore(state enc.Wire) {
+// 	name := p.repo.NodeNameN.Append(p.repo.RepoNameN...).
+// 		Append(enc.NewGenericComponent(strconv.FormatUint(p.id, 10))).
+// 		Append(enc.NewKeywordComponent("alo-state"))
+// 	p.repo.Store.Put(name, state.Join())
+// }
+
+// func (p *Partition) readCommandStore(state enc.Wire) enc.Wire {
+// 	name := p.repo.NodeNameN.Append(p.repo.RepoNameN...).
+// 		Append(enc.NewGenericComponent(strconv.FormatUint(p.id, 10))).
+// 		Append(enc.NewKeywordComponent("alo-state"))
+// 	if stateWire, _ := p.repo.Store.Get(name, false); stateWire != nil {
+// 		return enc.Wire{stateWire}
+// 	}
+// 	return nil
+// }
