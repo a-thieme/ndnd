@@ -1,7 +1,6 @@
 package repo
 
 import (
-	"strconv"
 	"sync"
 
 	"github.com/named-data/ndnd/repo/auction"
@@ -133,11 +132,7 @@ func (r *Repo) Start() (err error) {
 	r.storage = storage.NewRepoStorage(shared)
 
 	// Create repo auction
-	// TODO: currently we use trivial get bid & on win, etc.
-	testGetBid := func(name string) int {
-		return 100
-	}
-	r.auction = auction.NewAuctionEngine(shared, r.awareness.GetOnlineNodes, testGetBid, r.wonAuction)
+	r.auction = auction.NewAuctionEngine(shared, r.awareness.GetOnlineNodes, r.management.PlaceBid, r.management.WonAuction)
 	if err := r.auction.Start(); err != nil {
 		return err
 	}
@@ -242,18 +237,4 @@ func (r *Repo) setupEngineHook() {
 		}
 		return nil
 	}
-}
-
-func (r *Repo) wonAuction(item string) {
-	log.Info(r, "Won auction for item", "item", item)
-	partitionId, _ := strconv.ParseUint(item, 10, 64)
-
-	err := r.storage.RegisterPartition(partitionId)
-	if err != nil {
-		log.Warn(r, "Failed to register partition", "id", partitionId, "err", err)
-		return
-	}
-
-	log.Info(r, "Won partition", "id", partitionId)
-	r.awareness.AddLocalPartition(partitionId)
 }

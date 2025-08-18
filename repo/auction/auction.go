@@ -50,7 +50,7 @@ func NewAuction(itemID string, size int) Auction {
 func (a *Auction) determineWinners(numWinners int) {
 	var out = ""
 	sort.Slice(a.bids, func(i, j int) bool {
-		return a.bids[i].bid > a.bids[j].bid
+		return a.bids[i].bid > a.bids[j].bid || (a.bids[i].bid == a.bids[j].bid && a.bids[i].node > a.bids[j].node) // Just so we have determinisitc ordering when the bids are the same
 	})
 
 	for i := 0; i < numWinners && i < a.numBids; i++ {

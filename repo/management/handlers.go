@@ -1,8 +1,10 @@
 package management
 
 import (
+	"golang.org/x/sys/unix" // POSIX system
 	"math"
 	"math/rand"
+	"os"
 	"strconv"
 	"sync"
 	"time"
@@ -28,7 +30,7 @@ func (m *RepoManagement) UnderReplicationHandler(partition uint64) {
 	retries := -1 // -1 means infinite retries - the job is considered successful only if the partition is no longer under-replicated
 	waitPeriod := 5 * time.Second
 	maxBackoff := 20 * time.Second
-	randomness := 2.0 // TODO: make this configurable, factory?
+	randomness := 2.0 // TODO: make this configurable, we can follow factory pattern if needed
 
 	time.Sleep(time.Duration(rand.Float64() * randomness))
 	for retries != 0 {
@@ -298,4 +300,39 @@ func (m *RepoManagement) InternalStatusRequestHandler(interestHandler *ndn.Inter
 	)
 
 	interestHandler.Reply(data.Wire)
+}
+
+// Following are synchronous handlers which do not require a separate goroutine
+
+// PlaceBid returns a bid for a given item based on its available disk space
+// TODO: optimization: this method should have more complicated behavior, e.g. if the free disk space is very limited it should always return a low number.
+func (m *RepoManagement) PlaceBid(name string) int { // to accommodate auction API
+	// Get storage state
+	var stat unix.Statfs_t
+	wd, _ := os.Getwd()
+	unix.Statfs(wd, &stat)
+
+	// Get free spaces
+	freeSpace := stat.Bavail * uint64(stat.Bsize)
+	log.Info(m, "Bid: free space", "node", name, "freeSpace", freeSpace)
+
+	// Calculate bid
+	bid := int(freeSpace)
+
+	return bid
+}
+
+// WonAuction prompts the awareness and storage module to register a new partition, as the result of winning auctions
+func (m *RepoManagement) WonAuction(item string) {
+	log.Info(m, "Won auction for item", "item", item)
+	partitionId, _ := strconv.ParseUint(item, 10, 64)
+
+	err := m.storage.RegisterPartition(partitionId)
+	if err != nil {
+		log.Warn(m, "Failed to register partition", "id", partitionId, "err", err)
+		return
+	}
+
+	log.Info(m, "Won partition", "id", partitionId)
+	m.awareness.AddLocalPartition(partitionId)
 }
