@@ -1,3 +1,5 @@
+// Credits to Adam Thieme for the original implementation
+
 package auction
 
 import (
