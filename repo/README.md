@@ -44,3 +44,16 @@ Example configuration files can be found in this directory:
 You can set the multicast strategy for a prefix with the following command:
 
     ndnd fw strategy-set prefix=<target_prefix> strategy=/localhost/nfd/strategy/multicast
+
+## Testing
+
+A sample test producer is provided to help you test DRepo functionality. You can run it as follows:
+
+```sh
+go run test/test_producer.go <repo_name> <producer_name>
+```
+
+- `<repo_name>`: The NDN name of the repo group (e.g., `/ndn/drepo`)
+- `<producer_name>`: The NDN name of the producer (e.g., `/test/producer/1`)
+
+This tool will randomly generate some data and send insertion requests to the provided Repo, with some retries. After several seconds waiting for things to converge, it will then send status requests with some retries.

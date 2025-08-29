@@ -19,11 +19,6 @@ import (
 	"github.com/named-data/ndnd/std/types/optional"
 )
 
-const (
-	repoName     = "/ndn/repo"
-	producerName = "/test/producer/1"
-)
-
 type CommandType string
 
 const (
@@ -37,6 +32,8 @@ type TestRepoProducer struct {
 	client        ndn.Client
 	store         ndn.Store
 	engine        ndn.Engine
+	repoName      string
+	producerName  string
 	repoNameN     enc.Name
 	producerNameN enc.Name
 	notifyPrefix  enc.Name
@@ -47,13 +44,15 @@ func (p *TestRepoProducer) String() string {
 	return "test-repo-producer"
 }
 
-func NewTestRepoProducer() *TestRepoProducer {
+func NewTestRepoProducer(repoName, producerName string) *TestRepoProducer {
 	repoNameN, _ := enc.NameFromStr(repoName)
 	producerNameN, _ := enc.NameFromStr(producerName)
 	notifyPrefix := repoNameN.Append(enc.NewGenericComponent("notify"))
 	statusPrefix := repoNameN.Append(enc.NewGenericComponent("status"))
 
 	return &TestRepoProducer{
+		repoName:      repoName,
+		producerName:  producerName,
 		repoNameN:     repoNameN,
 		producerNameN: producerNameN,
 		notifyPrefix:  notifyPrefix,
@@ -71,7 +70,7 @@ func (p *TestRepoProducer) Start() error {
 	}
 
 	// Make object store database
-	p.store, err = storage.NewBadgerStore(producerName + "/badger")
+	p.store, err = storage.NewBadgerStore(p.producerName + "/badger")
 	if err != nil {
 		log.Error(nil, "Unable to create store", "err", err)
 		return err
@@ -240,7 +239,14 @@ func (p *TestRepoProducer) sendStatusRequest(name enc.Name) {
 }
 
 func main() {
-	producer := NewTestRepoProducer()
+	if len(os.Args) < 3 {
+		log.Fatal(nil, "Usage: test_producer <repoName> <producerName>")
+		os.Exit(1)
+	}
+	repoName := os.Args[1]
+	producerName := os.Args[2]
+
+	producer := NewTestRepoProducer(repoName, producerName)
 	producer.Start()
 	defer producer.Stop()
 
