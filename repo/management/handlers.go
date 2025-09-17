@@ -117,49 +117,34 @@ func (m *RepoManagement) NotifyReplicasHandler(command *tlv.RepoCommand) {
 }
 
 // TODO: handle node-level command interest
+// TODO: COMPLETELY REWRITE THIS
 func (m *RepoManagement) ProcessCommandHandler(command *tlv.RepoCommand) {
-	partitionId := utils.PartitionIdFromEncName(command.SrcName.Name, m.repo.NumPartitions)
-
-	// don't handle command if we are not responsible for it
-	// TODO: should this be handled by the storage module?
-	if !m.awareness.OwnsPartition(partitionId) {
-		return
-	}
-
 	// handle the command
 	m.storage.HandleCommand(command)
 }
 
 // Launches a job to fetch a data from the network
+// TODO: make sure this does what it's supposed to do
+// TODO: this should not be called if the data is already in the storage...
 func (m *RepoManagement) FetchDataHandler(dataNameN enc.Name) {
-	partitionId := utils.PartitionIdFromEncName(dataNameN, m.repo.NumPartitions)
-
-	if !m.awareness.OwnsPartition(partitionId) {
-		return
-	}
-
 	log.Info(m, "Fetching data", "name", dataNameN)
 
 	retries := -1 // -1 means infinite retries - the job is considered successful only if the relevant data is received
 	waitPeriod := 500 * time.Millisecond
 	maxBackoff := 30 * time.Second
-	randomness := 5.0 // TODO: make this configurable, factory?
+	// TODO: make sure this is necessary
+	randomness := 5.0
 
 	ch := make(chan ndn.ConsumeState, 1)
 
 	for retries != 0 {
-		// This line checks if the data object is in store, not any segments
-		if wire, _ := m.repo.Store.Get(dataNameN, false); wire != nil {
-			break // early-termination if data is already in the store
-			// TODO: this is not very efficient - we should have a method to check if a data object is in store
-		}
-
 		// Fetch data blob
 		m.repo.Client.Consume(dataNameN, func(status ndn.ConsumeState) {
 			ch <- status
 		})
 
 		status := <-ch
+		// TODO: what? why? they will need to be segmented anyway
 		m.repo.Store.RemovePrefix(status.Name())                 // remove all fetched segments
 		m.repo.Store.Put(status.Name(), status.Content().Join()) // put the full data object in instead
 
@@ -175,10 +160,12 @@ func (m *RepoManagement) FetchDataHandler(dataNameN enc.Name) {
 		}
 	}
 
-	// TODO: the assumption here is that command can be committed to the group state before the data is available, hence we keep retrying to fetch the relevant data. This, however, cause unnecessary traffics. Also, if the producer, for any reason, send the command again, we need to fetch the data again immediately, so the handler's id should not be tied to the data name.
+	// haotian: the assumption here is that command can be committed to the group state before the data is available, hence we keep retrying to fetch the relevant data. This, however, cause unnecessary traffics. Also, if the producer, for any reason, send the command again, we need to fetch the data again immediately, so the handler's id should not be tied to the data name.
+	// at: tie it to the data name, reset the wait period if you need to fetch the data immediately
 }
 
 // Launches a coordination job to check the status from responsible node
+// TODO: just check if the job is replicated enough times and then reply
 func (m *RepoManagement) ExternalStatusRequestHandler(interestHandler *ndn.InterestHandlerArgs, statusRequest *tlv.RepoStatus) {
 	resourceNameN := statusRequest.Name.Name
 	partitionId := utils.PartitionIdFromEncName(resourceNameN, m.repo.NumPartitions)

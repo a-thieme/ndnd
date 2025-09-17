@@ -56,7 +56,7 @@ type AwarenessUpdate struct {
 	//+field:string
 	NodeName string `tlv:"0x240"`
 	//+field:map:uint64:natural:0x242:bool:bool
-	Partitions map[uint64]bool `tlv:"0x241"`
+	Jobs []*RepoCommand `tlv:"0x241"`
 }
 
 type RepoNotify struct {
@@ -99,10 +99,4 @@ type InternalCommandEntry struct {
 	Command *RepoCommand `tlv:"0x290"`
 	//+field:time
 	Timestamp time.Duration `tlv:"0x291"`
-}
-
-// TODO: need to replace it with internal command entry
-type PartitionSnapshot struct {
-	//+field:sequence:*RepoCommand:struct:RepoCommand
-	Commands []*RepoCommand `tlv:"0x2A0"`
 }

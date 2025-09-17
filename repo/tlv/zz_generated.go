@@ -932,7 +932,7 @@ func ParseBlobFetch(reader enc.WireView, ignoreCritical bool) (*BlobFetch, error
 type AwarenessUpdateEncoder struct {
 	Length uint
 
-	Partitions_valencoder map[uint64]*struct {
+	Jobs_valencoder map[uint64]*struct {
 	}
 }
 
@@ -942,17 +942,17 @@ type AwarenessUpdateParsingContext struct {
 func (encoder *AwarenessUpdateEncoder) Init(value *AwarenessUpdate) {
 
 	{
-		Partitions_l := len(value.Partitions)
-		encoder.Partitions_valencoder = make(map[uint64]*struct {
-		}, Partitions_l)
-		for map_k := range value.Partitions {
+		Jobs_l := len(value.Jobs)
+		encoder.Jobs_valencoder = make(map[uint64]*struct {
+		}, Jobs_l)
+		for map_k := range value.Jobs {
 			pseudoEncoder := &struct {
 			}{}
-			encoder.Partitions_valencoder[map_k] = pseudoEncoder
+			encoder.Jobs_valencoder[map_k] = pseudoEncoder
 			pseudoValue := struct {
-				Partitions_v bool
+				Jobs_v bool
 			}{
-				Partitions_v: value.Partitions[map_k],
+				Jobs_v: value.Jobs[map_k],
 			}
 			{
 				encoder := pseudoEncoder
@@ -968,22 +968,22 @@ func (encoder *AwarenessUpdateEncoder) Init(value *AwarenessUpdate) {
 	l += 3
 	l += uint(enc.TLNum(len(value.NodeName)).EncodingLength())
 	l += uint(len(value.NodeName))
-	if value.Partitions != nil {
-		for map_k, map_v := range value.Partitions {
-			pseudoEncoder := encoder.Partitions_valencoder[map_k]
+	if value.Jobs != nil {
+		for map_k, map_v := range value.Jobs {
+			pseudoEncoder := encoder.Jobs_valencoder[map_k]
 			pseudoValue := struct {
-				Partitions_k uint64
-				Partitions_v bool
+				Jobs_k uint64
+				Jobs_v bool
 			}{
-				Partitions_k: map_k,
-				Partitions_v: map_v,
+				Jobs_k: map_k,
+				Jobs_v: map_v,
 			}
 			{
 				encoder := pseudoEncoder
 				value := &pseudoValue
 				l += 3
-				l += uint(1 + enc.Nat(value.Partitions_k).EncodingLength())
-				if value.Partitions_v {
+				l += uint(1 + enc.Nat(value.Jobs_k).EncodingLength())
+				if value.Jobs_v {
 					l += 3
 					l += 1
 				}
@@ -1010,15 +1010,15 @@ func (encoder *AwarenessUpdateEncoder) EncodeInto(value *AwarenessUpdate, buf []
 	pos += uint(enc.TLNum(len(value.NodeName)).EncodeInto(buf[pos:]))
 	copy(buf[pos:], value.NodeName)
 	pos += uint(len(value.NodeName))
-	if value.Partitions != nil {
-		for map_k, map_v := range value.Partitions {
-			pseudoEncoder := encoder.Partitions_valencoder[map_k]
+	if value.Jobs != nil {
+		for map_k, map_v := range value.Jobs {
+			pseudoEncoder := encoder.Jobs_valencoder[map_k]
 			pseudoValue := struct {
-				Partitions_k uint64
-				Partitions_v bool
+				Jobs_k uint64
+				Jobs_v bool
 			}{
-				Partitions_k: map_k,
-				Partitions_v: map_v,
+				Jobs_k: map_k,
+				Jobs_v: map_v,
 			}
 			{
 				encoder := pseudoEncoder
@@ -1027,9 +1027,9 @@ func (encoder *AwarenessUpdateEncoder) EncodeInto(value *AwarenessUpdate, buf []
 				binary.BigEndian.PutUint16(buf[pos+1:], uint16(577))
 				pos += 3
 
-				buf[pos] = byte(enc.Nat(value.Partitions_k).EncodeInto(buf[pos+1:]))
+				buf[pos] = byte(enc.Nat(value.Jobs_k).EncodeInto(buf[pos+1:]))
 				pos += uint(1 + buf[pos])
-				if value.Partitions_v {
+				if value.Jobs_v {
 					buf[pos] = 253
 					binary.BigEndian.PutUint16(buf[pos+1:], uint16(578))
 					pos += 3
@@ -1056,7 +1056,7 @@ func (encoder *AwarenessUpdateEncoder) Encode(value *AwarenessUpdate) enc.Wire {
 func (context *AwarenessUpdateParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*AwarenessUpdate, error) {
 
 	var handled_NodeName bool = false
-	var handled_Partitions bool = false
+	var handled_Jobs bool = false
 
 	progress := -1
 	_ = progress
@@ -1098,18 +1098,18 @@ func (context *AwarenessUpdateParsingContext) Parse(reader enc.WireView, ignoreC
 			case 577:
 				if true {
 					handled = true
-					handled_Partitions = true
-					if value.Partitions == nil {
-						value.Partitions = make(map[uint64]bool)
+					handled_Jobs = true
+					if value.Jobs == nil {
+						value.Jobs = make(map[uint64]bool)
 					}
 					{
 						pseudoValue := struct {
-							Partitions_k uint64
-							Partitions_v bool
+							Jobs_k uint64
+							Jobs_v bool
 						}{}
 						{
 							value := &pseudoValue
-							value.Partitions_k = uint64(0)
+							value.Jobs_k = uint64(0)
 							{
 								for i := 0; i < int(l); i++ {
 									x := byte(0)
@@ -1120,7 +1120,7 @@ func (context *AwarenessUpdateParsingContext) Parse(reader enc.WireView, ignoreC
 										}
 										break
 									}
-									value.Partitions_k = uint64(value.Partitions_k<<8) | uint64(x)
+									value.Jobs_k = uint64(value.Jobs_k<<8) | uint64(x)
 								}
 							}
 							typ := enc.TLNum(0)
@@ -1136,11 +1136,11 @@ func (context *AwarenessUpdateParsingContext) Parse(reader enc.WireView, ignoreC
 							if typ != 578 {
 								return nil, enc.ErrFailToParse{TypeNum: 577, Err: enc.ErrUnrecognizedField{TypeNum: typ}}
 							}
-							value.Partitions_v = true
+							value.Jobs_v = true
 							err = reader.Skip(int(l))
 							_ = value
 						}
-						value.Partitions[pseudoValue.Partitions_k] = pseudoValue.Partitions_v
+						value.Jobs[pseudoValue.Jobs_k] = pseudoValue.Jobs_v
 					}
 					progress--
 				}
@@ -1165,7 +1165,7 @@ func (context *AwarenessUpdateParsingContext) Parse(reader enc.WireView, ignoreC
 	if !handled_NodeName && err == nil {
 		err = enc.ErrSkipRequired{Name: "NodeName", TypeNum: 576}
 	}
-	if !handled_Partitions && err == nil {
+	if !handled_Jobs && err == nil {
 		// map - skip
 	}
 
@@ -2185,209 +2185,6 @@ func (value *InternalCommandEntry) Bytes() []byte {
 
 func ParseInternalCommandEntry(reader enc.WireView, ignoreCritical bool) (*InternalCommandEntry, error) {
 	context := InternalCommandEntryParsingContext{}
-	context.Init()
-	return context.Parse(reader, ignoreCritical)
-}
-
-type PartitionSnapshotEncoder struct {
-	Length uint
-
-	Commands_subencoder []struct {
-		Commands_encoder RepoCommandEncoder
-	}
-}
-
-type PartitionSnapshotParsingContext struct {
-	Commands_context RepoCommandParsingContext
-}
-
-func (encoder *PartitionSnapshotEncoder) Init(value *PartitionSnapshot) {
-	{
-		Commands_l := len(value.Commands)
-		encoder.Commands_subencoder = make([]struct {
-			Commands_encoder RepoCommandEncoder
-		}, Commands_l)
-		for i := 0; i < Commands_l; i++ {
-			pseudoEncoder := &encoder.Commands_subencoder[i]
-			pseudoValue := struct {
-				Commands *RepoCommand
-			}{
-				Commands: value.Commands[i],
-			}
-			{
-				encoder := pseudoEncoder
-				value := &pseudoValue
-				if value.Commands != nil {
-					encoder.Commands_encoder.Init(value.Commands)
-				}
-				_ = encoder
-				_ = value
-			}
-		}
-	}
-
-	l := uint(0)
-	if value.Commands != nil {
-		for seq_i, seq_v := range value.Commands {
-			pseudoEncoder := &encoder.Commands_subencoder[seq_i]
-			pseudoValue := struct {
-				Commands *RepoCommand
-			}{
-				Commands: seq_v,
-			}
-			{
-				encoder := pseudoEncoder
-				value := &pseudoValue
-				if value.Commands != nil {
-					l += 3
-					l += uint(enc.TLNum(encoder.Commands_encoder.Length).EncodingLength())
-					l += encoder.Commands_encoder.Length
-				}
-				_ = encoder
-				_ = value
-			}
-		}
-	}
-	encoder.Length = l
-
-}
-
-func (context *PartitionSnapshotParsingContext) Init() {
-	context.Commands_context.Init()
-}
-
-func (encoder *PartitionSnapshotEncoder) EncodeInto(value *PartitionSnapshot, buf []byte) {
-
-	pos := uint(0)
-
-	if value.Commands != nil {
-		for seq_i, seq_v := range value.Commands {
-			pseudoEncoder := &encoder.Commands_subencoder[seq_i]
-			pseudoValue := struct {
-				Commands *RepoCommand
-			}{
-				Commands: seq_v,
-			}
-			{
-				encoder := pseudoEncoder
-				value := &pseudoValue
-				if value.Commands != nil {
-					buf[pos] = 253
-					binary.BigEndian.PutUint16(buf[pos+1:], uint16(672))
-					pos += 3
-					pos += uint(enc.TLNum(encoder.Commands_encoder.Length).EncodeInto(buf[pos:]))
-					if encoder.Commands_encoder.Length > 0 {
-						encoder.Commands_encoder.EncodeInto(value.Commands, buf[pos:])
-						pos += encoder.Commands_encoder.Length
-					}
-				}
-				_ = encoder
-				_ = value
-			}
-		}
-	}
-}
-
-func (encoder *PartitionSnapshotEncoder) Encode(value *PartitionSnapshot) enc.Wire {
-
-	wire := make(enc.Wire, 1)
-	wire[0] = make([]byte, encoder.Length)
-	buf := wire[0]
-	encoder.EncodeInto(value, buf)
-
-	return wire
-}
-
-func (context *PartitionSnapshotParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*PartitionSnapshot, error) {
-
-	var handled_Commands bool = false
-
-	progress := -1
-	_ = progress
-
-	value := &PartitionSnapshot{}
-	var err error
-	var startPos int
-	for {
-		startPos = reader.Pos()
-		if startPos >= reader.Length() {
-			break
-		}
-		typ := enc.TLNum(0)
-		l := enc.TLNum(0)
-		typ, err = reader.ReadTLNum()
-		if err != nil {
-			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
-		}
-		l, err = reader.ReadTLNum()
-		if err != nil {
-			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
-		}
-
-		err = nil
-		if handled := false; true {
-			switch typ {
-			case 672:
-				if true {
-					handled = true
-					handled_Commands = true
-					if value.Commands == nil {
-						value.Commands = make([]*RepoCommand, 0)
-					}
-					{
-						pseudoValue := struct {
-							Commands *RepoCommand
-						}{}
-						{
-							value := &pseudoValue
-							value.Commands, err = context.Commands_context.Parse(reader.Delegate(int(l)), ignoreCritical)
-							_ = value
-						}
-						value.Commands = append(value.Commands, pseudoValue.Commands)
-					}
-					progress--
-				}
-			default:
-				if !ignoreCritical && ((typ <= 31) || ((typ & 1) == 1)) {
-					return nil, enc.ErrUnrecognizedField{TypeNum: typ}
-				}
-				handled = true
-				err = reader.Skip(int(l))
-			}
-			if err == nil && !handled {
-			}
-			if err != nil {
-				return nil, enc.ErrFailToParse{TypeNum: typ, Err: err}
-			}
-		}
-	}
-
-	startPos = reader.Pos()
-	err = nil
-
-	if !handled_Commands && err == nil {
-		// sequence - skip
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	return value, nil
-}
-
-func (value *PartitionSnapshot) Encode() enc.Wire {
-	encoder := PartitionSnapshotEncoder{}
-	encoder.Init(value)
-	return encoder.Encode(value)
-}
-
-func (value *PartitionSnapshot) Bytes() []byte {
-	return value.Encode().Join()
-}
-
-func ParsePartitionSnapshot(reader enc.WireView, ignoreCritical bool) (*PartitionSnapshot, error) {
-	context := PartitionSnapshotParsingContext{}
 	context.Init()
 	return context.Parse(reader, ignoreCritical)
 }

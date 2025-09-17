@@ -235,13 +235,12 @@ func (r *RepoAwareness) StartHeartbeat() (err error) {
 // PublishAwarenessUpdate publishes an awareness update with the current node state
 // This method is called on-event, i.e. whenever local responsibility changes
 // Thread-safe
-// TODO: optimization: time-based aggregation
 func (r *RepoAwareness) publishAwarenessUpdate() {
 	// create awareness update
 	awarenessUpdate := r.storage.ProduceAwarenessUpdate(r.nodeNameN)
 
 	// publish to awareness SVS
-	log.Info(r, "Publishing awareness update", "time", time.Now(), "src", r.nodeNameN, "partitions", awarenessUpdate.Partitions)
+	log.Info(r, "Publishing awareness update", "time", time.Now(), "src", r.nodeNameN, "jobs", awarenessUpdate.Jobs)
 	_, _, err := r.awarenessSvs.Publish(awarenessUpdate.Encode())
 	if err != nil {
 		log.Error(r, "Error publishing awareness update", "err", err, "time", time.Now())
@@ -284,12 +283,6 @@ func (r *RepoAwareness) GetOnlineNodes() []enc.Name {
 		}
 	}
 	return nameNs
-}
-
-// OwnsPartition returns if the local node owns a partition
-// Thread-safe
-func (r *RepoAwareness) OwnsPartition(partitionId uint64) bool {
-	return r.storage.NodeOwnsPartition(partitionId, r.nodeName)
 }
 
 // SetOnOverReplication sets the callback for over-replication
