@@ -11,7 +11,6 @@ import (
 
 	"github.com/named-data/ndnd/repo/tlv"
 	"github.com/named-data/ndnd/repo/types"
-	"github.com/named-data/ndnd/repo/utils"
 	enc "github.com/named-data/ndnd/std/encoding"
 	"github.com/named-data/ndnd/std/log"
 	"github.com/named-data/ndnd/std/ndn"

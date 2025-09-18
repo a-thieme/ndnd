@@ -1,8 +1,6 @@
 package repo
 
 import (
-	"sync"
-
 	"github.com/named-data/ndnd/repo/auction"
 	"github.com/named-data/ndnd/repo/awareness"
 	"github.com/named-data/ndnd/repo/management"
@@ -35,16 +33,12 @@ type Repo struct {
 	auction    *auction.AuctionEngine
 	facing     *facing.RepoProducerFacing
 	management *management.RepoManagement
-
-	groupsSvs map[string]*RepoSvs
-	mutex     sync.Mutex
 }
 
 func NewRepo(groupConfig *RepoGroupConfig, nodeConfig *RepoNodeConfig) *Repo {
 	return &Repo{
 		groupConfig: groupConfig,
 		nodeConfig:  nodeConfig,
-		groupsSvs:   make(map[string]*RepoSvs),
 	}
 }
 
@@ -68,18 +62,15 @@ func (r *Repo) Start() (err error) {
 		return err
 	}
 
-	// TODO: Trust config may be specific to application
-	// This may need us to make a client for each app
 	kc, err := keychain.NewKeyChain(r.nodeConfig.KeyChainUri, r.store)
 	if err != nil {
 		return err
 	}
 
-	// TODO: specify a real trust schema
-	// TODO: handle app-specific case
+	// FIXME: specify a real trust schema
 	schema := trust_schema.NewNullSchema()
 
-	// TODO: handle app-specific case
+	// testbed anchor, necessary for validating commands
 	anchors := r.nodeConfig.TrustAnchorNames()
 
 	// Create trust config
@@ -89,12 +80,12 @@ func (r *Repo) Start() (err error) {
 	}
 
 	// Attach data name as forwarding hint to cert Interests
-	// TODO: what to do if this is app dependent? Separate client for each app?
 	trust.UseDataNameFwHint = true
 
 	// Start NDN Object API client
 	// r.client = object.NewClient(r.engine, r.store, trust)
-	// TODO: temporarily disable trust
+	// temporarily disable trust
+	// FIXME: enable trust
 	r.client = object.NewClient(r.engine, r.store, nil)
 	if err := r.client.Start(); err != nil {
 		return err
@@ -103,7 +94,6 @@ func (r *Repo) Start() (err error) {
 	// Create repo shared
 	shared := types.NewRepoShared(r.groupConfig.RepoNameN,
 		r.nodeConfig.NodeNameN,
-		r.groupConfig.NumPartitions,
 		r.groupConfig.NumReplicas,
 		r.groupConfig.HeartbeatInterval,
 		r.groupConfig.HeartbeatExpiry,
@@ -111,16 +101,6 @@ func (r *Repo) Start() (err error) {
 		r.store,
 		r.engine,
 	)
-
-	// Attach managmemt interest handler
-	commandHandlerPreifx := r.groupConfig.RepoNameN.Append(enc.NewGenericComponent("cmd")) // TODO: unify command handler prefix
-	if err := r.client.AttachCommandHandler(commandHandlerPreifx, r.onMgmtCmd); err != nil {
-		return err
-	}
-	r.client.AnnouncePrefix(ndn.Announcement{
-		Name:   commandHandlerPreifx,
-		Expose: true,
-	})
 
 	// Create repo awareness
 	r.awareness = awareness.NewRepoAwareness(shared)
@@ -136,7 +116,6 @@ func (r *Repo) Start() (err error) {
 	if err := r.auction.Start(); err != nil {
 		return err
 	}
-	log.Info(r, "AuctionEngine started", "auction", r.auction)
 
 	// Create repo facing
 	r.facing = facing.NewProducerFacing(shared)
@@ -155,11 +134,7 @@ func (r *Repo) Start() (err error) {
 
 func (r *Repo) Stop() error {
 	log.Info(r, "Stopping NDN Data Repository")
-
-	for _, svs := range r.groupsSvs {
-		svs.Stop()
-	}
-	clear(r.groupsSvs)
+	// TODO: make sure to stop svs groups, but this can be done at a lower level
 
 	r.client.WithdrawPrefix(r.groupConfig.RepoNameN, nil)
 	if err := r.client.DetachCommandHandler(r.groupConfig.RepoNameN); err != nil {
@@ -218,12 +193,9 @@ func (r *Repo) Stop() error {
 	return nil
 }
 
-// setupEngineHook sets up the hook to persist all data.
-// TODO: this is useful in case of sync groups, but there is a complication in case of directly inserting data object. This is because we fetch data object by segments,
-// so what will be put into the store are segments, which causes additional complexity in check if an object is entirely in the store, for example. If we explicitly store
-// data objects in the store when we fetched it wholly, their segments will also be stored which leads to duplication of data. -> we can maybe tolerate this, and remove all segments storage when we have the full object?
-// TODO: we temporarily disable this. Let's see how things work out
-// TODO: this is also used to preserve all sync group data -> we can explicitly store them when we setup partition svs
+// setupEngineHook sets up the hook to persist all recieved data.
+// probably not necessary if lower levels handle it
+// TODO: see if this is necesssary
 func (r *Repo) setupEngineHook() {
 	r.engine.(*basic.Engine).OnDataHook = func(data ndn.Data, raw enc.Wire, sigCov enc.Wire) error {
 		// This is very hacky, improve if possible.

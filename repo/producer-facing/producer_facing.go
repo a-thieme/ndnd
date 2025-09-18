@@ -1,8 +1,6 @@
 package producerfacing
 
 import (
-	"time"
-
 	"github.com/named-data/ndnd/repo/tlv"
 	"github.com/named-data/ndnd/repo/types"
 	enc "github.com/named-data/ndnd/std/encoding"
@@ -80,9 +78,7 @@ func (p *RepoProducerFacing) onExternalNotify(args ndn.InterestHandlerArgs) {
 		return
 	}
 
-	commandType := command.Type
-	target := command.Target.Name
-	log.Info(p, "Received external notify command", "commandName", commandType, "target", target)
+	log.Info(p, "Received external notify command", command)
 
 	// Reply to the command - "Repo has received the command"
 	sr := &tlv.RepoStatusResponse{
@@ -92,11 +88,10 @@ func (p *RepoProducerFacing) onExternalNotify(args ndn.InterestHandlerArgs) {
 	data, err := p.repo.Engine.Spec().MakeData(
 		interest.Name(),
 		&ndn.DataConfig{
-			ContentType: optional.Some(ndn.ContentTypeBlob),
-			Freshness:   optional.Some(10 * time.Second),
+			ContentType: optional.Some(ndn.ContentTypeBlob), // TODO: see if this needs to be set
 		},
 		sr.Encode(),
-		nil,
+		nil, // FIXME: sign this data
 	)
 	if err != nil {
 		log.Error(p, "Failed to make reply data", "err", err)
