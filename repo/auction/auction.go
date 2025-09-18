@@ -196,7 +196,7 @@ func (a *AuctionEngine) AuctionItem(itemId string) {
 		log.Info(a, "Sent bid interest", "itemId", itemId, "node", node, "nonce", nonce)
 		object.ExpressR(a.repo.Engine, ndn.ExpressRArgs{
 			Name:    iName,
-			Retries: 5,
+			Retries: 0,
 			Config:  &intCfg,
 			Callback: func(args ndn.ExpressCallbackArgs) {
 				switch args.Result {
@@ -288,8 +288,7 @@ func (a *AuctionEngine) onInterest(args ndn.InterestHandlerArgs) {
 		}
 		r := a.auctions[itemId].results
 		a.mutex.RUnlock()
-		// todo: wait until < interest timeout and keep checking if r is changed
-		// r should be changed after an auction timeout to something like "unsuccessful auction"
+		// FIXME: while r is unchanged, wait a small amount of time
 		if r == "" {
 			// don't respond until there's a result
 			return
