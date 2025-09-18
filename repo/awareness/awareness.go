@@ -240,25 +240,11 @@ func (r *RepoAwareness) publishAwarenessUpdate() {
 	awarenessUpdate := r.storage.ProduceAwarenessUpdate(r.nodeNameN)
 
 	// publish to awareness SVS
-	log.Info(r, "Publishing awareness update", "time", time.Now(), "src", r.nodeNameN, "jobs", awarenessUpdate.Jobs)
+	log.Info(r, "Publishing awareness update", "time", time.Now(), "src", r.nodeNameN, "jobs", awarenessUpdate.ActiveJobs)
 	_, _, err := r.awarenessSvs.Publish(awarenessUpdate.Encode())
 	if err != nil {
 		log.Error(r, "Error publishing awareness update", "err", err, "time", time.Now())
 	}
-}
-
-// AddLocalPartition adds a partition to the local state and publishes an awareness update
-// Thread-safe
-func (r *RepoAwareness) AddLocalPartition(partitionId uint64) {
-	r.storage.AddNodePartition(partitionId, r.nodeName)
-	r.publishAwarenessUpdate()
-}
-
-// DropLocalPartition drops a partition from the local state and publishes an awareness update
-// Thread-safe
-func (r *RepoAwareness) DropLocalPartition(partitionId uint64) {
-	r.storage.RemoveNodePartition(partitionId, r.nodeName)
-	r.publishAwarenessUpdate()
 }
 
 // GetPartitionReplicas returns the replicas for a given partition (local awareness)
