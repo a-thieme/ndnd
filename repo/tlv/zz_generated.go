@@ -6,220 +6,76 @@ import (
 	"io"
 	"strings"
 
-	"time"
-
 	enc "github.com/named-data/ndnd/std/encoding"
 	spec "github.com/named-data/ndnd/std/ndn/spec_2022"
 )
 
-type RepoCmdEncoder struct {
+type RepoCommandEncoder struct {
 	Length uint
 
-	SyncJoin_encoder  SyncJoinEncoder
-	BlobFetch_encoder BlobFetchEncoder
+	Target_encoder spec.NameContainerEncoder
 }
 
-type RepoCmdParsingContext struct {
-	SyncJoin_context  SyncJoinParsingContext
-	BlobFetch_context BlobFetchParsingContext
+type RepoCommandParsingContext struct {
+	Target_context spec.NameContainerParsingContext
 }
 
-func (encoder *RepoCmdEncoder) Init(value *RepoCmd) {
-	if value.SyncJoin != nil {
-		encoder.SyncJoin_encoder.Init(value.SyncJoin)
-	}
-	if value.BlobFetch != nil {
-		encoder.BlobFetch_encoder.Init(value.BlobFetch)
+func (encoder *RepoCommandEncoder) Init(value *RepoCommand) {
+
+	if value.Target != nil {
+		encoder.Target_encoder.Init(value.Target)
 	}
 
 	l := uint(0)
-	if value.SyncJoin != nil {
+	l += 3
+	l += uint(enc.TLNum(len(value.Type)).EncodingLength())
+	l += uint(len(value.Type))
+	if value.Target != nil {
 		l += 3
-		l += uint(enc.TLNum(encoder.SyncJoin_encoder.Length).EncodingLength())
-		l += encoder.SyncJoin_encoder.Length
+		l += uint(enc.TLNum(encoder.Target_encoder.Length).EncodingLength())
+		l += encoder.Target_encoder.Length
 	}
-	if value.BlobFetch != nil {
-		l += 3
-		l += uint(enc.TLNum(encoder.BlobFetch_encoder.Length).EncodingLength())
-		l += encoder.BlobFetch_encoder.Length
-	}
+	l += 3
+	l += uint(1 + enc.Nat(value.SnapshotThreshold).EncodingLength())
 	encoder.Length = l
 
 }
 
-func (context *RepoCmdParsingContext) Init() {
-	context.SyncJoin_context.Init()
-	context.BlobFetch_context.Init()
-}
+func (context *RepoCommandParsingContext) Init() {
 
-func (encoder *RepoCmdEncoder) EncodeInto(value *RepoCmd, buf []byte) {
-
-	pos := uint(0)
-
-	if value.SyncJoin != nil {
-		buf[pos] = 253
-		binary.BigEndian.PutUint16(buf[pos+1:], uint16(7600))
-		pos += 3
-		pos += uint(enc.TLNum(encoder.SyncJoin_encoder.Length).EncodeInto(buf[pos:]))
-		if encoder.SyncJoin_encoder.Length > 0 {
-			encoder.SyncJoin_encoder.EncodeInto(value.SyncJoin, buf[pos:])
-			pos += encoder.SyncJoin_encoder.Length
-		}
-	}
-	if value.BlobFetch != nil {
-		buf[pos] = 253
-		binary.BigEndian.PutUint16(buf[pos+1:], uint16(7602))
-		pos += 3
-		pos += uint(enc.TLNum(encoder.BlobFetch_encoder.Length).EncodeInto(buf[pos:]))
-		if encoder.BlobFetch_encoder.Length > 0 {
-			encoder.BlobFetch_encoder.EncodeInto(value.BlobFetch, buf[pos:])
-			pos += encoder.BlobFetch_encoder.Length
-		}
-	}
-}
-
-func (encoder *RepoCmdEncoder) Encode(value *RepoCmd) enc.Wire {
-
-	wire := make(enc.Wire, 1)
-	wire[0] = make([]byte, encoder.Length)
-	buf := wire[0]
-	encoder.EncodeInto(value, buf)
-
-	return wire
-}
-
-func (context *RepoCmdParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*RepoCmd, error) {
-
-	var handled_SyncJoin bool = false
-	var handled_BlobFetch bool = false
-
-	progress := -1
-	_ = progress
-
-	value := &RepoCmd{}
-	var err error
-	var startPos int
-	for {
-		startPos = reader.Pos()
-		if startPos >= reader.Length() {
-			break
-		}
-		typ := enc.TLNum(0)
-		l := enc.TLNum(0)
-		typ, err = reader.ReadTLNum()
-		if err != nil {
-			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
-		}
-		l, err = reader.ReadTLNum()
-		if err != nil {
-			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
-		}
-
-		err = nil
-		if handled := false; true {
-			switch typ {
-			case 7600:
-				if true {
-					handled = true
-					handled_SyncJoin = true
-					value.SyncJoin, err = context.SyncJoin_context.Parse(reader.Delegate(int(l)), ignoreCritical)
-				}
-			case 7602:
-				if true {
-					handled = true
-					handled_BlobFetch = true
-					value.BlobFetch, err = context.BlobFetch_context.Parse(reader.Delegate(int(l)), ignoreCritical)
-				}
-			default:
-				if !ignoreCritical && ((typ <= 31) || ((typ & 1) == 1)) {
-					return nil, enc.ErrUnrecognizedField{TypeNum: typ}
-				}
-				handled = true
-				err = reader.Skip(int(l))
-			}
-			if err == nil && !handled {
-			}
-			if err != nil {
-				return nil, enc.ErrFailToParse{TypeNum: typ, Err: err}
-			}
-		}
-	}
-
-	startPos = reader.Pos()
-	err = nil
-
-	if !handled_SyncJoin && err == nil {
-		value.SyncJoin = nil
-	}
-	if !handled_BlobFetch && err == nil {
-		value.BlobFetch = nil
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	return value, nil
-}
-
-func (value *RepoCmd) Encode() enc.Wire {
-	encoder := RepoCmdEncoder{}
-	encoder.Init(value)
-	return encoder.Encode(value)
-}
-
-func (value *RepoCmd) Bytes() []byte {
-	return value.Encode().Join()
-}
-
-func ParseRepoCmd(reader enc.WireView, ignoreCritical bool) (*RepoCmd, error) {
-	context := RepoCmdParsingContext{}
-	context.Init()
-	return context.Parse(reader, ignoreCritical)
-}
-
-type RepoCmdResEncoder struct {
-	Length uint
-}
-
-type RepoCmdResParsingContext struct {
-}
-
-func (encoder *RepoCmdResEncoder) Init(value *RepoCmdRes) {
-
-	l := uint(0)
-	l += 3
-	l += uint(1 + enc.Nat(value.Status).EncodingLength())
-	l += 3
-	l += uint(enc.TLNum(len(value.Message)).EncodingLength())
-	l += uint(len(value.Message))
-	encoder.Length = l
+	context.Target_context.Init()
 
 }
 
-func (context *RepoCmdResParsingContext) Init() {
-
-}
-
-func (encoder *RepoCmdResEncoder) EncodeInto(value *RepoCmdRes, buf []byte) {
+func (encoder *RepoCommandEncoder) EncodeInto(value *RepoCommand, buf []byte) {
 
 	pos := uint(0)
 
 	buf[pos] = 253
-	binary.BigEndian.PutUint16(buf[pos+1:], uint16(657))
+	binary.BigEndian.PutUint16(buf[pos+1:], uint16(594))
+	pos += 3
+	pos += uint(enc.TLNum(len(value.Type)).EncodeInto(buf[pos:]))
+	copy(buf[pos:], value.Type)
+	pos += uint(len(value.Type))
+	if value.Target != nil {
+		buf[pos] = 253
+		binary.BigEndian.PutUint16(buf[pos+1:], uint16(595))
+		pos += 3
+		pos += uint(enc.TLNum(encoder.Target_encoder.Length).EncodeInto(buf[pos:]))
+		if encoder.Target_encoder.Length > 0 {
+			encoder.Target_encoder.EncodeInto(value.Target, buf[pos:])
+			pos += encoder.Target_encoder.Length
+		}
+	}
+	buf[pos] = 253
+	binary.BigEndian.PutUint16(buf[pos+1:], uint16(597))
 	pos += 3
 
-	buf[pos] = byte(enc.Nat(value.Status).EncodeInto(buf[pos+1:]))
+	buf[pos] = byte(enc.Nat(value.SnapshotThreshold).EncodeInto(buf[pos+1:]))
 	pos += uint(1 + buf[pos])
-	buf[pos] = 253
-	binary.BigEndian.PutUint16(buf[pos+1:], uint16(658))
-	pos += 3
-	pos += uint(enc.TLNum(len(value.Message)).EncodeInto(buf[pos:]))
-	copy(buf[pos:], value.Message)
-	pos += uint(len(value.Message))
 }
 
-func (encoder *RepoCmdResEncoder) Encode(value *RepoCmdRes) enc.Wire {
+func (encoder *RepoCommandEncoder) Encode(value *RepoCommand) enc.Wire {
 
 	wire := make(enc.Wire, 1)
 	wire[0] = make([]byte, encoder.Length)
@@ -229,15 +85,16 @@ func (encoder *RepoCmdResEncoder) Encode(value *RepoCmdRes) enc.Wire {
 	return wire
 }
 
-func (context *RepoCmdResParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*RepoCmdRes, error) {
+func (context *RepoCommandParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*RepoCommand, error) {
 
-	var handled_Status bool = false
-	var handled_Message bool = false
+	var handled_Type bool = false
+	var handled_Target bool = false
+	var handled_SnapshotThreshold bool = false
 
 	progress := -1
 	_ = progress
 
-	value := &RepoCmdRes{}
+	value := &RepoCommand{}
 	var err error
 	var startPos int
 	for {
@@ -259,389 +116,29 @@ func (context *RepoCmdResParsingContext) Parse(reader enc.WireView, ignoreCritic
 		err = nil
 		if handled := false; true {
 			switch typ {
-			case 657:
+			case 594:
 				if true {
 					handled = true
-					handled_Status = true
-					value.Status = uint64(0)
-					{
-						for i := 0; i < int(l); i++ {
-							x := byte(0)
-							x, err = reader.ReadByte()
-							if err != nil {
-								if err == io.EOF {
-									err = io.ErrUnexpectedEOF
-								}
-								break
-							}
-							value.Status = uint64(value.Status<<8) | uint64(x)
-						}
-					}
-				}
-			case 658:
-				if true {
-					handled = true
-					handled_Message = true
+					handled_Type = true
 					{
 						var builder strings.Builder
 						_, err = reader.CopyN(&builder, int(l))
 						if err == nil {
-							value.Message = builder.String()
+							value.Type = builder.String()
 						}
 					}
 				}
-			default:
-				if !ignoreCritical && ((typ <= 31) || ((typ & 1) == 1)) {
-					return nil, enc.ErrUnrecognizedField{TypeNum: typ}
-				}
-				handled = true
-				err = reader.Skip(int(l))
-			}
-			if err == nil && !handled {
-			}
-			if err != nil {
-				return nil, enc.ErrFailToParse{TypeNum: typ, Err: err}
-			}
-		}
-	}
-
-	startPos = reader.Pos()
-	err = nil
-
-	if !handled_Status && err == nil {
-		err = enc.ErrSkipRequired{Name: "Status", TypeNum: 657}
-	}
-	if !handled_Message && err == nil {
-		err = enc.ErrSkipRequired{Name: "Message", TypeNum: 658}
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	return value, nil
-}
-
-func (value *RepoCmdRes) Encode() enc.Wire {
-	encoder := RepoCmdResEncoder{}
-	encoder.Init(value)
-	return encoder.Encode(value)
-}
-
-func (value *RepoCmdRes) Bytes() []byte {
-	return value.Encode().Join()
-}
-
-func ParseRepoCmdRes(reader enc.WireView, ignoreCritical bool) (*RepoCmdRes, error) {
-	context := RepoCmdResParsingContext{}
-	context.Init()
-	return context.Parse(reader, ignoreCritical)
-}
-
-type SyncJoinEncoder struct {
-	Length uint
-
-	Protocol_encoder        spec.NameContainerEncoder
-	Group_encoder           spec.NameContainerEncoder
-	MulticastPrefix_encoder spec.NameContainerEncoder
-	HistorySnapshot_encoder HistorySnapshotConfigEncoder
-}
-
-type SyncJoinParsingContext struct {
-	Protocol_context        spec.NameContainerParsingContext
-	Group_context           spec.NameContainerParsingContext
-	MulticastPrefix_context spec.NameContainerParsingContext
-	HistorySnapshot_context HistorySnapshotConfigParsingContext
-}
-
-func (encoder *SyncJoinEncoder) Init(value *SyncJoin) {
-	if value.Protocol != nil {
-		encoder.Protocol_encoder.Init(value.Protocol)
-	}
-	if value.Group != nil {
-		encoder.Group_encoder.Init(value.Group)
-	}
-	if value.MulticastPrefix != nil {
-		encoder.MulticastPrefix_encoder.Init(value.MulticastPrefix)
-	}
-	if value.HistorySnapshot != nil {
-		encoder.HistorySnapshot_encoder.Init(value.HistorySnapshot)
-	}
-
-	l := uint(0)
-	if value.Protocol != nil {
-		l += 3
-		l += uint(enc.TLNum(encoder.Protocol_encoder.Length).EncodingLength())
-		l += encoder.Protocol_encoder.Length
-	}
-	if value.Group != nil {
-		l += 3
-		l += uint(enc.TLNum(encoder.Group_encoder.Length).EncodingLength())
-		l += encoder.Group_encoder.Length
-	}
-	if value.MulticastPrefix != nil {
-		l += 3
-		l += uint(enc.TLNum(encoder.MulticastPrefix_encoder.Length).EncodingLength())
-		l += encoder.MulticastPrefix_encoder.Length
-	}
-	if value.HistorySnapshot != nil {
-		l += 3
-		l += uint(enc.TLNum(encoder.HistorySnapshot_encoder.Length).EncodingLength())
-		l += encoder.HistorySnapshot_encoder.Length
-	}
-	encoder.Length = l
-
-}
-
-func (context *SyncJoinParsingContext) Init() {
-	context.Protocol_context.Init()
-	context.Group_context.Init()
-	context.MulticastPrefix_context.Init()
-	context.HistorySnapshot_context.Init()
-}
-
-func (encoder *SyncJoinEncoder) EncodeInto(value *SyncJoin, buf []byte) {
-
-	pos := uint(0)
-
-	if value.Protocol != nil {
-		buf[pos] = 253
-		binary.BigEndian.PutUint16(buf[pos+1:], uint16(401))
-		pos += 3
-		pos += uint(enc.TLNum(encoder.Protocol_encoder.Length).EncodeInto(buf[pos:]))
-		if encoder.Protocol_encoder.Length > 0 {
-			encoder.Protocol_encoder.EncodeInto(value.Protocol, buf[pos:])
-			pos += encoder.Protocol_encoder.Length
-		}
-	}
-	if value.Group != nil {
-		buf[pos] = 253
-		binary.BigEndian.PutUint16(buf[pos+1:], uint16(403))
-		pos += 3
-		pos += uint(enc.TLNum(encoder.Group_encoder.Length).EncodeInto(buf[pos:]))
-		if encoder.Group_encoder.Length > 0 {
-			encoder.Group_encoder.EncodeInto(value.Group, buf[pos:])
-			pos += encoder.Group_encoder.Length
-		}
-	}
-	if value.MulticastPrefix != nil {
-		buf[pos] = 253
-		binary.BigEndian.PutUint16(buf[pos+1:], uint16(404))
-		pos += 3
-		pos += uint(enc.TLNum(encoder.MulticastPrefix_encoder.Length).EncodeInto(buf[pos:]))
-		if encoder.MulticastPrefix_encoder.Length > 0 {
-			encoder.MulticastPrefix_encoder.EncodeInto(value.MulticastPrefix, buf[pos:])
-			pos += encoder.MulticastPrefix_encoder.Length
-		}
-	}
-	if value.HistorySnapshot != nil {
-		buf[pos] = 253
-		binary.BigEndian.PutUint16(buf[pos+1:], uint16(420))
-		pos += 3
-		pos += uint(enc.TLNum(encoder.HistorySnapshot_encoder.Length).EncodeInto(buf[pos:]))
-		if encoder.HistorySnapshot_encoder.Length > 0 {
-			encoder.HistorySnapshot_encoder.EncodeInto(value.HistorySnapshot, buf[pos:])
-			pos += encoder.HistorySnapshot_encoder.Length
-		}
-	}
-}
-
-func (encoder *SyncJoinEncoder) Encode(value *SyncJoin) enc.Wire {
-
-	wire := make(enc.Wire, 1)
-	wire[0] = make([]byte, encoder.Length)
-	buf := wire[0]
-	encoder.EncodeInto(value, buf)
-
-	return wire
-}
-
-func (context *SyncJoinParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*SyncJoin, error) {
-
-	var handled_Protocol bool = false
-	var handled_Group bool = false
-	var handled_MulticastPrefix bool = false
-	var handled_HistorySnapshot bool = false
-
-	progress := -1
-	_ = progress
-
-	value := &SyncJoin{}
-	var err error
-	var startPos int
-	for {
-		startPos = reader.Pos()
-		if startPos >= reader.Length() {
-			break
-		}
-		typ := enc.TLNum(0)
-		l := enc.TLNum(0)
-		typ, err = reader.ReadTLNum()
-		if err != nil {
-			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
-		}
-		l, err = reader.ReadTLNum()
-		if err != nil {
-			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
-		}
-
-		err = nil
-		if handled := false; true {
-			switch typ {
-			case 401:
+			case 595:
 				if true {
 					handled = true
-					handled_Protocol = true
-					value.Protocol, err = context.Protocol_context.Parse(reader.Delegate(int(l)), ignoreCritical)
+					handled_Target = true
+					value.Target, err = context.Target_context.Parse(reader.Delegate(int(l)), ignoreCritical)
 				}
-			case 403:
+			case 597:
 				if true {
 					handled = true
-					handled_Group = true
-					value.Group, err = context.Group_context.Parse(reader.Delegate(int(l)), ignoreCritical)
-				}
-			case 404:
-				if true {
-					handled = true
-					handled_MulticastPrefix = true
-					value.MulticastPrefix, err = context.MulticastPrefix_context.Parse(reader.Delegate(int(l)), ignoreCritical)
-				}
-			case 420:
-				if true {
-					handled = true
-					handled_HistorySnapshot = true
-					value.HistorySnapshot, err = context.HistorySnapshot_context.Parse(reader.Delegate(int(l)), ignoreCritical)
-				}
-			default:
-				if !ignoreCritical && ((typ <= 31) || ((typ & 1) == 1)) {
-					return nil, enc.ErrUnrecognizedField{TypeNum: typ}
-				}
-				handled = true
-				err = reader.Skip(int(l))
-			}
-			if err == nil && !handled {
-			}
-			if err != nil {
-				return nil, enc.ErrFailToParse{TypeNum: typ, Err: err}
-			}
-		}
-	}
-
-	startPos = reader.Pos()
-	err = nil
-
-	if !handled_Protocol && err == nil {
-		value.Protocol = nil
-	}
-	if !handled_Group && err == nil {
-		value.Group = nil
-	}
-	if !handled_MulticastPrefix && err == nil {
-		value.MulticastPrefix = nil
-	}
-	if !handled_HistorySnapshot && err == nil {
-		value.HistorySnapshot = nil
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	return value, nil
-}
-
-func (value *SyncJoin) Encode() enc.Wire {
-	encoder := SyncJoinEncoder{}
-	encoder.Init(value)
-	return encoder.Encode(value)
-}
-
-func (value *SyncJoin) Bytes() []byte {
-	return value.Encode().Join()
-}
-
-func ParseSyncJoin(reader enc.WireView, ignoreCritical bool) (*SyncJoin, error) {
-	context := SyncJoinParsingContext{}
-	context.Init()
-	return context.Parse(reader, ignoreCritical)
-}
-
-type HistorySnapshotConfigEncoder struct {
-	Length uint
-}
-
-type HistorySnapshotConfigParsingContext struct {
-}
-
-func (encoder *HistorySnapshotConfigEncoder) Init(value *HistorySnapshotConfig) {
-
-	l := uint(0)
-	l += 3
-	l += uint(1 + enc.Nat(value.Threshold).EncodingLength())
-	encoder.Length = l
-
-}
-
-func (context *HistorySnapshotConfigParsingContext) Init() {
-
-}
-
-func (encoder *HistorySnapshotConfigEncoder) EncodeInto(value *HistorySnapshotConfig, buf []byte) {
-
-	pos := uint(0)
-
-	buf[pos] = 253
-	binary.BigEndian.PutUint16(buf[pos+1:], uint16(421))
-	pos += 3
-
-	buf[pos] = byte(enc.Nat(value.Threshold).EncodeInto(buf[pos+1:]))
-	pos += uint(1 + buf[pos])
-}
-
-func (encoder *HistorySnapshotConfigEncoder) Encode(value *HistorySnapshotConfig) enc.Wire {
-
-	wire := make(enc.Wire, 1)
-	wire[0] = make([]byte, encoder.Length)
-	buf := wire[0]
-	encoder.EncodeInto(value, buf)
-
-	return wire
-}
-
-func (context *HistorySnapshotConfigParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*HistorySnapshotConfig, error) {
-
-	var handled_Threshold bool = false
-
-	progress := -1
-	_ = progress
-
-	value := &HistorySnapshotConfig{}
-	var err error
-	var startPos int
-	for {
-		startPos = reader.Pos()
-		if startPos >= reader.Length() {
-			break
-		}
-		typ := enc.TLNum(0)
-		l := enc.TLNum(0)
-		typ, err = reader.ReadTLNum()
-		if err != nil {
-			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
-		}
-		l, err = reader.ReadTLNum()
-		if err != nil {
-			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
-		}
-
-		err = nil
-		if handled := false; true {
-			switch typ {
-			case 421:
-				if true {
-					handled = true
-					handled_Threshold = true
-					value.Threshold = uint64(0)
+					handled_SnapshotThreshold = true
+					value.SnapshotThreshold = uint64(0)
 					{
 						for i := 0; i < int(l); i++ {
 							x := byte(0)
@@ -652,7 +149,7 @@ func (context *HistorySnapshotConfigParsingContext) Parse(reader enc.WireView, i
 								}
 								break
 							}
-							value.Threshold = uint64(value.Threshold<<8) | uint64(x)
+							value.SnapshotThreshold = uint64(value.SnapshotThreshold<<8) | uint64(x)
 						}
 					}
 				}
@@ -674,8 +171,14 @@ func (context *HistorySnapshotConfigParsingContext) Parse(reader enc.WireView, i
 	startPos = reader.Pos()
 	err = nil
 
-	if !handled_Threshold && err == nil {
-		err = enc.ErrSkipRequired{Name: "Threshold", TypeNum: 421}
+	if !handled_Type && err == nil {
+		err = enc.ErrSkipRequired{Name: "Type", TypeNum: 594}
+	}
+	if !handled_Target && err == nil {
+		value.Target = nil
+	}
+	if !handled_SnapshotThreshold && err == nil {
+		err = enc.ErrSkipRequired{Name: "SnapshotThreshold", TypeNum: 597}
 	}
 
 	if err != nil {
@@ -685,246 +188,18 @@ func (context *HistorySnapshotConfigParsingContext) Parse(reader enc.WireView, i
 	return value, nil
 }
 
-func (value *HistorySnapshotConfig) Encode() enc.Wire {
-	encoder := HistorySnapshotConfigEncoder{}
+func (value *RepoCommand) Encode() enc.Wire {
+	encoder := RepoCommandEncoder{}
 	encoder.Init(value)
 	return encoder.Encode(value)
 }
 
-func (value *HistorySnapshotConfig) Bytes() []byte {
+func (value *RepoCommand) Bytes() []byte {
 	return value.Encode().Join()
 }
 
-func ParseHistorySnapshotConfig(reader enc.WireView, ignoreCritical bool) (*HistorySnapshotConfig, error) {
-	context := HistorySnapshotConfigParsingContext{}
-	context.Init()
-	return context.Parse(reader, ignoreCritical)
-}
-
-type BlobFetchEncoder struct {
-	Length uint
-
-	Name_encoder    spec.NameContainerEncoder
-	Data_subencoder []struct {
-	}
-}
-
-type BlobFetchParsingContext struct {
-	Name_context spec.NameContainerParsingContext
-}
-
-func (encoder *BlobFetchEncoder) Init(value *BlobFetch) {
-	if value.Name != nil {
-		encoder.Name_encoder.Init(value.Name)
-	}
-	{
-		Data_l := len(value.Data)
-		encoder.Data_subencoder = make([]struct {
-		}, Data_l)
-		for i := 0; i < Data_l; i++ {
-			pseudoEncoder := &encoder.Data_subencoder[i]
-			pseudoValue := struct {
-				Data []byte
-			}{
-				Data: value.Data[i],
-			}
-			{
-				encoder := pseudoEncoder
-				value := &pseudoValue
-
-				_ = encoder
-				_ = value
-			}
-		}
-	}
-
-	l := uint(0)
-	if value.Name != nil {
-		l += 3
-		l += uint(enc.TLNum(encoder.Name_encoder.Length).EncodingLength())
-		l += encoder.Name_encoder.Length
-	}
-	if value.Data != nil {
-		for seq_i, seq_v := range value.Data {
-			pseudoEncoder := &encoder.Data_subencoder[seq_i]
-			pseudoValue := struct {
-				Data []byte
-			}{
-				Data: seq_v,
-			}
-			{
-				encoder := pseudoEncoder
-				value := &pseudoValue
-				if value.Data != nil {
-					l += 3
-					l += uint(enc.TLNum(len(value.Data)).EncodingLength())
-					l += uint(len(value.Data))
-				}
-				_ = encoder
-				_ = value
-			}
-		}
-	}
-	encoder.Length = l
-
-}
-
-func (context *BlobFetchParsingContext) Init() {
-	context.Name_context.Init()
-
-}
-
-func (encoder *BlobFetchEncoder) EncodeInto(value *BlobFetch, buf []byte) {
-
-	pos := uint(0)
-
-	if value.Name != nil {
-		buf[pos] = 253
-		binary.BigEndian.PutUint16(buf[pos+1:], uint16(440))
-		pos += 3
-		pos += uint(enc.TLNum(encoder.Name_encoder.Length).EncodeInto(buf[pos:]))
-		if encoder.Name_encoder.Length > 0 {
-			encoder.Name_encoder.EncodeInto(value.Name, buf[pos:])
-			pos += encoder.Name_encoder.Length
-		}
-	}
-	if value.Data != nil {
-		for seq_i, seq_v := range value.Data {
-			pseudoEncoder := &encoder.Data_subencoder[seq_i]
-			pseudoValue := struct {
-				Data []byte
-			}{
-				Data: seq_v,
-			}
-			{
-				encoder := pseudoEncoder
-				value := &pseudoValue
-				if value.Data != nil {
-					buf[pos] = 253
-					binary.BigEndian.PutUint16(buf[pos+1:], uint16(442))
-					pos += 3
-					pos += uint(enc.TLNum(len(value.Data)).EncodeInto(buf[pos:]))
-					copy(buf[pos:], value.Data)
-					pos += uint(len(value.Data))
-				}
-				_ = encoder
-				_ = value
-			}
-		}
-	}
-}
-
-func (encoder *BlobFetchEncoder) Encode(value *BlobFetch) enc.Wire {
-
-	wire := make(enc.Wire, 1)
-	wire[0] = make([]byte, encoder.Length)
-	buf := wire[0]
-	encoder.EncodeInto(value, buf)
-
-	return wire
-}
-
-func (context *BlobFetchParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*BlobFetch, error) {
-
-	var handled_Name bool = false
-	var handled_Data bool = false
-
-	progress := -1
-	_ = progress
-
-	value := &BlobFetch{}
-	var err error
-	var startPos int
-	for {
-		startPos = reader.Pos()
-		if startPos >= reader.Length() {
-			break
-		}
-		typ := enc.TLNum(0)
-		l := enc.TLNum(0)
-		typ, err = reader.ReadTLNum()
-		if err != nil {
-			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
-		}
-		l, err = reader.ReadTLNum()
-		if err != nil {
-			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
-		}
-
-		err = nil
-		if handled := false; true {
-			switch typ {
-			case 440:
-				if true {
-					handled = true
-					handled_Name = true
-					value.Name, err = context.Name_context.Parse(reader.Delegate(int(l)), ignoreCritical)
-				}
-			case 442:
-				if true {
-					handled = true
-					handled_Data = true
-					if value.Data == nil {
-						value.Data = make([][]byte, 0)
-					}
-					{
-						pseudoValue := struct {
-							Data []byte
-						}{}
-						{
-							value := &pseudoValue
-							value.Data = make([]byte, l)
-							_, err = reader.ReadFull(value.Data)
-							_ = value
-						}
-						value.Data = append(value.Data, pseudoValue.Data)
-					}
-					progress--
-				}
-			default:
-				if !ignoreCritical && ((typ <= 31) || ((typ & 1) == 1)) {
-					return nil, enc.ErrUnrecognizedField{TypeNum: typ}
-				}
-				handled = true
-				err = reader.Skip(int(l))
-			}
-			if err == nil && !handled {
-			}
-			if err != nil {
-				return nil, enc.ErrFailToParse{TypeNum: typ, Err: err}
-			}
-		}
-	}
-
-	startPos = reader.Pos()
-	err = nil
-
-	if !handled_Name && err == nil {
-		value.Name = nil
-	}
-	if !handled_Data && err == nil {
-		// sequence - skip
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	return value, nil
-}
-
-func (value *BlobFetch) Encode() enc.Wire {
-	encoder := BlobFetchEncoder{}
-	encoder.Init(value)
-	return encoder.Encode(value)
-}
-
-func (value *BlobFetch) Bytes() []byte {
-	return value.Encode().Join()
-}
-
-func ParseBlobFetch(reader enc.WireView, ignoreCritical bool) (*BlobFetch, error) {
-	context := BlobFetchParsingContext{}
+func ParseRepoCommand(reader enc.WireView, ignoreCritical bool) (*RepoCommand, error) {
+	context := RepoCommandParsingContext{}
 	context.Init()
 	return context.Parse(reader, ignoreCritical)
 }
@@ -932,32 +207,39 @@ func ParseBlobFetch(reader enc.WireView, ignoreCritical bool) (*BlobFetch, error
 type AwarenessUpdateEncoder struct {
 	Length uint
 
-	Jobs_valencoder map[uint64]*struct {
+	Node_encoder          spec.NameContainerEncoder
+	ActiveJobs_subencoder []struct {
+		ActiveJobs_encoder RepoCommandEncoder
 	}
 }
 
 type AwarenessUpdateParsingContext struct {
+	Node_context       spec.NameContainerParsingContext
+	ActiveJobs_context RepoCommandParsingContext
 }
 
 func (encoder *AwarenessUpdateEncoder) Init(value *AwarenessUpdate) {
-
+	if value.Node != nil {
+		encoder.Node_encoder.Init(value.Node)
+	}
 	{
-		Jobs_l := len(value.Jobs)
-		encoder.Jobs_valencoder = make(map[uint64]*struct {
-		}, Jobs_l)
-		for map_k := range value.Jobs {
-			pseudoEncoder := &struct {
-			}{}
-			encoder.Jobs_valencoder[map_k] = pseudoEncoder
+		ActiveJobs_l := len(value.ActiveJobs)
+		encoder.ActiveJobs_subencoder = make([]struct {
+			ActiveJobs_encoder RepoCommandEncoder
+		}, ActiveJobs_l)
+		for i := 0; i < ActiveJobs_l; i++ {
+			pseudoEncoder := &encoder.ActiveJobs_subencoder[i]
 			pseudoValue := struct {
-				Jobs_v bool
+				ActiveJobs *RepoCommand
 			}{
-				Jobs_v: value.Jobs[map_k],
+				ActiveJobs: value.ActiveJobs[i],
 			}
 			{
 				encoder := pseudoEncoder
 				value := &pseudoValue
-
+				if value.ActiveJobs != nil {
+					encoder.ActiveJobs_encoder.Init(value.ActiveJobs)
+				}
 				_ = encoder
 				_ = value
 			}
@@ -965,27 +247,26 @@ func (encoder *AwarenessUpdateEncoder) Init(value *AwarenessUpdate) {
 	}
 
 	l := uint(0)
-	l += 3
-	l += uint(enc.TLNum(len(value.NodeName)).EncodingLength())
-	l += uint(len(value.NodeName))
-	if value.Jobs != nil {
-		for map_k, map_v := range value.Jobs {
-			pseudoEncoder := encoder.Jobs_valencoder[map_k]
+	if value.Node != nil {
+		l += 3
+		l += uint(enc.TLNum(encoder.Node_encoder.Length).EncodingLength())
+		l += encoder.Node_encoder.Length
+	}
+	if value.ActiveJobs != nil {
+		for seq_i, seq_v := range value.ActiveJobs {
+			pseudoEncoder := &encoder.ActiveJobs_subencoder[seq_i]
 			pseudoValue := struct {
-				Jobs_k uint64
-				Jobs_v bool
+				ActiveJobs *RepoCommand
 			}{
-				Jobs_k: map_k,
-				Jobs_v: map_v,
+				ActiveJobs: seq_v,
 			}
 			{
 				encoder := pseudoEncoder
 				value := &pseudoValue
-				l += 3
-				l += uint(1 + enc.Nat(value.Jobs_k).EncodingLength())
-				if value.Jobs_v {
+				if value.ActiveJobs != nil {
 					l += 3
-					l += 1
+					l += uint(enc.TLNum(encoder.ActiveJobs_encoder.Length).EncodingLength())
+					l += encoder.ActiveJobs_encoder.Length
 				}
 				_ = encoder
 				_ = value
@@ -997,44 +278,44 @@ func (encoder *AwarenessUpdateEncoder) Init(value *AwarenessUpdate) {
 }
 
 func (context *AwarenessUpdateParsingContext) Init() {
-
+	context.Node_context.Init()
+	context.ActiveJobs_context.Init()
 }
 
 func (encoder *AwarenessUpdateEncoder) EncodeInto(value *AwarenessUpdate, buf []byte) {
 
 	pos := uint(0)
 
-	buf[pos] = 253
-	binary.BigEndian.PutUint16(buf[pos+1:], uint16(576))
-	pos += 3
-	pos += uint(enc.TLNum(len(value.NodeName)).EncodeInto(buf[pos:]))
-	copy(buf[pos:], value.NodeName)
-	pos += uint(len(value.NodeName))
-	if value.Jobs != nil {
-		for map_k, map_v := range value.Jobs {
-			pseudoEncoder := encoder.Jobs_valencoder[map_k]
+	if value.Node != nil {
+		buf[pos] = 253
+		binary.BigEndian.PutUint16(buf[pos+1:], uint16(576))
+		pos += 3
+		pos += uint(enc.TLNum(encoder.Node_encoder.Length).EncodeInto(buf[pos:]))
+		if encoder.Node_encoder.Length > 0 {
+			encoder.Node_encoder.EncodeInto(value.Node, buf[pos:])
+			pos += encoder.Node_encoder.Length
+		}
+	}
+	if value.ActiveJobs != nil {
+		for seq_i, seq_v := range value.ActiveJobs {
+			pseudoEncoder := &encoder.ActiveJobs_subencoder[seq_i]
 			pseudoValue := struct {
-				Jobs_k uint64
-				Jobs_v bool
+				ActiveJobs *RepoCommand
 			}{
-				Jobs_k: map_k,
-				Jobs_v: map_v,
+				ActiveJobs: seq_v,
 			}
 			{
 				encoder := pseudoEncoder
 				value := &pseudoValue
-				buf[pos] = 253
-				binary.BigEndian.PutUint16(buf[pos+1:], uint16(577))
-				pos += 3
-
-				buf[pos] = byte(enc.Nat(value.Jobs_k).EncodeInto(buf[pos+1:]))
-				pos += uint(1 + buf[pos])
-				if value.Jobs_v {
+				if value.ActiveJobs != nil {
 					buf[pos] = 253
-					binary.BigEndian.PutUint16(buf[pos+1:], uint16(578))
+					binary.BigEndian.PutUint16(buf[pos+1:], uint16(577))
 					pos += 3
-					buf[pos] = byte(0)
-					pos += 1
+					pos += uint(enc.TLNum(encoder.ActiveJobs_encoder.Length).EncodeInto(buf[pos:]))
+					if encoder.ActiveJobs_encoder.Length > 0 {
+						encoder.ActiveJobs_encoder.EncodeInto(value.ActiveJobs, buf[pos:])
+						pos += encoder.ActiveJobs_encoder.Length
+					}
 				}
 				_ = encoder
 				_ = value
@@ -1055,8 +336,8 @@ func (encoder *AwarenessUpdateEncoder) Encode(value *AwarenessUpdate) enc.Wire {
 
 func (context *AwarenessUpdateParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*AwarenessUpdate, error) {
 
-	var handled_NodeName bool = false
-	var handled_Jobs bool = false
+	var handled_Node bool = false
+	var handled_ActiveJobs bool = false
 
 	progress := -1
 	_ = progress
@@ -1086,61 +367,26 @@ func (context *AwarenessUpdateParsingContext) Parse(reader enc.WireView, ignoreC
 			case 576:
 				if true {
 					handled = true
-					handled_NodeName = true
-					{
-						var builder strings.Builder
-						_, err = reader.CopyN(&builder, int(l))
-						if err == nil {
-							value.NodeName = builder.String()
-						}
-					}
+					handled_Node = true
+					value.Node, err = context.Node_context.Parse(reader.Delegate(int(l)), ignoreCritical)
 				}
 			case 577:
 				if true {
 					handled = true
-					handled_Jobs = true
-					if value.Jobs == nil {
-						value.Jobs = make(map[uint64]bool)
+					handled_ActiveJobs = true
+					if value.ActiveJobs == nil {
+						value.ActiveJobs = make([]*RepoCommand, 0)
 					}
 					{
 						pseudoValue := struct {
-							Jobs_k uint64
-							Jobs_v bool
+							ActiveJobs *RepoCommand
 						}{}
 						{
 							value := &pseudoValue
-							value.Jobs_k = uint64(0)
-							{
-								for i := 0; i < int(l); i++ {
-									x := byte(0)
-									x, err = reader.ReadByte()
-									if err != nil {
-										if err == io.EOF {
-											err = io.ErrUnexpectedEOF
-										}
-										break
-									}
-									value.Jobs_k = uint64(value.Jobs_k<<8) | uint64(x)
-								}
-							}
-							typ := enc.TLNum(0)
-							l := enc.TLNum(0)
-							typ, err = reader.ReadTLNum()
-							if err != nil {
-								return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
-							}
-							l, err = reader.ReadTLNum()
-							if err != nil {
-								return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
-							}
-							if typ != 578 {
-								return nil, enc.ErrFailToParse{TypeNum: 577, Err: enc.ErrUnrecognizedField{TypeNum: typ}}
-							}
-							value.Jobs_v = true
-							err = reader.Skip(int(l))
+							value.ActiveJobs, err = context.ActiveJobs_context.Parse(reader.Delegate(int(l)), ignoreCritical)
 							_ = value
 						}
-						value.Jobs[pseudoValue.Jobs_k] = pseudoValue.Jobs_v
+						value.ActiveJobs = append(value.ActiveJobs, pseudoValue.ActiveJobs)
 					}
 					progress--
 				}
@@ -1162,11 +408,11 @@ func (context *AwarenessUpdateParsingContext) Parse(reader enc.WireView, ignoreC
 	startPos = reader.Pos()
 	err = nil
 
-	if !handled_NodeName && err == nil {
-		err = enc.ErrSkipRequired{Name: "NodeName", TypeNum: 576}
+	if !handled_Node && err == nil {
+		value.Node = nil
 	}
-	if !handled_Jobs && err == nil {
-		// map - skip
+	if !handled_ActiveJobs && err == nil {
+		// sequence - skip
 	}
 
 	if err != nil {
@@ -1192,655 +438,26 @@ func ParseAwarenessUpdate(reader enc.WireView, ignoreCritical bool) (*AwarenessU
 	return context.Parse(reader, ignoreCritical)
 }
 
-type RepoNotifyEncoder struct {
+type RepoStatusResponseEncoder struct {
 	Length uint
 
-	Command_encoder RepoCommandEncoder
+	Target_encoder spec.NameContainerEncoder
 }
 
-type RepoNotifyParsingContext struct {
-	Command_context RepoCommandParsingContext
+type RepoStatusResponseParsingContext struct {
+	Target_context spec.NameContainerParsingContext
 }
 
-func (encoder *RepoNotifyEncoder) Init(value *RepoNotify) {
-	if value.Command != nil {
-		encoder.Command_encoder.Init(value.Command)
+func (encoder *RepoStatusResponseEncoder) Init(value *RepoStatusResponse) {
+	if value.Target != nil {
+		encoder.Target_encoder.Init(value.Target)
 	}
 
 	l := uint(0)
-	if value.Command != nil {
+	if value.Target != nil {
 		l += 3
-		l += uint(enc.TLNum(encoder.Command_encoder.Length).EncodingLength())
-		l += encoder.Command_encoder.Length
-	}
-	encoder.Length = l
-
-}
-
-func (context *RepoNotifyParsingContext) Init() {
-	context.Command_context.Init()
-}
-
-func (encoder *RepoNotifyEncoder) EncodeInto(value *RepoNotify, buf []byte) {
-
-	pos := uint(0)
-
-	if value.Command != nil {
-		buf[pos] = 253
-		binary.BigEndian.PutUint16(buf[pos+1:], uint16(608))
-		pos += 3
-		pos += uint(enc.TLNum(encoder.Command_encoder.Length).EncodeInto(buf[pos:]))
-		if encoder.Command_encoder.Length > 0 {
-			encoder.Command_encoder.EncodeInto(value.Command, buf[pos:])
-			pos += encoder.Command_encoder.Length
-		}
-	}
-}
-
-func (encoder *RepoNotifyEncoder) Encode(value *RepoNotify) enc.Wire {
-
-	wire := make(enc.Wire, 1)
-	wire[0] = make([]byte, encoder.Length)
-	buf := wire[0]
-	encoder.EncodeInto(value, buf)
-
-	return wire
-}
-
-func (context *RepoNotifyParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*RepoNotify, error) {
-
-	var handled_Command bool = false
-
-	progress := -1
-	_ = progress
-
-	value := &RepoNotify{}
-	var err error
-	var startPos int
-	for {
-		startPos = reader.Pos()
-		if startPos >= reader.Length() {
-			break
-		}
-		typ := enc.TLNum(0)
-		l := enc.TLNum(0)
-		typ, err = reader.ReadTLNum()
-		if err != nil {
-			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
-		}
-		l, err = reader.ReadTLNum()
-		if err != nil {
-			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
-		}
-
-		err = nil
-		if handled := false; true {
-			switch typ {
-			case 608:
-				if true {
-					handled = true
-					handled_Command = true
-					value.Command, err = context.Command_context.Parse(reader.Delegate(int(l)), ignoreCritical)
-				}
-			default:
-				if !ignoreCritical && ((typ <= 31) || ((typ & 1) == 1)) {
-					return nil, enc.ErrUnrecognizedField{TypeNum: typ}
-				}
-				handled = true
-				err = reader.Skip(int(l))
-			}
-			if err == nil && !handled {
-			}
-			if err != nil {
-				return nil, enc.ErrFailToParse{TypeNum: typ, Err: err}
-			}
-		}
-	}
-
-	startPos = reader.Pos()
-	err = nil
-
-	if !handled_Command && err == nil {
-		value.Command = nil
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	return value, nil
-}
-
-func (value *RepoNotify) Encode() enc.Wire {
-	encoder := RepoNotifyEncoder{}
-	encoder.Init(value)
-	return encoder.Encode(value)
-}
-
-func (value *RepoNotify) Bytes() []byte {
-	return value.Encode().Join()
-}
-
-func ParseRepoNotify(reader enc.WireView, ignoreCritical bool) (*RepoNotify, error) {
-	context := RepoNotifyParsingContext{}
-	context.Init()
-	return context.Parse(reader, ignoreCritical)
-}
-
-type RepoCommandEncoder struct {
-	Length uint
-
-	SrcName_encoder             spec.NameContainerEncoder
-	RegisterPrefixes_subencoder []struct {
-		RegisterPrefixes_encoder spec.NameContainerEncoder
-	}
-	HistorySnapshot_encoder HistorySnapshotConfigEncoder
-}
-
-type RepoCommandParsingContext struct {
-	SrcName_context          spec.NameContainerParsingContext
-	RegisterPrefixes_context spec.NameContainerParsingContext
-	HistorySnapshot_context  HistorySnapshotConfigParsingContext
-}
-
-func (encoder *RepoCommandEncoder) Init(value *RepoCommand) {
-
-	if value.SrcName != nil {
-		encoder.SrcName_encoder.Init(value.SrcName)
-	}
-	{
-		RegisterPrefixes_l := len(value.RegisterPrefixes)
-		encoder.RegisterPrefixes_subencoder = make([]struct {
-			RegisterPrefixes_encoder spec.NameContainerEncoder
-		}, RegisterPrefixes_l)
-		for i := 0; i < RegisterPrefixes_l; i++ {
-			pseudoEncoder := &encoder.RegisterPrefixes_subencoder[i]
-			pseudoValue := struct {
-				RegisterPrefixes *spec.NameContainer
-			}{
-				RegisterPrefixes: value.RegisterPrefixes[i],
-			}
-			{
-				encoder := pseudoEncoder
-				value := &pseudoValue
-				if value.RegisterPrefixes != nil {
-					encoder.RegisterPrefixes_encoder.Init(value.RegisterPrefixes)
-				}
-				_ = encoder
-				_ = value
-			}
-		}
-	}
-	if value.HistorySnapshot != nil {
-		encoder.HistorySnapshot_encoder.Init(value.HistorySnapshot)
-	}
-
-	l := uint(0)
-	l += 3
-	l += uint(1 + enc.Nat(value.Nonce).EncodingLength())
-	l += 3
-	l += uint(enc.TLNum(len(value.CommandType)).EncodingLength())
-	l += uint(len(value.CommandType))
-	if value.SrcName != nil {
-		l += 3
-		l += uint(enc.TLNum(encoder.SrcName_encoder.Length).EncodingLength())
-		l += encoder.SrcName_encoder.Length
-	}
-	if value.RegisterPrefixes != nil {
-		for seq_i, seq_v := range value.RegisterPrefixes {
-			pseudoEncoder := &encoder.RegisterPrefixes_subencoder[seq_i]
-			pseudoValue := struct {
-				RegisterPrefixes *spec.NameContainer
-			}{
-				RegisterPrefixes: seq_v,
-			}
-			{
-				encoder := pseudoEncoder
-				value := &pseudoValue
-				if value.RegisterPrefixes != nil {
-					l += 3
-					l += uint(enc.TLNum(encoder.RegisterPrefixes_encoder.Length).EncodingLength())
-					l += encoder.RegisterPrefixes_encoder.Length
-				}
-				_ = encoder
-				_ = value
-			}
-		}
-	}
-	if value.HistorySnapshot != nil {
-		l += 3
-		l += uint(enc.TLNum(encoder.HistorySnapshot_encoder.Length).EncodingLength())
-		l += encoder.HistorySnapshot_encoder.Length
-	}
-	encoder.Length = l
-
-}
-
-func (context *RepoCommandParsingContext) Init() {
-
-	context.SrcName_context.Init()
-	context.RegisterPrefixes_context.Init()
-	context.HistorySnapshot_context.Init()
-}
-
-func (encoder *RepoCommandEncoder) EncodeInto(value *RepoCommand, buf []byte) {
-
-	pos := uint(0)
-
-	buf[pos] = 253
-	binary.BigEndian.PutUint16(buf[pos+1:], uint16(592))
-	pos += 3
-
-	buf[pos] = byte(enc.Nat(value.Nonce).EncodeInto(buf[pos+1:]))
-	pos += uint(1 + buf[pos])
-	buf[pos] = 253
-	binary.BigEndian.PutUint16(buf[pos+1:], uint16(594))
-	pos += 3
-	pos += uint(enc.TLNum(len(value.CommandType)).EncodeInto(buf[pos:]))
-	copy(buf[pos:], value.CommandType)
-	pos += uint(len(value.CommandType))
-	if value.SrcName != nil {
-		buf[pos] = 253
-		binary.BigEndian.PutUint16(buf[pos+1:], uint16(595))
-		pos += 3
-		pos += uint(enc.TLNum(encoder.SrcName_encoder.Length).EncodeInto(buf[pos:]))
-		if encoder.SrcName_encoder.Length > 0 {
-			encoder.SrcName_encoder.EncodeInto(value.SrcName, buf[pos:])
-			pos += encoder.SrcName_encoder.Length
-		}
-	}
-	if value.RegisterPrefixes != nil {
-		for seq_i, seq_v := range value.RegisterPrefixes {
-			pseudoEncoder := &encoder.RegisterPrefixes_subencoder[seq_i]
-			pseudoValue := struct {
-				RegisterPrefixes *spec.NameContainer
-			}{
-				RegisterPrefixes: seq_v,
-			}
-			{
-				encoder := pseudoEncoder
-				value := &pseudoValue
-				if value.RegisterPrefixes != nil {
-					buf[pos] = 253
-					binary.BigEndian.PutUint16(buf[pos+1:], uint16(596))
-					pos += 3
-					pos += uint(enc.TLNum(encoder.RegisterPrefixes_encoder.Length).EncodeInto(buf[pos:]))
-					if encoder.RegisterPrefixes_encoder.Length > 0 {
-						encoder.RegisterPrefixes_encoder.EncodeInto(value.RegisterPrefixes, buf[pos:])
-						pos += encoder.RegisterPrefixes_encoder.Length
-					}
-				}
-				_ = encoder
-				_ = value
-			}
-		}
-	}
-	if value.HistorySnapshot != nil {
-		buf[pos] = 253
-		binary.BigEndian.PutUint16(buf[pos+1:], uint16(597))
-		pos += 3
-		pos += uint(enc.TLNum(encoder.HistorySnapshot_encoder.Length).EncodeInto(buf[pos:]))
-		if encoder.HistorySnapshot_encoder.Length > 0 {
-			encoder.HistorySnapshot_encoder.EncodeInto(value.HistorySnapshot, buf[pos:])
-			pos += encoder.HistorySnapshot_encoder.Length
-		}
-	}
-}
-
-func (encoder *RepoCommandEncoder) Encode(value *RepoCommand) enc.Wire {
-
-	wire := make(enc.Wire, 1)
-	wire[0] = make([]byte, encoder.Length)
-	buf := wire[0]
-	encoder.EncodeInto(value, buf)
-
-	return wire
-}
-
-func (context *RepoCommandParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*RepoCommand, error) {
-
-	var handled_Nonce bool = false
-	var handled_CommandType bool = false
-	var handled_SrcName bool = false
-	var handled_RegisterPrefixes bool = false
-	var handled_HistorySnapshot bool = false
-
-	progress := -1
-	_ = progress
-
-	value := &RepoCommand{}
-	var err error
-	var startPos int
-	for {
-		startPos = reader.Pos()
-		if startPos >= reader.Length() {
-			break
-		}
-		typ := enc.TLNum(0)
-		l := enc.TLNum(0)
-		typ, err = reader.ReadTLNum()
-		if err != nil {
-			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
-		}
-		l, err = reader.ReadTLNum()
-		if err != nil {
-			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
-		}
-
-		err = nil
-		if handled := false; true {
-			switch typ {
-			case 592:
-				if true {
-					handled = true
-					handled_Nonce = true
-					value.Nonce = uint64(0)
-					{
-						for i := 0; i < int(l); i++ {
-							x := byte(0)
-							x, err = reader.ReadByte()
-							if err != nil {
-								if err == io.EOF {
-									err = io.ErrUnexpectedEOF
-								}
-								break
-							}
-							value.Nonce = uint64(value.Nonce<<8) | uint64(x)
-						}
-					}
-				}
-			case 594:
-				if true {
-					handled = true
-					handled_CommandType = true
-					{
-						var builder strings.Builder
-						_, err = reader.CopyN(&builder, int(l))
-						if err == nil {
-							value.CommandType = builder.String()
-						}
-					}
-				}
-			case 595:
-				if true {
-					handled = true
-					handled_SrcName = true
-					value.SrcName, err = context.SrcName_context.Parse(reader.Delegate(int(l)), ignoreCritical)
-				}
-			case 596:
-				if true {
-					handled = true
-					handled_RegisterPrefixes = true
-					if value.RegisterPrefixes == nil {
-						value.RegisterPrefixes = make([]*spec.NameContainer, 0)
-					}
-					{
-						pseudoValue := struct {
-							RegisterPrefixes *spec.NameContainer
-						}{}
-						{
-							value := &pseudoValue
-							value.RegisterPrefixes, err = context.RegisterPrefixes_context.Parse(reader.Delegate(int(l)), ignoreCritical)
-							_ = value
-						}
-						value.RegisterPrefixes = append(value.RegisterPrefixes, pseudoValue.RegisterPrefixes)
-					}
-					progress--
-				}
-			case 597:
-				if true {
-					handled = true
-					handled_HistorySnapshot = true
-					value.HistorySnapshot, err = context.HistorySnapshot_context.Parse(reader.Delegate(int(l)), ignoreCritical)
-				}
-			default:
-				if !ignoreCritical && ((typ <= 31) || ((typ & 1) == 1)) {
-					return nil, enc.ErrUnrecognizedField{TypeNum: typ}
-				}
-				handled = true
-				err = reader.Skip(int(l))
-			}
-			if err == nil && !handled {
-			}
-			if err != nil {
-				return nil, enc.ErrFailToParse{TypeNum: typ, Err: err}
-			}
-		}
-	}
-
-	startPos = reader.Pos()
-	err = nil
-
-	if !handled_Nonce && err == nil {
-		err = enc.ErrSkipRequired{Name: "Nonce", TypeNum: 592}
-	}
-	if !handled_CommandType && err == nil {
-		err = enc.ErrSkipRequired{Name: "CommandType", TypeNum: 594}
-	}
-	if !handled_SrcName && err == nil {
-		value.SrcName = nil
-	}
-	if !handled_RegisterPrefixes && err == nil {
-		// sequence - skip
-	}
-	if !handled_HistorySnapshot && err == nil {
-		value.HistorySnapshot = nil
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	return value, nil
-}
-
-func (value *RepoCommand) Encode() enc.Wire {
-	encoder := RepoCommandEncoder{}
-	encoder.Init(value)
-	return encoder.Encode(value)
-}
-
-func (value *RepoCommand) Bytes() []byte {
-	return value.Encode().Join()
-}
-
-func ParseRepoCommand(reader enc.WireView, ignoreCritical bool) (*RepoCommand, error) {
-	context := RepoCommandParsingContext{}
-	context.Init()
-	return context.Parse(reader, ignoreCritical)
-}
-
-type RepoStatusEncoder struct {
-	Length uint
-
-	Name_encoder spec.NameContainerEncoder
-}
-
-type RepoStatusParsingContext struct {
-	Name_context spec.NameContainerParsingContext
-}
-
-func (encoder *RepoStatusEncoder) Init(value *RepoStatus) {
-
-	if value.Name != nil {
-		encoder.Name_encoder.Init(value.Name)
-	}
-
-	l := uint(0)
-	l += 3
-	l += uint(1 + enc.Nat(value.Nonce).EncodingLength())
-	if value.Name != nil {
-		l += 3
-		l += uint(enc.TLNum(encoder.Name_encoder.Length).EncodingLength())
-		l += encoder.Name_encoder.Length
-	}
-	encoder.Length = l
-
-}
-
-func (context *RepoStatusParsingContext) Init() {
-
-	context.Name_context.Init()
-}
-
-func (encoder *RepoStatusEncoder) EncodeInto(value *RepoStatus, buf []byte) {
-
-	pos := uint(0)
-
-	buf[pos] = 253
-	binary.BigEndian.PutUint16(buf[pos+1:], uint16(625))
-	pos += 3
-
-	buf[pos] = byte(enc.Nat(value.Nonce).EncodeInto(buf[pos+1:]))
-	pos += uint(1 + buf[pos])
-	if value.Name != nil {
-		buf[pos] = 253
-		binary.BigEndian.PutUint16(buf[pos+1:], uint16(624))
-		pos += 3
-		pos += uint(enc.TLNum(encoder.Name_encoder.Length).EncodeInto(buf[pos:]))
-		if encoder.Name_encoder.Length > 0 {
-			encoder.Name_encoder.EncodeInto(value.Name, buf[pos:])
-			pos += encoder.Name_encoder.Length
-		}
-	}
-}
-
-func (encoder *RepoStatusEncoder) Encode(value *RepoStatus) enc.Wire {
-
-	wire := make(enc.Wire, 1)
-	wire[0] = make([]byte, encoder.Length)
-	buf := wire[0]
-	encoder.EncodeInto(value, buf)
-
-	return wire
-}
-
-func (context *RepoStatusParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*RepoStatus, error) {
-
-	var handled_Nonce bool = false
-	var handled_Name bool = false
-
-	progress := -1
-	_ = progress
-
-	value := &RepoStatus{}
-	var err error
-	var startPos int
-	for {
-		startPos = reader.Pos()
-		if startPos >= reader.Length() {
-			break
-		}
-		typ := enc.TLNum(0)
-		l := enc.TLNum(0)
-		typ, err = reader.ReadTLNum()
-		if err != nil {
-			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
-		}
-		l, err = reader.ReadTLNum()
-		if err != nil {
-			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
-		}
-
-		err = nil
-		if handled := false; true {
-			switch typ {
-			case 625:
-				if true {
-					handled = true
-					handled_Nonce = true
-					value.Nonce = uint64(0)
-					{
-						for i := 0; i < int(l); i++ {
-							x := byte(0)
-							x, err = reader.ReadByte()
-							if err != nil {
-								if err == io.EOF {
-									err = io.ErrUnexpectedEOF
-								}
-								break
-							}
-							value.Nonce = uint64(value.Nonce<<8) | uint64(x)
-						}
-					}
-				}
-			case 624:
-				if true {
-					handled = true
-					handled_Name = true
-					value.Name, err = context.Name_context.Parse(reader.Delegate(int(l)), ignoreCritical)
-				}
-			default:
-				if !ignoreCritical && ((typ <= 31) || ((typ & 1) == 1)) {
-					return nil, enc.ErrUnrecognizedField{TypeNum: typ}
-				}
-				handled = true
-				err = reader.Skip(int(l))
-			}
-			if err == nil && !handled {
-			}
-			if err != nil {
-				return nil, enc.ErrFailToParse{TypeNum: typ, Err: err}
-			}
-		}
-	}
-
-	startPos = reader.Pos()
-	err = nil
-
-	if !handled_Nonce && err == nil {
-		err = enc.ErrSkipRequired{Name: "Nonce", TypeNum: 625}
-	}
-	if !handled_Name && err == nil {
-		value.Name = nil
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	return value, nil
-}
-
-func (value *RepoStatus) Encode() enc.Wire {
-	encoder := RepoStatusEncoder{}
-	encoder.Init(value)
-	return encoder.Encode(value)
-}
-
-func (value *RepoStatus) Bytes() []byte {
-	return value.Encode().Join()
-}
-
-func ParseRepoStatus(reader enc.WireView, ignoreCritical bool) (*RepoStatus, error) {
-	context := RepoStatusParsingContext{}
-	context.Init()
-	return context.Parse(reader, ignoreCritical)
-}
-
-type RepoStatusReplyEncoder struct {
-	Length uint
-
-	Name_encoder spec.NameContainerEncoder
-}
-
-type RepoStatusReplyParsingContext struct {
-	Name_context spec.NameContainerParsingContext
-}
-
-func (encoder *RepoStatusReplyEncoder) Init(value *RepoStatusReply) {
-
-	if value.Name != nil {
-		encoder.Name_encoder.Init(value.Name)
-	}
-
-	l := uint(0)
-	l += 3
-	l += uint(1 + enc.Nat(value.Nonce).EncodingLength())
-	if value.Name != nil {
-		l += 3
-		l += uint(enc.TLNum(encoder.Name_encoder.Length).EncodingLength())
-		l += encoder.Name_encoder.Length
+		l += uint(enc.TLNum(encoder.Target_encoder.Length).EncodingLength())
+		l += encoder.Target_encoder.Length
 	}
 	l += 3
 	l += uint(1 + enc.Nat(value.Status).EncodingLength())
@@ -1848,30 +465,23 @@ func (encoder *RepoStatusReplyEncoder) Init(value *RepoStatusReply) {
 
 }
 
-func (context *RepoStatusReplyParsingContext) Init() {
-
-	context.Name_context.Init()
+func (context *RepoStatusResponseParsingContext) Init() {
+	context.Target_context.Init()
 
 }
 
-func (encoder *RepoStatusReplyEncoder) EncodeInto(value *RepoStatusReply, buf []byte) {
+func (encoder *RepoStatusResponseEncoder) EncodeInto(value *RepoStatusResponse, buf []byte) {
 
 	pos := uint(0)
 
-	buf[pos] = 253
-	binary.BigEndian.PutUint16(buf[pos+1:], uint16(642))
-	pos += 3
-
-	buf[pos] = byte(enc.Nat(value.Nonce).EncodeInto(buf[pos+1:]))
-	pos += uint(1 + buf[pos])
-	if value.Name != nil {
+	if value.Target != nil {
 		buf[pos] = 253
 		binary.BigEndian.PutUint16(buf[pos+1:], uint16(640))
 		pos += 3
-		pos += uint(enc.TLNum(encoder.Name_encoder.Length).EncodeInto(buf[pos:]))
-		if encoder.Name_encoder.Length > 0 {
-			encoder.Name_encoder.EncodeInto(value.Name, buf[pos:])
-			pos += encoder.Name_encoder.Length
+		pos += uint(enc.TLNum(encoder.Target_encoder.Length).EncodeInto(buf[pos:]))
+		if encoder.Target_encoder.Length > 0 {
+			encoder.Target_encoder.EncodeInto(value.Target, buf[pos:])
+			pos += encoder.Target_encoder.Length
 		}
 	}
 	buf[pos] = 253
@@ -1882,7 +492,7 @@ func (encoder *RepoStatusReplyEncoder) EncodeInto(value *RepoStatusReply, buf []
 	pos += uint(1 + buf[pos])
 }
 
-func (encoder *RepoStatusReplyEncoder) Encode(value *RepoStatusReply) enc.Wire {
+func (encoder *RepoStatusResponseEncoder) Encode(value *RepoStatusResponse) enc.Wire {
 
 	wire := make(enc.Wire, 1)
 	wire[0] = make([]byte, encoder.Length)
@@ -1892,16 +502,15 @@ func (encoder *RepoStatusReplyEncoder) Encode(value *RepoStatusReply) enc.Wire {
 	return wire
 }
 
-func (context *RepoStatusReplyParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*RepoStatusReply, error) {
+func (context *RepoStatusResponseParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*RepoStatusResponse, error) {
 
-	var handled_Nonce bool = false
-	var handled_Name bool = false
+	var handled_Target bool = false
 	var handled_Status bool = false
 
 	progress := -1
 	_ = progress
 
-	value := &RepoStatusReply{}
+	value := &RepoStatusResponse{}
 	var err error
 	var startPos int
 	for {
@@ -1923,30 +532,11 @@ func (context *RepoStatusReplyParsingContext) Parse(reader enc.WireView, ignoreC
 		err = nil
 		if handled := false; true {
 			switch typ {
-			case 642:
-				if true {
-					handled = true
-					handled_Nonce = true
-					value.Nonce = uint64(0)
-					{
-						for i := 0; i < int(l); i++ {
-							x := byte(0)
-							x, err = reader.ReadByte()
-							if err != nil {
-								if err == io.EOF {
-									err = io.ErrUnexpectedEOF
-								}
-								break
-							}
-							value.Nonce = uint64(value.Nonce<<8) | uint64(x)
-						}
-					}
-				}
 			case 640:
 				if true {
 					handled = true
-					handled_Name = true
-					value.Name, err = context.Name_context.Parse(reader.Delegate(int(l)), ignoreCritical)
+					handled_Target = true
+					value.Target, err = context.Target_context.Parse(reader.Delegate(int(l)), ignoreCritical)
 				}
 			case 641:
 				if true {
@@ -1985,11 +575,8 @@ func (context *RepoStatusReplyParsingContext) Parse(reader enc.WireView, ignoreC
 	startPos = reader.Pos()
 	err = nil
 
-	if !handled_Nonce && err == nil {
-		err = enc.ErrSkipRequired{Name: "Nonce", TypeNum: 642}
-	}
-	if !handled_Name && err == nil {
-		value.Name = nil
+	if !handled_Target && err == nil {
+		value.Target = nil
 	}
 	if !handled_Status && err == nil {
 		err = enc.ErrSkipRequired{Name: "Status", TypeNum: 641}
@@ -2002,189 +589,18 @@ func (context *RepoStatusReplyParsingContext) Parse(reader enc.WireView, ignoreC
 	return value, nil
 }
 
-func (value *RepoStatusReply) Encode() enc.Wire {
-	encoder := RepoStatusReplyEncoder{}
+func (value *RepoStatusResponse) Encode() enc.Wire {
+	encoder := RepoStatusResponseEncoder{}
 	encoder.Init(value)
 	return encoder.Encode(value)
 }
 
-func (value *RepoStatusReply) Bytes() []byte {
+func (value *RepoStatusResponse) Bytes() []byte {
 	return value.Encode().Join()
 }
 
-func ParseRepoStatusReply(reader enc.WireView, ignoreCritical bool) (*RepoStatusReply, error) {
-	context := RepoStatusReplyParsingContext{}
-	context.Init()
-	return context.Parse(reader, ignoreCritical)
-}
-
-type InternalCommandEntryEncoder struct {
-	Length uint
-
-	Command_encoder RepoCommandEncoder
-}
-
-type InternalCommandEntryParsingContext struct {
-	Command_context RepoCommandParsingContext
-}
-
-func (encoder *InternalCommandEntryEncoder) Init(value *InternalCommandEntry) {
-	if value.Command != nil {
-		encoder.Command_encoder.Init(value.Command)
-	}
-
-	l := uint(0)
-	if value.Command != nil {
-		l += 3
-		l += uint(enc.TLNum(encoder.Command_encoder.Length).EncodingLength())
-		l += encoder.Command_encoder.Length
-	}
-	l += 3
-	l += uint(1 + enc.Nat(uint64(value.Timestamp/time.Millisecond)).EncodingLength())
-	encoder.Length = l
-
-}
-
-func (context *InternalCommandEntryParsingContext) Init() {
-	context.Command_context.Init()
-
-}
-
-func (encoder *InternalCommandEntryEncoder) EncodeInto(value *InternalCommandEntry, buf []byte) {
-
-	pos := uint(0)
-
-	if value.Command != nil {
-		buf[pos] = 253
-		binary.BigEndian.PutUint16(buf[pos+1:], uint16(656))
-		pos += 3
-		pos += uint(enc.TLNum(encoder.Command_encoder.Length).EncodeInto(buf[pos:]))
-		if encoder.Command_encoder.Length > 0 {
-			encoder.Command_encoder.EncodeInto(value.Command, buf[pos:])
-			pos += encoder.Command_encoder.Length
-		}
-	}
-	buf[pos] = 253
-	binary.BigEndian.PutUint16(buf[pos+1:], uint16(657))
-	pos += 3
-
-	buf[pos] = byte(enc.Nat(uint64(value.Timestamp / time.Millisecond)).EncodeInto(buf[pos+1:]))
-	pos += uint(1 + buf[pos])
-}
-
-func (encoder *InternalCommandEntryEncoder) Encode(value *InternalCommandEntry) enc.Wire {
-
-	wire := make(enc.Wire, 1)
-	wire[0] = make([]byte, encoder.Length)
-	buf := wire[0]
-	encoder.EncodeInto(value, buf)
-
-	return wire
-}
-
-func (context *InternalCommandEntryParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*InternalCommandEntry, error) {
-
-	var handled_Command bool = false
-	var handled_Timestamp bool = false
-
-	progress := -1
-	_ = progress
-
-	value := &InternalCommandEntry{}
-	var err error
-	var startPos int
-	for {
-		startPos = reader.Pos()
-		if startPos >= reader.Length() {
-			break
-		}
-		typ := enc.TLNum(0)
-		l := enc.TLNum(0)
-		typ, err = reader.ReadTLNum()
-		if err != nil {
-			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
-		}
-		l, err = reader.ReadTLNum()
-		if err != nil {
-			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
-		}
-
-		err = nil
-		if handled := false; true {
-			switch typ {
-			case 656:
-				if true {
-					handled = true
-					handled_Command = true
-					value.Command, err = context.Command_context.Parse(reader.Delegate(int(l)), ignoreCritical)
-				}
-			case 657:
-				if true {
-					handled = true
-					handled_Timestamp = true
-					{
-						timeInt := uint64(0)
-						timeInt = uint64(0)
-						{
-							for i := 0; i < int(l); i++ {
-								x := byte(0)
-								x, err = reader.ReadByte()
-								if err != nil {
-									if err == io.EOF {
-										err = io.ErrUnexpectedEOF
-									}
-									break
-								}
-								timeInt = uint64(timeInt<<8) | uint64(x)
-							}
-						}
-						value.Timestamp = time.Duration(timeInt) * time.Millisecond
-					}
-				}
-			default:
-				if !ignoreCritical && ((typ <= 31) || ((typ & 1) == 1)) {
-					return nil, enc.ErrUnrecognizedField{TypeNum: typ}
-				}
-				handled = true
-				err = reader.Skip(int(l))
-			}
-			if err == nil && !handled {
-			}
-			if err != nil {
-				return nil, enc.ErrFailToParse{TypeNum: typ, Err: err}
-			}
-		}
-	}
-
-	startPos = reader.Pos()
-	err = nil
-
-	if !handled_Command && err == nil {
-		value.Command = nil
-	}
-	if !handled_Timestamp && err == nil {
-		err = enc.ErrSkipRequired{Name: "Timestamp", TypeNum: 657}
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	return value, nil
-}
-
-func (value *InternalCommandEntry) Encode() enc.Wire {
-	encoder := InternalCommandEntryEncoder{}
-	encoder.Init(value)
-	return encoder.Encode(value)
-}
-
-func (value *InternalCommandEntry) Bytes() []byte {
-	return value.Encode().Join()
-}
-
-func ParseInternalCommandEntry(reader enc.WireView, ignoreCritical bool) (*InternalCommandEntry, error) {
-	context := InternalCommandEntryParsingContext{}
+func ParseRepoStatusResponse(reader enc.WireView, ignoreCritical bool) (*RepoStatusResponse, error) {
+	context := RepoStatusResponseParsingContext{}
 	context.Init()
 	return context.Parse(reader, ignoreCritical)
 }

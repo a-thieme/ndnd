@@ -189,7 +189,8 @@ func (m *RepoManagement) ExternalStatusRequestHandler(interestHandler *ndn.Inter
 
 	// Track responses
 	quorumRatio := 0.5
-	quorum := int(math.Ceil(quorumRatio * float64(m.repo.NumReplicas))) // TODO: make this configurable, and it should be a percentage (with rounding) of the replication factor
+	// TODO: make this configurable, and it should be a percentage (with rounding) of the replication factor
+	quorum := int(math.Ceil(quorumRatio * float64(m.repo.NumReplicas)))
 
 	// Counter for success
 	successes := 0
@@ -201,7 +202,7 @@ func (m *RepoManagement) ExternalStatusRequestHandler(interestHandler *ndn.Inter
 	// Send requests to remote replicas
 	for _, replica := range replicas {
 		if replica.Equal(m.repo.NodeNameN) {
-			// TODO: check local status
+			// check local status
 			if m.storage.OwnsResource(resourceNameN) {
 				log.Info(m, "Local status request successful", "name", resourceNameN)
 				successes++

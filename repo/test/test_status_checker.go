@@ -37,16 +37,13 @@ func run(cmd *cobra.Command, args []string) {
 	}
 	defer app.Stop()
 
-	statusRequest := &tlv.RepoStatus{
-		Name:  &spec_2022.NameContainer{Name: resourceNameN},
-		Nonce: resourceNameN.Hash(),
-	}
+	statusRequest := &spec_2022.NameContainer{Name: resourceNameN}
 	statusRequestInterest, _ := app.Spec().MakeInterest(
 		repoNameN.Append(enc.NewGenericComponent("status")).
+			// FIXME: probably don't include this, but leave just in case for now
 			Append(enc.NewGenericComponent(strconv.FormatUint(resourceNameN.Hash(), 10))),
 		&ndn.InterestConfig{
 			MustBeFresh: true,
-			Lifetime:    optional.Some(3 * time.Second),
 		},
 		statusRequest.Encode(),
 		nil,
@@ -62,7 +59,7 @@ func run(cmd *cobra.Command, args []string) {
 	select {
 	case args := <-ch:
 		if args.Result == ndn.InterestResultData {
-			reply, _ := tlv.ParseRepoStatusReply(enc.NewWireView(args.Data.Content()), false)
+			reply, _ := tlv.ParseRepoStatusResponse(enc.NewWireView(args.Data.Content()), false)
 			log.Info(nil, "Received status response", "response", reply)
 		} else {
 			log.Error(nil, "Failed to receive status response", "result", args.Result)

@@ -44,11 +44,10 @@ func (p *TestRepoProducer) String() string {
 	return "test-repo-producer"
 }
 
-func NewTestRepoProducer(repoName, producerName string) *TestRepoProducer {
+func NewTestRepoProducer(repoName string, producerName string) *TestRepoProducer {
 	repoNameN, _ := enc.NameFromStr(repoName)
 	producerNameN, _ := enc.NameFromStr(producerName)
 	notifyPrefix := repoNameN.Append(enc.NewGenericComponent("notify"))
-	statusPrefix := repoNameN.Append(enc.NewGenericComponent("status"))
 
 	return &TestRepoProducer{
 		repoName:      repoName,
@@ -56,7 +55,6 @@ func NewTestRepoProducer(repoName, producerName string) *TestRepoProducer {
 		repoNameN:     repoNameN,
 		producerNameN: producerNameN,
 		notifyPrefix:  notifyPrefix,
-		statusPrefix:  statusPrefix,
 	}
 }
 
@@ -168,12 +166,8 @@ func (p *TestRepoProducer) sendCommand(commandType CommandType, name enc.Name) {
 	}
 
 	commandData := tlv.RepoCommand{
-		CommandType: string(commandType),
-		SrcName:     &spec_2022.NameContainer{Name: name},
-		Nonce:       name.Hash(),
-		HistorySnapshot: &tlv.HistorySnapshotConfig{ // TODO: configurable
-			Threshold: 10,
-		},
+		Type:   string(commandType),
+		Target: &spec_2022.NameContainer{Name: name},
 	}
 
 	notifyInterestName := p.notifyPrefix.Append(enc.NewGenericComponent(strconv.FormatUint(name.Hash(), 10))) // TODO: embed a nonce

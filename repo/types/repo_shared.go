@@ -12,7 +12,6 @@ type RepoShared struct {
 	RepoNameN enc.Name
 	NodeNameN enc.Name
 
-	NumPartitions     int
 	NumReplicas       int
 	HeartbeatInterval time.Duration
 	HeartbeatExpiry   time.Duration
@@ -27,11 +26,10 @@ func (r *RepoShared) String() string {
 }
 
 // NewRepoShared creates a new RepoShared object
-func NewRepoShared(repoNameN enc.Name, nodeNameN enc.Name, numPartitions int, numReplicas int, heartbeatInterval float64, heartbeatExpiry float64, client ndn.Client, store ndn.Store, engine ndn.Engine) *RepoShared {
+func NewRepoShared(repoNameN enc.Name, nodeNameN enc.Name, numReplicas int, heartbeatInterval float64, heartbeatExpiry float64, client ndn.Client, store ndn.Store, engine ndn.Engine) *RepoShared {
 	return &RepoShared{
 		RepoNameN:         repoNameN,
 		NodeNameN:         nodeNameN,
-		NumPartitions:     numPartitions,
 		NumReplicas:       numReplicas,
 		HeartbeatInterval: time.Duration(heartbeatInterval) * time.Second,
 		HeartbeatExpiry:   time.Duration(heartbeatExpiry) * time.Second,

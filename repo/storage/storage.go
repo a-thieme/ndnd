@@ -12,18 +12,18 @@ import (
 
 // RepoStorage is the storage of the repo
 // it is responsible for managing the partitions and the data in the store
-// if it doesn't enough space, it may drop partitions with/without coordination of the auction module (TODO)
+// if it doesn't enough space, it may drop partitions with/without coordination of the auction module
 type RepoStorage struct {
 	mutex sync.RWMutex
 
-	repo       *types.RepoShared
-	partitions map[uint64]*Partition // the partitions owned by the repo node
+	repo *types.RepoShared
+	// map target to the job
+	jobs map[*enc.Name]*tlv.Command
 
 	fetchDataHandler func(name enc.Name)
 }
 
 // NewRepoStorage creates a new repo storage
-// TODO: more parameters
 func NewRepoStorage(repo *types.RepoShared) *RepoStorage {
 	log.Info(nil, "Created Repo Storage")
 

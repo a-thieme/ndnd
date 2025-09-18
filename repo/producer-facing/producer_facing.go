@@ -17,14 +17,9 @@ import (
 type RepoProducerFacing struct {
 	repo                  *types.RepoShared
 	externalNotifyPrefixN enc.Name
-	internalNotifyPrefixN enc.Name
 	externalStatusPrefixN enc.Name
-	internalStatusPrefixN enc.Name
 
-	notifyReplicasHandler        func(*tlv.RepoCommand)
-	processCommandHandler        func(*tlv.RepoCommand)
-	externalStatusRequestHandler func(*ndn.InterestHandlerArgs, *tlv.RepoStatus)
-	internalStatusRequestHandler func(*ndn.InterestHandlerArgs, *tlv.RepoStatus)
+	handleCommandFromProducer func(*tlv.RepoCommand)
 }
 
 func (p *RepoProducerFacing) String() string {
@@ -33,17 +28,10 @@ func (p *RepoProducerFacing) String() string {
 
 func NewProducerFacing(repo *types.RepoShared) *RepoProducerFacing {
 	externalNotifyPrefixN := repo.RepoNameN.Append(enc.NewGenericComponent("notify"))
-	internalNotifyPrefixN := repo.NodeNameN.Append(externalNotifyPrefixN...)
-
-	externalStatusPrefixN := repo.RepoNameN.Append(enc.NewGenericComponent("status"))
-	internalStatusPrefixN := repo.NodeNameN.Append(externalStatusPrefixN...)
 
 	return &RepoProducerFacing{
 		repo:                  repo,
 		externalNotifyPrefixN: externalNotifyPrefixN,
-		internalNotifyPrefixN: internalNotifyPrefixN,
-		externalStatusPrefixN: externalStatusPrefixN,
-		internalStatusPrefixN: internalStatusPrefixN,
 	}
 }
 
@@ -51,12 +39,7 @@ func (p *RepoProducerFacing) Start() error {
 	log.Info(p, "Starting Repo Producer Facing")
 
 	// Announce command & status request handler prefixes
-	for _, prefix := range []enc.Name{
-		p.externalNotifyPrefixN,
-		p.internalNotifyPrefixN,
-		p.externalStatusPrefixN,
-		p.internalStatusPrefixN,
-	} {
+	for _, prefix := range []enc.Name{p.externalNotifyPrefixN} {
 		p.repo.Client.AnnouncePrefix(ndn.Announcement{
 			Name:   prefix,
 			Expose: true,
@@ -65,11 +48,6 @@ func (p *RepoProducerFacing) Start() error {
 
 	// Register command handler prefixes
 	p.repo.Engine.AttachHandler(p.externalNotifyPrefixN, p.onExternalNotify)
-	p.repo.Engine.AttachHandler(p.internalNotifyPrefixN, p.onInternalNotify)
-
-	// Register status request handler prefixes
-	p.repo.Engine.AttachHandler(p.externalStatusPrefixN, p.onExternalStatusRequest)
-	p.repo.Engine.AttachHandler(p.internalStatusPrefixN, p.onInternalStatusRequest)
 
 	return nil
 }
@@ -78,13 +56,8 @@ func (p *RepoProducerFacing) Stop() error {
 	log.Info(p, "Stopping Repo Producer Facing")
 
 	// Unregister command & status request handler prefixes
-	for _, prefix := range []enc.Name{
-		p.externalNotifyPrefixN,
-		p.internalNotifyPrefixN,
-		p.externalStatusPrefixN,
-		p.internalStatusPrefixN,
-	} {
-		p.repo.Engine.DetachHandler(prefix)
+	for _, prefix := range []enc.Name{p.externalNotifyPrefixN} {
+		p.repo.Engine.DetachHandler(p.externalNotifyPrefixN)
 		p.repo.Client.WithdrawPrefix(prefix, nil)
 	}
 
@@ -107,22 +80,22 @@ func (p *RepoProducerFacing) onExternalNotify(args ndn.InterestHandlerArgs) {
 		return
 	}
 
-	commandType := command.CommandType
-	srcName := command.SrcName.Name
-	log.Info(p, "Received external notify command", "commandName", commandType, "srcName", srcName)
-
-	// TODO: check digest?
-
-	p.notifyReplicasHandler(command) // notify responsible replicas
+	commandType := command.Type
+	target := command.Target.Name
+	log.Info(p, "Received external notify command", "commandName", commandType, "target", target)
 
 	// Reply to the command - "Repo has received the command"
+	sr := &tlv.RepoStatusResponse{
+		Target: command.Target,
+		Status: 200,
+	}
 	data, err := p.repo.Engine.Spec().MakeData(
 		interest.Name(),
 		&ndn.DataConfig{
 			ContentType: optional.Some(ndn.ContentTypeBlob),
 			Freshness:   optional.Some(10 * time.Second),
 		},
-		enc.Wire{[]byte{}},
+		sr.Encode(),
 		nil,
 	)
 	if err != nil {
@@ -130,36 +103,4 @@ func (p *RepoProducerFacing) onExternalNotify(args ndn.InterestHandlerArgs) {
 		return
 	}
 	args.Reply(data.Wire)
-}
-
-// onInternalNotify is called when an internal notify interest is received
-func (p *RepoProducerFacing) onInternalNotify(args ndn.InterestHandlerArgs) {
-	interest := args.Interest
-
-	if interest.AppParam() == nil {
-		log.Trace(p, "Notify interest has no app param, ignoring")
-		return
-	}
-
-	command, err := tlv.ParseRepoCommand(enc.NewWireView(interest.AppParam()), true)
-
-	if err != nil {
-		log.Trace(p, "Failed to parse command", "err", err)
-		return
-	}
-
-	commandType := command.CommandType
-	srcName := command.SrcName.Name
-	log.Info(p, "Received interneal notify command", "commandName", commandType, "srcName", srcName) // TODO: need a better name
-
-	p.processCommandHandler(command)
-}
-
-// Handlers
-func (p *RepoProducerFacing) SetOnNotifyReplicas(onNotifyReplicas func(*tlv.RepoCommand)) {
-	p.notifyReplicasHandler = onNotifyReplicas
-}
-
-func (p *RepoProducerFacing) SetOnProcessCommand(onProcessCommand func(*tlv.RepoCommand)) {
-	p.processCommandHandler = onProcessCommand
 }
