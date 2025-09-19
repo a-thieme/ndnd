@@ -38,24 +38,13 @@ func (s *RepoStorage) String() string {
 	return "repo-storage"
 }
 
-// Close stops all partitions and deletes them from the storage
-func (s *RepoStorage) Close() (err error) {
-	log.Info(s, "Closing Repo Storage")
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
-	// FIXME: not sure what to do here....at least close any svs groups that are managed here, if there are any
-
-	return nil
-}
-
-// Handle command commits a command to the responsible partition
 // Thread-safe
-func (s *RepoStorage) HandleCommand(command *tlv.RepoCommand) {
+func (s *RepoStorage) doCommand(command *tlv.RepoCommand) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	log.Info(s, "Handling command", "command", command)
-
-	// FIXME: probably do something here
+	// FIXME: this needs to either consume data or join an svs group
+	// FIXME: for testing, maybe this can be....unused
 }
 
 // Handle status request checks local state and reply with the result
@@ -64,9 +53,8 @@ func (s *RepoStorage) HandleStatus(statusRequest *spec.NameContainer) tlv.RepoSt
 	log.Info(s, "Handling status request", "status request", statusRequest, "name", statusRequest.Name)
 	reply := tlv.RepoStatusResponse{
 		Target: statusRequest,
-		Status: 200, // FIXME: actually do some checking
+		Status: 200, // TODO: actually do some checking
 	}
-
 	return reply
 }
 

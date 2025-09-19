@@ -17,8 +17,10 @@ import (
 //  more functionality, we can just replace this with SvsALO and let partition directly manages it.
 
 const (
-	multicastPrefix = "/ndn/multicast" // TODO: ideally we should get this from command. But ideally we shouldn't need to specify this either.
-	repoRouteCost   = 1000             // TODO: this should be higher so repo is only used as a fallback option
+	// hack
+	multicastPrefix = "/ndn/multicast"
+	// this should be higher so repo is only used as a fallback option
+	repoRouteCost = 1000
 )
 
 // UserSvs handles a SVS group specified by a join sync command
@@ -128,11 +130,13 @@ func (p *UserSvs) Stop() (err error) {
 }
 
 // FIXME: make sure this is necessary
+// FIXME: what???
 func (r *UserSvs) commitState(state enc.Wire) {
 	name := r.command.Target.Name.Append(enc.NewKeywordComponent("alo-state"))
 	r.repo.Client.Store().Put(name, state.Join())
 }
 
+// FIXME: reference original, see what this does
 func (r *UserSvs) readState() enc.Wire {
 	name := r.command.Target.Name.Append(enc.NewKeywordComponent("alo-state"))
 	if stateWire, _ := r.repo.Client.Store().Get(name, false); stateWire != nil {

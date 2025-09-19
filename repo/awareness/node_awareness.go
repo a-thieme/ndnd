@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/named-data/ndnd/repo/tlv"
+	enc "github.com/named-data/ndnd/std/encoding"
 	"github.com/named-data/ndnd/std/log"
 )
 
@@ -12,20 +13,17 @@ type NodeStatus int
 
 const (
 	Up NodeStatus = iota
-	Failed
-	Forgotten // Node is forgotten and should not be considered for operations
+	Down
 )
 
 // Local awareness of the state of repo nodes within a cluster
 type RepoNodeAwareness struct {
-	// name (identifier) of the node
-	name string
-	// last time we checked the node
-	lastKnown time.Time
-	// jobs a node is doing
-	jobs []*tlv.RepoCommand
-	// status of the node
+	name   *enc.Name
+	jobs   []*tlv.RepoCommand
 	status NodeStatus
+	timer  *time.Timer
+
+	expiryFunc func([]*tlv.RepoCommand)
 }
 
 func (r *RepoNodeAwareness) String() string {
@@ -34,25 +32,27 @@ func (r *RepoNodeAwareness) String() string {
 
 // NewRepoNodeAwareness creates a new RepoNodeAwareness instance
 // with the given name and initializes the lastKnown time to now.
-func NewRepoNodeAwareness(name string) *RepoNodeAwareness {
-	return &RepoNodeAwareness{
-		name:      name,
-		lastKnown: time.Now(),
-		jobs:      make(map[uint64]bool),
-		status:    Up,
+func NewRepoNodeAwareness(name *enc.Name, expiryFunc func([]*tlv.RepoCommand)) *RepoNodeAwareness {
+	rna := &RepoNodeAwareness{
+		name:       name,
+		jobs:       []*tlv.RepoCommand{},
+		expiryFunc: expiryFunc,
 	}
-}
-
-// SetState updates the state of the node and resets the lastKnown time.
-func (r *RepoNodeAwareness) SetState(state NodeStatus) {
-	r.status = state
+	rna.timer = time.AfterFunc(0, func() {
+		rna.status = Down
+		rna.expiryFunc(rna.jobs)
+	})
+	return rna
 }
 
 // Update updates the node's jobs and resets its state to Up.
-func (r *RepoNodeAwareness) Update(jobs map[uint64]bool) {
+func (r *RepoNodeAwareness) Update(jobs []*tlv.RepoCommand) {
 	log.Info(r, "Updating node awareness", "node", r.name, "jobs", jobs)
-
-	r.status = Up // Reset state to Up when updating jobs
 	r.jobs = jobs
-	r.lastKnown = time.Now()
+}
+
+func (r *RepoNodeAwareness) Heartbeat(expire time.Duration) {
+	log.Info(r, "heartbeat for", "node", r.name, "expires in", expire)
+	r.timer.Reset(expire)
+	r.status = Up
 }

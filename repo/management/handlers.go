@@ -46,19 +46,18 @@ func (m *RepoManagement) UnderReplicationHandler(partition uint64) {
 }
 
 // blocking, should be ran in a separate goroutine
-func (m *RepoManagement) OverReplicationHandler(partition uint64) {
-	log.Info(m, "Over-replicated partition, handling after a random delay", "id", partition)
-	randomness := 10.0 // TODO: make this configurable
-	time.Sleep(time.Duration(rand.Float64() * randomness))
+// FIXME:
+func (m *RepoManagement) OverReplicationHandler(job *tlv.RepoCommand) {
+	log.Info(m, "Over-replicated job, handling after a delay. target ", job.Target)
 
-	// TODO: check if the partition is still over-replicated
-	if m.awareness.GetNumReplicas(partition) <= m.repo.NumReplicas {
-		return
-	}
+	// FIXME: should take in availability as a factor
+	time.Sleep(time.Duration(rand.Float64()))
+
+	// FIXME: check if the partition is still over-replicated
 
 	// Drop partition if it exists
-	log.Info(m, "Dropping over-replicated partition", "id", partition)
-	m.awareness.DropLocalPartition(partition)
+	log.Info(m, "dropping over-replicated job ", job.Target)
+	// FIXME:
 	m.storage.UnregisterPartition(partition)
 }
 
