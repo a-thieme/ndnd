@@ -38,28 +38,26 @@ func NewUserSvs(partitionId uint64, repo *types.RepoShared, command *tlv.RepoCom
 }
 
 func (p *UserSvs) String() string {
-	return fmt.Sprintf("user-svs (%s)", p.command.SrcName.Name)
+	return fmt.Sprintf("user-svs (%s)", p.command.Target.Name)
 }
 
 func (p *UserSvs) Start() (err error) {
-	// TODO: start the svsalo
-	log.Info(p, "Starting user SVS", "partitionId", p.partitionId, "group", p.command.SrcName.Name)
+	// start the svsalo
+	log.Info(p, "Starting user SVS", "partitionId", p.partitionId, "group", p.command.Target.Name)
 
 	// Parse snapshot configuration
 	var snapshot ndn_sync.Snapshot = nil
 
 	// History snapshot
-	if p.command.HistorySnapshot != nil {
-		threshold := p.command.HistorySnapshot.Threshold
-		if threshold < 10 {
-			return fmt.Errorf("invalid history snapshot threshold: %d", threshold)
-		}
+	threshold := p.command.SnapshotThreshold
+	if threshold < 10 {
+		return fmt.Errorf("invalid history snapshot threshold: %d", threshold)
+	}
 
-		snapshot = &ndn_sync.SnapshotNodeHistory{
-			Client:    p.repo.Client,
-			Threshold: threshold,
-			IsRepo:    true,
-		}
+	snapshot = &ndn_sync.SnapshotNodeHistory{
+		Client:    p.repo.Client,
+		Threshold: threshold,
+		IsRepo:    true,
 	}
 
 	// Start SVS ALO
@@ -69,7 +67,7 @@ func (p *UserSvs) Start() (err error) {
 		InitialState: p.readState(),
 		Svs: ndn_sync.SvSyncOpts{
 			Client:            p.repo.Client,
-			GroupPrefix:       p.command.SrcName.Name,
+			GroupPrefix:       p.command.Target.Name,
 			SuppressionPeriod: 500 * time.Millisecond,
 			PeriodicTimeout:   365 * 24 * time.Hour, // basically never
 			Passive:           true,
@@ -79,24 +77,8 @@ func (p *UserSvs) Start() (err error) {
 	})
 
 	// Subscribe to all publishers
+	// FIXME: probably fix something in here to process publications?
 	p.svs_alo.SubscribePublisher(enc.Name{}, func(pub ndn_sync.SvsPub) {
-		if pub.IsSnapshot {
-			// Each type of snapshot has separate handling.
-			if p.command.HistorySnapshot != nil {
-				// snapshot, err := svs_ps.ParseHistorySnap(enc.NewWireView(pub.Content), true)
-				// if err != nil {
-				// 	panic(err) // impossible, encoded by us
-				// }
-
-				// for _, entry := range snapshot.Entries {
-				// 	// TODO: these should all be application data. They could be repo commands, need to implement them
-				// }
-			}
-		} else {
-			// Process the publication.
-			// p.processIncomingPub(pub.Content)
-		}
-
 		p.commitState(pub.State)
 	})
 
@@ -145,13 +127,14 @@ func (p *UserSvs) Stop() (err error) {
 	return nil
 }
 
+// FIXME: make sure this is necessary
 func (r *UserSvs) commitState(state enc.Wire) {
-	name := r.command.SrcName.Name.Append(enc.NewKeywordComponent("alo-state"))
+	name := r.command.Target.Name.Append(enc.NewKeywordComponent("alo-state"))
 	r.repo.Client.Store().Put(name, state.Join())
 }
 
 func (r *UserSvs) readState() enc.Wire {
-	name := r.command.SrcName.Name.Append(enc.NewKeywordComponent("alo-state"))
+	name := r.command.Target.Name.Append(enc.NewKeywordComponent("alo-state"))
 	if stateWire, _ := r.repo.Client.Store().Get(name, false); stateWire != nil {
 		return enc.Wire{stateWire}
 	}

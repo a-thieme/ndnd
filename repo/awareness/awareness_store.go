@@ -21,20 +21,16 @@ type RepoAwarenessStore struct {
 	nodeStates      map[string]*RepoNodeAwareness
 	expirationTimer map[string]*time.Timer
 
-	// Replication and partition management
-	replicaCounts []int             // partition ID to replica count
-	underRepMask  *bitset.BitSet    // bit set for under-replicated partitions
-	replicaOwners []map[string]bool // partition ID to owners of partition
-	// TODO: we need to track replication events so they aren't repetitively called
-	//  a simple map between partition ID and its ongoing event (type) suffices
+	// job target to replica count
+	jobReplications map[*enc.Name]int
 
+	//
 	heartbeatExpiry time.Duration
 	numReplicas     int
 
 	// Callbacks for node state changes
-	onNodeUp        func(*RepoNodeAwareness)
-	onNodeFailed    func(*RepoNodeAwareness)
-	onNodeForgotten func(*RepoNodeAwareness)
+	onNodeUp     func(*RepoNodeAwareness)
+	onNodeFailed func(*RepoNodeAwareness)
 
 	// Callbacks for partition management
 	underReplicationHandler func(uint64) // called when a partition is under-replicated
@@ -160,10 +156,6 @@ func (s *RepoAwarenessStore) SetOnNodeFailed(callback func(*RepoNodeAwareness)) 
 	s.onNodeFailed = callback
 }
 
-func (s *RepoAwarenessStore) SetOnNodeForgotten(callback func(*RepoNodeAwareness)) {
-	s.onNodeForgotten = callback
-}
-
 // MarkNodeUp marks a node as Up and updates its state.
 // Thread safety is handled by the caller
 func (s *RepoAwarenessStore) MarkNodeUp(node *RepoNodeAwareness) {
@@ -187,25 +179,6 @@ func (s *RepoAwarenessStore) MarkNodeFailed(node *RepoNodeAwareness) {
 		s.onNodeFailed(node)
 	}
 	s.CheckReplications()
-}
-
-// MarkNodeForgotten marks a node as forgotten and updates its state.
-// Thread safety is handled by the caller
-// wip: not currently used
-func (s *RepoAwarenessStore) MarkNodeForgotten(node *RepoNodeAwareness) {
-	log.Info(s, "Marked node as Forgotten", "node", node.name)
-
-	node.status = Forgotten
-	if s.onNodeForgotten != nil {
-		s.onNodeForgotten(node)
-	}
-
-	// Remove the node from the store
-	delete(s.nodeStates, node.name)
-	if timer, exists := s.expirationTimer[node.name]; exists {
-		timer.Stop()
-		delete(s.expirationTimer, node.name)
-	}
 }
 
 // Callbacks for partition management
