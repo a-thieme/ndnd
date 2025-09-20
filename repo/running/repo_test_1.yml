@@ -10,4 +10,5 @@ repo:
   trust_anchors:
     #  - "/ndn/KEY/%27%C4%B2%2A%9F%7B%81%27/ndn/v=1651246789556"
     #- "/root/KEY/%8C%D9%9D%24%FC%E3f%C4/self/v=1758341416382"
-    - "/root/KEY/Va%08%BF%9F~hQ/self/v=1758342532750"
+    #- "/root/KEY/Va%08%BF%9F~hQ/self/v=1758342532750"
+    - "/root/KEY/%7D%23r%B8%22%A6%C7%DE/self/v=1758344029476"
