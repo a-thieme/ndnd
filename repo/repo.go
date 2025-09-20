@@ -107,23 +107,23 @@ func (r *Repo) Start() (err error) {
 	)
 
 	// Create repo awareness
-	r.awareness = awareness.NewRepoAwareness(shared)
-	if err := r.awareness.Start(); err != nil {
-		return err
-	}
+	//r.awareness = awareness.NewRepoAwareness(shared)
+	//if err := r.awareness.Start(); err != nil {
+	//	return err
+	//}
 
 	log.Debug(r, "here")
 	// Create repo storage
 	r.storage = storage.NewRepoStorage(shared)
 
 	// Create producer-facing
-	r.facing = facing.NewProducerFacing(shared)
-	if err := r.facing.Start(); err != nil {
-		return err
-	}
+	//r.facing = facing.NewProducerFacing(shared)
+	//if err := r.facing.Start(); err != nil {
+	//	return err
+	//}
 
 	// Create repo management
-	r.management = management.NewRepoManagement(shared, r.awareness, r.storage, r.facing)
+	//r.management = management.NewRepoManagement(shared, r.awareness, r.storage, r.facing)
 
 	return nil
 }
@@ -134,6 +134,7 @@ func (r *Repo) Stop() error {
 
 	r.client.WithdrawPrefix(r.groupConfig.RepoNameN, nil)
 	if err := r.client.DetachCommandHandler(r.groupConfig.RepoNameN); err != nil {
+		// FIXME: "invalid value for prefix"
 		log.Warn(r, "Failed to detach command handler", "err", err)
 	}
 

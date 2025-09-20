@@ -52,7 +52,6 @@ func NewRepoAwareness(repo *types.RepoShared) *RepoAwareness {
 	heartbeatInterval := repo.HeartbeatInterval
 
 	awarenessPrefix := repoNameN.Append(enc.NewGenericComponent("awareness"))
-	// awarenessPrefix, _ = enc.NameFromStr("ndnd/repo/awareness") // TODO: testing only
 	heartbeatPrefix := repoNameN.Append(enc.NewGenericComponent("heartbeat"))
 
 	return &RepoAwareness{
@@ -62,10 +61,6 @@ func NewRepoAwareness(repo *types.RepoShared) *RepoAwareness {
 		awarenessSvsPrefix: awarenessPrefix,
 		heartbeatSvsPrefix: heartbeatPrefix,
 		heartbeatInterval:  heartbeatInterval,
-		awarenessSvs:       nil,
-		heartbeatSvs:       nil,
-		ticker:             nil,
-		stop:               nil,
 	}
 }
 
@@ -79,8 +74,8 @@ func (r *RepoAwareness) Start() (err error) {
 			Client:      r.client,
 			GroupPrefix: r.awarenessSvsPrefix,
 		},
-		Snapshot:        &ndn_sync.SnapshotNull{}, // there is no need for snapshots in this case
-		FetchLatestOnly: true,                     // only fetch the latest sequence number
+		Snapshot:        &ndn_sync.SnapshotNull{},
+		FetchLatestOnly: true,
 	})
 	if err != nil {
 		panic(err)
@@ -131,10 +126,7 @@ func (r *RepoAwareness) Start() (err error) {
 
 	// Start heartbeat SVS
 	log.Info(r, "Starting heartbeat")
-	if err := r.StartHeartbeat(); err != nil {
-		log.Error(r, "Failed to start heartbeat", "err", err)
-	}
-	// Start heartbeat SVS
+	log.Debug(r, "configuring heartbeat")
 	r.heartbeatSvs = ndn_sync.NewSvSync(ndn_sync.SvSyncOpts{
 		Client:      r.client,
 		GroupPrefix: r.heartbeatSvsPrefix,
@@ -143,6 +135,12 @@ func (r *RepoAwareness) Start() (err error) {
 			r.Storage.ProcessHeartbeat(&pub.Name)
 		},
 	})
+	log.Debug(r, "starting heartbeat")
+	if err = r.StartHeartbeat(); err != nil {
+		log.Error(r, "Failed to start heartbeat", "err", err)
+		return err
+	}
+
 	return err
 }
 
@@ -183,8 +181,10 @@ func (r *RepoAwareness) Stop() (err error) {
 
 // StartHeartbeat starts the heartbeat loop in a goroutine
 func (r *RepoAwareness) StartHeartbeat() (err error) {
+	log.Trace(r, "call start heartbeat")
 	// start heartbeat svs
 	err = r.heartbeatSvs.Start()
+	log.Trace(r, "after svs")
 	if err != nil {
 		log.Error(r, "Failed to start heartbeat SVS", "err", err)
 		return err
