@@ -112,7 +112,9 @@ func (r *Repo) Start() (err error) {
 	r.storage = storage.NewRepoStorage(shared)
 
 	// Create repo auction
-	r.auction = auction.NewAuctionEngine(shared, r.awareness.GetOnlineNodes, r.management.PlaceBid, r.management.WonAuction)
+	r.auction = auction.NewAuctionEngine(shared, r.awareness.GetOnlineNodes,
+		r.management.GetAvailability,
+		r.management.DoJob)
 	if err := r.auction.Start(); err != nil {
 		return err
 	}
@@ -125,9 +127,6 @@ func (r *Repo) Start() (err error) {
 
 	// Create repo management
 	r.management = management.NewRepoManagement(shared, r.awareness, r.auction, r.storage, r.facing)
-	if err := r.management.Start(); err != nil {
-		return err
-	}
 
 	return nil
 }
@@ -162,13 +161,6 @@ func (r *Repo) Stop() error {
 		}
 	}
 
-	// Stop storage
-	if r.storage != nil {
-		if err := r.storage.Close(); err != nil {
-			log.Warn(r, "Failed to close storage", "err", err)
-		}
-	}
-
 	// Stop auction
 	if r.auction != nil {
 		if err := r.auction.Stop(); err != nil {
@@ -180,13 +172,6 @@ func (r *Repo) Stop() error {
 	if r.facing != nil {
 		if err := r.facing.Stop(); err != nil {
 			log.Warn(r, "Failed to stop facing", "err", err)
-		}
-	}
-
-	// Stop management
-	if r.management != nil {
-		if err := r.management.Stop(); err != nil {
-			log.Warn(r, "Failed to stop management", "err", err)
 		}
 	}
 

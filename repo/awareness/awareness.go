@@ -17,7 +17,7 @@ type RepoAwareness struct {
 	nodeNameN enc.Name
 
 	// awareness of the cluster
-	storage *RepoAwarenessStore
+	Storage *RepoAwarenessStore
 
 	// health ndn client
 	client ndn.Client
@@ -217,7 +217,7 @@ func (r *RepoAwareness) StartHeartbeat() (err error) {
 // This method is called on-event, i.e. whenever local responsibility changes
 // Thread-safe
 // FIXME: get the actual storage to compile the AwarenessUpdate, call from management.
-func (r *RepoAwareness) publishAwarenessUpdate(awarenessUpdate *tlv.AwarenessUpdate) {
+func (r *RepoAwareness) PublishAwarenessUpdate(awarenessUpdate *tlv.AwarenessUpdate) {
 	// publish to awareness SVS
 	log.Info(r, "Publishing awareness update for node", r.nodeNameN, "jobs", awarenessUpdate.ActiveJobs)
 	_, _, err := r.awarenessSvs.Publish(awarenessUpdate.Encode())

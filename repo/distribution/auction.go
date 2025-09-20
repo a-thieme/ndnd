@@ -67,7 +67,7 @@ type AuctionEngine struct {
 
 	// ndn communication
 	repo           *types.RepoShared
-	availableNodes func() []enc.Name
+	availableNodes func() []*enc.Name
 	auctions       map[string]Auction
 	interestCfg    ndn.InterestConfig
 	calculateBid   func(string) int
@@ -83,7 +83,7 @@ func (a *AuctionEngine) String() string {
 	return "auction-engine"
 }
 
-func NewAuctionEngine(repo *types.RepoShared, availableNodes func() []enc.Name, calculateBid func(string) int, onWin func(string)) *AuctionEngine {
+func NewAuctionEngine(repo *types.RepoShared, availableNodes func() []*enc.Name, calculateBid func(string) int, onWin func(string)) *AuctionEngine {
 	a := new(AuctionEngine)
 	a.repo = repo
 	a.auctions = make(map[string]Auction)
@@ -148,7 +148,7 @@ func (a *AuctionEngine) Stop() error {
 	return nil
 }
 
-func (a *AuctionEngine) addBid(itemId string, node enc.Name, bid int) {
+func (a *AuctionEngine) addBid(itemId string, node *enc.Name, bid int) {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 
@@ -190,7 +190,10 @@ func (a *AuctionEngine) AuctionItem(itemId string) {
 		intCfg.Nonce = utils.ConvertNonce(a.repo.Client.Engine().Timer().Nonce())
 
 		// probably a better way to do this
-		var n = node.String() + a.repo.RepoNameN.String() + "/" + itemId + "/bid/" + enc.Component{Typ: 8, Val: a.repo.NodeNameN.Bytes()}.String() + "/" + nonce
+		var n = node.String() + a.repo.RepoNameN.String() + "/" + itemId + "/bid/" + enc.Component{
+			Typ: 8,
+			Val: a.repo.NodeNameN.Bytes()}.String() + "/" + nonce
+
 		iName, _ := enc.NameFromStr(n)
 
 		log.Info(a, "Sent bid interest", "itemId", itemId, "node", node, "nonce", nonce)

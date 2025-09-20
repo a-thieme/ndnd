@@ -40,12 +40,12 @@ func NewUserSvs(partitionId uint64, repo *types.RepoShared, command *tlv.RepoCom
 }
 
 func (p *UserSvs) String() string {
-	return fmt.Sprintf("user-svs (%s)", p.command.Target.Name)
+	return fmt.Sprintf("user-svs (%s)", p.command.Target)
 }
 
 func (p *UserSvs) Start() (err error) {
 	// start the svsalo
-	log.Info(p, "Starting user SVS", "partitionId", p.partitionId, "group", p.command.Target.Name)
+	log.Info(p, "Starting user SVS", "partitionId", p.partitionId, "group", p.command.Target)
 
 	// Parse snapshot configuration
 	var snapshot ndn_sync.Snapshot = nil
@@ -69,7 +69,7 @@ func (p *UserSvs) Start() (err error) {
 		InitialState: p.readState(),
 		Svs: ndn_sync.SvSyncOpts{
 			Client:            p.repo.Client,
-			GroupPrefix:       p.command.Target.Name,
+			GroupPrefix:       p.command.Target.Clone(),
 			SuppressionPeriod: 500 * time.Millisecond,
 			PeriodicTimeout:   365 * 24 * time.Hour, // basically never
 			Passive:           true,
@@ -132,13 +132,13 @@ func (p *UserSvs) Stop() (err error) {
 // FIXME: make sure this is necessary
 // FIXME: what???
 func (r *UserSvs) commitState(state enc.Wire) {
-	name := r.command.Target.Name.Append(enc.NewKeywordComponent("alo-state"))
+	name := r.command.Target.Append(enc.NewKeywordComponent("alo-state"))
 	r.repo.Client.Store().Put(name, state.Join())
 }
 
 // FIXME: reference original, see what this does
 func (r *UserSvs) readState() enc.Wire {
-	name := r.command.Target.Name.Append(enc.NewKeywordComponent("alo-state"))
+	name := r.command.Target.Append(enc.NewKeywordComponent("alo-state"))
 	if stateWire, _ := r.repo.Client.Store().Get(name, false); stateWire != nil {
 		return enc.Wire{stateWire}
 	}

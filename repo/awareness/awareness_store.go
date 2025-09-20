@@ -39,6 +39,13 @@ func (s *RepoAwarenessStore) String() string {
 	return "repo-awareness-store"
 }
 
+func (s *RepoAwarenessStore) GetReplications(job *tlv.RepoCommand) int {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	return s.jobReplications[job]
+
+}
+
 // get node awareness if it exists, otherwise create it
 func (s *RepoAwarenessStore) getNode(name *enc.Name) *RepoNodeAwareness {
 	node := s.nodeStates[name]
@@ -68,8 +75,8 @@ func (s *RepoAwarenessStore) ProcessAwarenessUpdate(update *tlv.AwarenessUpdate)
 	defer s.mutex.Unlock()
 
 	log.Info(s, "Processing awareness update", "publisher", update.Node)
-	name := update.Node.Name
-	node := s.getNode(&name)
+	name := update.Node
+	node := s.getNode(name)
 
 	// map to reduce duplicates
 	mapJobsToCheck := map[*tlv.RepoCommand]int{}

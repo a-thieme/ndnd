@@ -24,12 +24,13 @@ func (p *RepoProducerFacing) String() string {
 	return "producer-facing"
 }
 
-func NewProducerFacing(repo *types.RepoShared) *RepoProducerFacing {
+func NewProducerFacing(repo *types.RepoShared, newCommandHandler func(*tlv.RepoCommand)) *RepoProducerFacing {
 	externalNotifyPrefixN := repo.RepoNameN.Append(enc.NewGenericComponent("notify"))
 
 	return &RepoProducerFacing{
-		repo:                  repo,
-		externalNotifyPrefixN: externalNotifyPrefixN,
+		repo:                      repo,
+		externalNotifyPrefixN:     externalNotifyPrefixN,
+		handleCommandFromProducer: newCommandHandler,
 	}
 }
 
@@ -63,7 +64,6 @@ func (p *RepoProducerFacing) Stop() error {
 }
 
 // onExternalNotify is called when a repo notify interest is received
-// This will distributes the command to responsible nodes
 func (p *RepoProducerFacing) onExternalNotify(args ndn.InterestHandlerArgs) {
 	interest := args.Interest
 
@@ -72,6 +72,7 @@ func (p *RepoProducerFacing) onExternalNotify(args ndn.InterestHandlerArgs) {
 		return
 	}
 
+	// FIXME: do trust schema validation here
 	command, err := tlv.ParseRepoCommand(enc.NewWireView(interest.AppParam()), true)
 	if err != nil {
 		log.Trace(p, "Failed to parse notify app param", "err", err)
@@ -85,6 +86,7 @@ func (p *RepoProducerFacing) onExternalNotify(args ndn.InterestHandlerArgs) {
 		Target: command.Target,
 		Status: 200,
 	}
+
 	data, err := p.repo.Engine.Spec().MakeData(
 		interest.Name(),
 		&ndn.DataConfig{
@@ -98,4 +100,5 @@ func (p *RepoProducerFacing) onExternalNotify(args ndn.InterestHandlerArgs) {
 		return
 	}
 	args.Reply(data.Wire)
+	p.handleCommandFromProducer(command)
 }

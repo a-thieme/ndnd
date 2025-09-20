@@ -7,34 +7,21 @@ import (
 	"strings"
 
 	enc "github.com/named-data/ndnd/std/encoding"
-	spec "github.com/named-data/ndnd/std/ndn/spec_2022"
 )
 
 type RepoCommandEncoder struct {
 	Length uint
-
-	Target_encoder spec.NameContainerEncoder
 }
 
 type RepoCommandParsingContext struct {
-	Target_context spec.NameContainerParsingContext
 }
 
 func (encoder *RepoCommandEncoder) Init(value *RepoCommand) {
-
-	if value.Target != nil {
-		encoder.Target_encoder.Init(value.Target)
-	}
 
 	l := uint(0)
 	l += 3
 	l += uint(enc.TLNum(len(value.Type)).EncodingLength())
 	l += uint(len(value.Type))
-	if value.Target != nil {
-		l += 3
-		l += uint(enc.TLNum(encoder.Target_encoder.Length).EncodingLength())
-		l += encoder.Target_encoder.Length
-	}
 	l += 3
 	l += uint(1 + enc.Nat(value.SnapshotThreshold).EncodingLength())
 	encoder.Length = l
@@ -42,8 +29,6 @@ func (encoder *RepoCommandEncoder) Init(value *RepoCommand) {
 }
 
 func (context *RepoCommandParsingContext) Init() {
-
-	context.Target_context.Init()
 
 }
 
@@ -57,16 +42,6 @@ func (encoder *RepoCommandEncoder) EncodeInto(value *RepoCommand, buf []byte) {
 	pos += uint(enc.TLNum(len(value.Type)).EncodeInto(buf[pos:]))
 	copy(buf[pos:], value.Type)
 	pos += uint(len(value.Type))
-	if value.Target != nil {
-		buf[pos] = 253
-		binary.BigEndian.PutUint16(buf[pos+1:], uint16(595))
-		pos += 3
-		pos += uint(enc.TLNum(encoder.Target_encoder.Length).EncodeInto(buf[pos:]))
-		if encoder.Target_encoder.Length > 0 {
-			encoder.Target_encoder.EncodeInto(value.Target, buf[pos:])
-			pos += encoder.Target_encoder.Length
-		}
-	}
 	buf[pos] = 253
 	binary.BigEndian.PutUint16(buf[pos+1:], uint16(597))
 	pos += 3
@@ -88,7 +63,6 @@ func (encoder *RepoCommandEncoder) Encode(value *RepoCommand) enc.Wire {
 func (context *RepoCommandParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*RepoCommand, error) {
 
 	var handled_Type bool = false
-	var handled_Target bool = false
 	var handled_SnapshotThreshold bool = false
 
 	progress := -1
@@ -127,12 +101,6 @@ func (context *RepoCommandParsingContext) Parse(reader enc.WireView, ignoreCriti
 							value.Type = builder.String()
 						}
 					}
-				}
-			case 595:
-				if true {
-					handled = true
-					handled_Target = true
-					value.Target, err = context.Target_context.Parse(reader.Delegate(int(l)), ignoreCritical)
 				}
 			case 597:
 				if true {
@@ -174,9 +142,6 @@ func (context *RepoCommandParsingContext) Parse(reader enc.WireView, ignoreCriti
 	if !handled_Type && err == nil {
 		err = enc.ErrSkipRequired{Name: "Type", TypeNum: 594}
 	}
-	if !handled_Target && err == nil {
-		value.Target = nil
-	}
 	if !handled_SnapshotThreshold && err == nil {
 		err = enc.ErrSkipRequired{Name: "SnapshotThreshold", TypeNum: 597}
 	}
@@ -207,21 +172,16 @@ func ParseRepoCommand(reader enc.WireView, ignoreCritical bool) (*RepoCommand, e
 type AwarenessUpdateEncoder struct {
 	Length uint
 
-	Node_encoder          spec.NameContainerEncoder
 	ActiveJobs_subencoder []struct {
 		ActiveJobs_encoder RepoCommandEncoder
 	}
 }
 
 type AwarenessUpdateParsingContext struct {
-	Node_context       spec.NameContainerParsingContext
 	ActiveJobs_context RepoCommandParsingContext
 }
 
 func (encoder *AwarenessUpdateEncoder) Init(value *AwarenessUpdate) {
-	if value.Node != nil {
-		encoder.Node_encoder.Init(value.Node)
-	}
 	{
 		ActiveJobs_l := len(value.ActiveJobs)
 		encoder.ActiveJobs_subencoder = make([]struct {
@@ -247,11 +207,6 @@ func (encoder *AwarenessUpdateEncoder) Init(value *AwarenessUpdate) {
 	}
 
 	l := uint(0)
-	if value.Node != nil {
-		l += 3
-		l += uint(enc.TLNum(encoder.Node_encoder.Length).EncodingLength())
-		l += encoder.Node_encoder.Length
-	}
 	if value.ActiveJobs != nil {
 		for seq_i, seq_v := range value.ActiveJobs {
 			pseudoEncoder := &encoder.ActiveJobs_subencoder[seq_i]
@@ -278,7 +233,6 @@ func (encoder *AwarenessUpdateEncoder) Init(value *AwarenessUpdate) {
 }
 
 func (context *AwarenessUpdateParsingContext) Init() {
-	context.Node_context.Init()
 	context.ActiveJobs_context.Init()
 }
 
@@ -286,16 +240,6 @@ func (encoder *AwarenessUpdateEncoder) EncodeInto(value *AwarenessUpdate, buf []
 
 	pos := uint(0)
 
-	if value.Node != nil {
-		buf[pos] = 253
-		binary.BigEndian.PutUint16(buf[pos+1:], uint16(576))
-		pos += 3
-		pos += uint(enc.TLNum(encoder.Node_encoder.Length).EncodeInto(buf[pos:]))
-		if encoder.Node_encoder.Length > 0 {
-			encoder.Node_encoder.EncodeInto(value.Node, buf[pos:])
-			pos += encoder.Node_encoder.Length
-		}
-	}
 	if value.ActiveJobs != nil {
 		for seq_i, seq_v := range value.ActiveJobs {
 			pseudoEncoder := &encoder.ActiveJobs_subencoder[seq_i]
@@ -336,7 +280,6 @@ func (encoder *AwarenessUpdateEncoder) Encode(value *AwarenessUpdate) enc.Wire {
 
 func (context *AwarenessUpdateParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*AwarenessUpdate, error) {
 
-	var handled_Node bool = false
 	var handled_ActiveJobs bool = false
 
 	progress := -1
@@ -364,12 +307,6 @@ func (context *AwarenessUpdateParsingContext) Parse(reader enc.WireView, ignoreC
 		err = nil
 		if handled := false; true {
 			switch typ {
-			case 576:
-				if true {
-					handled = true
-					handled_Node = true
-					value.Node, err = context.Node_context.Parse(reader.Delegate(int(l)), ignoreCritical)
-				}
 			case 577:
 				if true {
 					handled = true
@@ -408,9 +345,6 @@ func (context *AwarenessUpdateParsingContext) Parse(reader enc.WireView, ignoreC
 	startPos = reader.Pos()
 	err = nil
 
-	if !handled_Node && err == nil {
-		value.Node = nil
-	}
 	if !handled_ActiveJobs && err == nil {
 		// sequence - skip
 	}
@@ -440,25 +374,14 @@ func ParseAwarenessUpdate(reader enc.WireView, ignoreCritical bool) (*AwarenessU
 
 type RepoStatusResponseEncoder struct {
 	Length uint
-
-	Target_encoder spec.NameContainerEncoder
 }
 
 type RepoStatusResponseParsingContext struct {
-	Target_context spec.NameContainerParsingContext
 }
 
 func (encoder *RepoStatusResponseEncoder) Init(value *RepoStatusResponse) {
-	if value.Target != nil {
-		encoder.Target_encoder.Init(value.Target)
-	}
 
 	l := uint(0)
-	if value.Target != nil {
-		l += 3
-		l += uint(enc.TLNum(encoder.Target_encoder.Length).EncodingLength())
-		l += encoder.Target_encoder.Length
-	}
 	l += 3
 	l += uint(1 + enc.Nat(value.Status).EncodingLength())
 	encoder.Length = l
@@ -466,7 +389,6 @@ func (encoder *RepoStatusResponseEncoder) Init(value *RepoStatusResponse) {
 }
 
 func (context *RepoStatusResponseParsingContext) Init() {
-	context.Target_context.Init()
 
 }
 
@@ -474,16 +396,6 @@ func (encoder *RepoStatusResponseEncoder) EncodeInto(value *RepoStatusResponse, 
 
 	pos := uint(0)
 
-	if value.Target != nil {
-		buf[pos] = 253
-		binary.BigEndian.PutUint16(buf[pos+1:], uint16(640))
-		pos += 3
-		pos += uint(enc.TLNum(encoder.Target_encoder.Length).EncodeInto(buf[pos:]))
-		if encoder.Target_encoder.Length > 0 {
-			encoder.Target_encoder.EncodeInto(value.Target, buf[pos:])
-			pos += encoder.Target_encoder.Length
-		}
-	}
 	buf[pos] = 253
 	binary.BigEndian.PutUint16(buf[pos+1:], uint16(641))
 	pos += 3
@@ -504,7 +416,6 @@ func (encoder *RepoStatusResponseEncoder) Encode(value *RepoStatusResponse) enc.
 
 func (context *RepoStatusResponseParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*RepoStatusResponse, error) {
 
-	var handled_Target bool = false
 	var handled_Status bool = false
 
 	progress := -1
@@ -532,12 +443,6 @@ func (context *RepoStatusResponseParsingContext) Parse(reader enc.WireView, igno
 		err = nil
 		if handled := false; true {
 			switch typ {
-			case 640:
-				if true {
-					handled = true
-					handled_Target = true
-					value.Target, err = context.Target_context.Parse(reader.Delegate(int(l)), ignoreCritical)
-				}
 			case 641:
 				if true {
 					handled = true
@@ -575,9 +480,6 @@ func (context *RepoStatusResponseParsingContext) Parse(reader enc.WireView, igno
 	startPos = reader.Pos()
 	err = nil
 
-	if !handled_Target && err == nil {
-		value.Target = nil
-	}
 	if !handled_Status && err == nil {
 		err = enc.ErrSkipRequired{Name: "Status", TypeNum: 641}
 	}
