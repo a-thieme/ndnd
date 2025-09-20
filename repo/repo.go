@@ -64,6 +64,29 @@ func (r *Repo) Start() (err error) {
 		return err
 	}
 
+	log.Debug(r, "new keychain")
+	kc, err := keychain.NewKeyChain(r.nodeConfig.KeyChainUri, r.store)
+	if err != nil {
+		return err
+	}
+
+	log.Debug(r, "here")
+	// TODO: specify a real trust schema
+	schema := trust_schema.NewNullSchema()
+
+	// testbed anchor, necessary for validating commands
+	anchors := r.nodeConfig.TrustAnchorNames()
+
+	// Create trust config
+	trust, err := sec.NewTrustConfig(kc, schema, anchors)
+	if err != nil {
+		return err
+	}
+
+	log.Debug(r, "here")
+	// Attach data name as forwarding hint to cert Interests
+	trust.UseDataNameFwHint = true
+
 	// Start NDN Object API client
 	// TODO: enable trust
 	r.client = object.NewClient(r.engine, r.store, nil)
