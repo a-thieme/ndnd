@@ -15,23 +15,27 @@ import (
 type RepoProducerFacing struct {
 	repo                  *types.RepoShared
 	externalNotifyPrefixN enc.Name
-	externalStatusPrefixN enc.Name
+	// TODO: add status checking
+	//externalStatusPrefixN enc.Name
 
-	handleCommandFromProducer func(*tlv.RepoCommand)
+	newCommandCallback func(*tlv.RepoCommand)
 }
 
 func (p *RepoProducerFacing) String() string {
 	return "producer-facing"
 }
 
-func NewProducerFacing(repo *types.RepoShared, newCommandHandler func(*tlv.RepoCommand)) *RepoProducerFacing {
+func NewProducerFacing(repo *types.RepoShared) *RepoProducerFacing {
 	externalNotifyPrefixN := repo.RepoNameN.Append(enc.NewGenericComponent("notify"))
 
 	return &RepoProducerFacing{
-		repo:                      repo,
-		externalNotifyPrefixN:     externalNotifyPrefixN,
-		handleCommandFromProducer: newCommandHandler,
+		repo:                  repo,
+		externalNotifyPrefixN: externalNotifyPrefixN,
 	}
+}
+
+func (p *RepoProducerFacing) SetCommandHandler(cb func(*tlv.RepoCommand)) {
+	p.newCommandCallback = cb
 }
 
 func (p *RepoProducerFacing) Start() error {
@@ -72,7 +76,7 @@ func (p *RepoProducerFacing) onExternalNotify(args ndn.InterestHandlerArgs) {
 		return
 	}
 
-	// FIXME: do trust schema validation here
+	// TODO: do trust schema validation here
 	command, err := tlv.ParseRepoCommand(enc.NewWireView(interest.AppParam()), true)
 	if err != nil {
 		log.Trace(p, "Failed to parse notify app param", "err", err)
@@ -93,12 +97,12 @@ func (p *RepoProducerFacing) onExternalNotify(args ndn.InterestHandlerArgs) {
 			ContentType: optional.Some(ndn.ContentTypeBlob), // TODO: see if this needs to be set
 		},
 		sr.Encode(),
-		nil, // FIXME: sign this data
+		nil, // TODO: sign this data
 	)
 	if err != nil {
 		log.Error(p, "Failed to make reply data", "err", err)
 		return
 	}
 	args.Reply(data.Wire)
-	p.handleCommandFromProducer(command)
+	p.newCommandCallback(command)
 }

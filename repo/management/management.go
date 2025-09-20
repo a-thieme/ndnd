@@ -29,13 +29,20 @@ func (m *RepoManagement) String() string {
 }
 
 // NewRepoManagement creates a new repo management instance
-func NewRepoManagement(repo *types.RepoShared, awareness *awareness.RepoAwareness, auction *auction.AuctionEngine, storage *storage.RepoStorage, producerFacing *pface.RepoProducerFacing, commands *awareness.Commands) *RepoManagement {
-	return &RepoManagement{
+func NewRepoManagement(repo *types.RepoShared, awareness *awareness.RepoAwareness, storage *storage.RepoStorage, producerFacing *pface.RepoProducerFacing) *RepoManagement {
+	rm := &RepoManagement{
 		repo:           repo,
 		awareness:      awareness,
-		auction:        auction,
 		storage:        storage,
 		producerFacing: producerFacing,
-		commands:       commands,
 	}
+	// Create repo auction
+	rm.auction = auction.NewAuctionEngine(
+		repo,
+		awareness.GetOnlineNodes,
+		rm.GetAvailability,
+		rm.AucDoJob,
+	)
+	rm.auction.Start()
+	return rm
 }

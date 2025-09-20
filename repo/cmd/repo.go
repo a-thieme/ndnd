@@ -1,7 +1,6 @@
 package repo
 
 import (
-	"github.com/named-data/ndnd/repo/auction"
 	"github.com/named-data/ndnd/repo/awareness"
 	"github.com/named-data/ndnd/repo/management"
 	facing "github.com/named-data/ndnd/repo/producer-facing"
@@ -30,7 +29,6 @@ type Repo struct {
 
 	awareness  *awareness.RepoAwareness
 	storage    *storage.RepoStorage
-	auction    *auction.AuctionEngine
 	facing     *facing.RepoProducerFacing
 	management *management.RepoManagement
 }
@@ -46,6 +44,7 @@ func (r *Repo) String() string {
 	return "repo"
 }
 
+// first thing called
 func (r *Repo) Start() (err error) {
 	log.Info(r, "Starting NDN Data Repository", "group", r.groupConfig, "node", r.nodeConfig)
 
@@ -67,7 +66,7 @@ func (r *Repo) Start() (err error) {
 		return err
 	}
 
-	// FIXME: specify a real trust schema
+	// TODO: specify a real trust schema
 	schema := trust_schema.NewNullSchema()
 
 	// testbed anchor, necessary for validating commands
@@ -83,16 +82,15 @@ func (r *Repo) Start() (err error) {
 	trust.UseDataNameFwHint = true
 
 	// Start NDN Object API client
-	// r.client = object.NewClient(r.engine, r.store, trust)
-	// temporarily disable trust
-	// FIXME: enable trust
+	// TODO: enable trust
 	r.client = object.NewClient(r.engine, r.store, nil)
 	if err := r.client.Start(); err != nil {
 		return err
 	}
 
 	// Create repo shared
-	shared := types.NewRepoShared(r.groupConfig.RepoNameN,
+	shared := types.NewRepoShared(
+		r.groupConfig.RepoNameN,
 		r.nodeConfig.NodeNameN,
 		r.groupConfig.NumReplicas,
 		r.groupConfig.HeartbeatInterval,
@@ -111,22 +109,14 @@ func (r *Repo) Start() (err error) {
 	// Create repo storage
 	r.storage = storage.NewRepoStorage(shared)
 
-	// Create repo auction
-	r.auction = auction.NewAuctionEngine(shared, r.awareness.GetOnlineNodes,
-		r.management.GetAvailability,
-		r.management.DoJob)
-	if err := r.auction.Start(); err != nil {
-		return err
-	}
-
-	// Create repo facing
+	// Create producer-facing
 	r.facing = facing.NewProducerFacing(shared)
 	if err := r.facing.Start(); err != nil {
 		return err
 	}
 
 	// Create repo management
-	r.management = management.NewRepoManagement(shared, r.awareness, r.auction, r.storage, r.facing)
+	r.management = management.NewRepoManagement(shared, r.awareness, r.storage, r.facing)
 
 	return nil
 }
@@ -161,12 +151,7 @@ func (r *Repo) Stop() error {
 		}
 	}
 
-	// Stop auction
-	if r.auction != nil {
-		if err := r.auction.Stop(); err != nil {
-			log.Warn(r, "Failed to stop auction", "err", err)
-		}
-	}
+	// FIXME: somehow stop auction things if they need to be (I don't think they need it)
 
 	// Stop facing
 	if r.facing != nil {

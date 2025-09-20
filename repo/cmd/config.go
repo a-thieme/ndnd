@@ -11,8 +11,6 @@ import (
 type RepoGroupConfig struct {
 	// RepoName is the name of the repo service.
 	RepoName string `json:"repo_name"`
-	// Number of partitions
-	NumPartitions int `json:"num_partitions"`
 	// Number of replicas
 	NumReplicas int `json:"num_replicas"`
 	// Heartbeat interval
@@ -28,10 +26,6 @@ func (c *RepoGroupConfig) ParseGroupConfig() (err error) {
 	c.RepoNameN, err = enc.NameFromStr(c.RepoName)
 	if err != nil || len(c.RepoNameN) == 0 {
 		return fmt.Errorf("failed to parse or invalid repo name (%s): %w", c.RepoName, err)
-	}
-
-	if c.NumPartitions <= 0 {
-		return fmt.Errorf("num_partitions must be positive")
 	}
 	if c.NumReplicas <= 0 {
 		return fmt.Errorf("num_replicas must be positive")
@@ -49,7 +43,6 @@ func (c *RepoGroupConfig) ParseGroupConfig() (err error) {
 func DefaultGroupConfig() *RepoGroupConfig {
 	return &RepoGroupConfig{
 		RepoName:          "", // invalid
-		NumPartitions:     32,
 		NumReplicas:       3,
 		HeartbeatInterval: 5.0,
 		HeartbeatExpiry:   20.0,

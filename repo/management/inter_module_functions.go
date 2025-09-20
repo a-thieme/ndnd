@@ -57,7 +57,8 @@ func (m *RepoManagement) StatusRequestHandler(interestHandler *ndn.InterestHandl
 	interestHandler.Reply(data.Wire)
 }
 
-func (m *RepoManagement) GetAvailability(job *tlv.RepoCommand) int {
+// FIXME: change to take in RepoCommand instead of string
+func (m *RepoManagement) GetAvailability(job string) int {
 	// Get storage state
 	var stat unix.Statfs_t
 	wd, _ := os.Getwd()
@@ -66,7 +67,7 @@ func (m *RepoManagement) GetAvailability(job *tlv.RepoCommand) int {
 	// Get free spaces
 	// FIXME: if you are already doing the job, add more to the availability
 	freeSpace := stat.Bavail * uint64(stat.Bsize)
-	log.Info(m, "Bid: free space", freeSpace, "for job", job.Target)
+	log.Info(m, "Bid: free space", freeSpace, "for job", job)
 
 	// Calculate bid
 	bid := int(freeSpace)
@@ -96,12 +97,19 @@ func (m *RepoManagement) DoJob(job *tlv.RepoCommand) {
 	}
 	m.awareness.PublishAwarenessUpdate(&tmp)
 }
-
-// TODO: eventually remove these helpers
-func EncodeName(name *enc.Name) string {
-	return enc.Component{Typ: 8, Val: name.Bytes()}.String()
+func (m *RepoManagement) AucDoJob(s string) {
+	m.DoJob(m.DecodeCommand(s))
 }
 
+// TODO: eventually remove these helpers
 func EncodeCommand(command *tlv.RepoCommand) string {
-	return enc.Component{Typ: 8, Val: command.Bytes()}.String()
+	return enc.Component{Typ: 8, Val: command.Target.Bytes()}.String()
+}
+
+func (m *RepoManagement) DecodeCommand(s string) *tlv.RepoCommand {
+	n, err := enc.NameFromStr(s)
+	if err != nil {
+		n, _ = enc.NameFromStr("somethingwentwronginDecodeCommand")
+	}
+	return m.commands.Get(&n)
 }

@@ -23,8 +23,7 @@ type RepoAwarenessStore struct {
 	jobReplications map[*tlv.RepoCommand]int
 
 	// Callbacks for partition management
-	underReplicationHandler func(*tlv.RepoCommand)
-	overReplicationHandler  func(*tlv.RepoCommand)
+	checkJob func(*tlv.RepoCommand)
 }
 
 func NewRepoAwarenessStore(repo *types.RepoShared) *RepoAwarenessStore {
@@ -37,6 +36,10 @@ func NewRepoAwarenessStore(repo *types.RepoShared) *RepoAwarenessStore {
 
 func (s *RepoAwarenessStore) String() string {
 	return "repo-awareness-store"
+}
+
+func (s *RepoAwarenessStore) SetCheckJob(checkJob func(*tlv.RepoCommand)) {
+	s.checkJob = checkJob
 }
 
 func (s *RepoAwarenessStore) GetReplications(job *tlv.RepoCommand) int {

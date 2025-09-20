@@ -11,7 +11,7 @@ import (
 	ndn_sync "github.com/named-data/ndnd/std/sync"
 )
 
-// FIXME: REMOVE HEARBEAT FROM THIS
+// TODO: remove heartbeat from this
 type RepoAwareness struct {
 	// name of the local node
 	nodeNameN enc.Name
@@ -58,7 +58,7 @@ func NewRepoAwareness(repo *types.RepoShared) *RepoAwareness {
 	return &RepoAwareness{
 		nodeNameN:          nodeNameN,
 		client:             client, // use Repo shared client
-		storage:            NewRepoAwarenessStore(repo),
+		Storage:            NewRepoAwarenessStore(repo),
 		awarenessSvsPrefix: awarenessPrefix,
 		heartbeatSvsPrefix: heartbeatPrefix,
 		heartbeatInterval:  heartbeatInterval,
@@ -106,7 +106,7 @@ func (r *RepoAwareness) Start() (err error) {
 			}
 
 			// update storage
-			r.storage.ProcessAwarenessUpdate(update)
+			r.Storage.ProcessAwarenessUpdate(update)
 		}
 	})
 
@@ -140,7 +140,7 @@ func (r *RepoAwareness) Start() (err error) {
 		GroupPrefix: r.heartbeatSvsPrefix,
 		OnUpdate: func(pub ndn_sync.SvSyncUpdate) {
 			log.Debug(r, "Received heartbeat", pub)
-			r.storage.ProcessHeartbeat(&pub.Name)
+			r.Storage.ProcessHeartbeat(&pub.Name)
 		},
 	})
 	return err
@@ -229,7 +229,7 @@ func (r *RepoAwareness) PublishAwarenessUpdate(awarenessUpdate *tlv.AwarenessUpd
 // GetOnlineNodes returns the nodes that are known to be online
 func (r *RepoAwareness) GetOnlineNodes() []*enc.Name {
 	nameNs := make([]*enc.Name, 0)
-	for name, awareness := range r.storage.nodeStates {
+	for name, awareness := range r.Storage.nodeStates {
 		if awareness.status == Up {
 			nameNs = append(nameNs, name)
 		}

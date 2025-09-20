@@ -21,7 +21,6 @@ type RepoStorage struct {
 	repo *types.RepoShared
 
 	// map target to the job
-	// both have the same thing
 	jobs map[*enc.Name]*tlv.RepoCommand
 
 	fetchDataHandler func(name enc.Name)
@@ -41,6 +40,7 @@ func (s *RepoStorage) String() string {
 	return "repo-storage"
 }
 
+// get all
 func (r *RepoStorage) GetJobs() []*tlv.RepoCommand {
 	// TODO: if this is called multiple times between changes in r.jobs, have DoCommand() do the collection (pre-computation)
 	r.mutex.Lock()
