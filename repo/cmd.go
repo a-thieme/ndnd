@@ -21,6 +21,10 @@ var CmdRepo = &cobra.Command{
 }
 
 func run(cmd *cobra.Command, args []string) {
+	log.Default().SetLevel(log.LevelTrace)
+	log.Trace(nil, "trace log")
+	log.Debug(nil, "debug log")
+	log.Info(nil, "Info log")
 	config := struct {
 		Group *RepoGroupConfig `json:"repo_group"`
 		Repo  *RepoNodeConfig  `json:"repo"`
