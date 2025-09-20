@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	enc "github.com/named-data/ndnd/std/encoding"
+	"github.com/named-data/ndnd/std/log"
 )
 
 type RepoGroupConfig struct {
@@ -65,7 +66,13 @@ type RepoNodeConfig struct {
 	NodeNameN enc.Name
 }
 
+func (c *RepoNodeConfig) String() string {
+	return "RepoNodeConfig"
+}
+
 func (c *RepoNodeConfig) ParseNodeConfig() (err error) {
+	log.Trace(c, "starting parse node config")
+	log.Trace(c, c.StorageDir)
 	c.NodeNameN, err = enc.NameFromStr(c.NodeName)
 	if err != nil || len(c.NodeNameN) == 0 {
 		return fmt.Errorf("failed to parse or invalid node name (%s): %w", c.NodeName, err)

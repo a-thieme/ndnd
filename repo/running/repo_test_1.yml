@@ -2,10 +2,12 @@ repo:
   # [required] Name of the node
   node_name: /ndn/node1
   # [required] Repo storage directory
-  storage_dir: /etc/ndn/repo/test1/storage
+  storage_dir: ~/.ndn/repo/test1/storage
   # [required] Keychain URI for security
   # - Example: dir:///absolute/path/to/keychain
-  keychain: "dir:///etc/ndn/repo/keys"
+  keychain: "dir:///home/adam/.ndn/repo/keys"
   # [required] List of full names of all trust anchors
   trust_anchors:
-    - "/ndn/KEY/%27%C4%B2%2A%9F%7B%81%27/ndn/v=1651246789556"
+    #  - "/ndn/KEY/%27%C4%B2%2A%9F%7B%81%27/ndn/v=1651246789556"
+    #- "/root/KEY/%8C%D9%9D%24%FC%E3f%C4/self/v=1758341416382"
+    - "/root/KEY/Va%08%BF%9F~hQ/self/v=1758342532750"

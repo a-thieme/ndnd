@@ -23,8 +23,6 @@ var CmdRepo = &cobra.Command{
 func run(cmd *cobra.Command, args []string) {
 	log.Default().SetLevel(log.LevelTrace)
 	log.Trace(nil, "trace log")
-	log.Debug(nil, "debug log")
-	log.Info(nil, "Info log")
 	config := struct {
 		Group *RepoGroupConfig `json:"repo_group"`
 		Repo  *RepoNodeConfig  `json:"repo"`
@@ -32,16 +30,20 @@ func run(cmd *cobra.Command, args []string) {
 		Group: DefaultGroupConfig(),
 		Repo:  DefaultNodeConfig(),
 	}
+	log.Trace(nil, "reading yaml")
 	toolutils.ReadYaml(&config, args[0])
 	toolutils.ReadYaml(&config, args[1])
 
+	log.Trace(nil, "group cfg")
 	if err := config.Group.ParseGroupConfig(); err != nil {
 		log.Fatal(nil, "Configuration error", "err", err)
 	}
+	log.Trace(nil, "node cfg")
 	if err := config.Repo.ParseNodeConfig(); err != nil {
 		log.Fatal(nil, "Configuration error", "err", err)
 	}
 
+	log.Trace(nil, "new repo")
 	repo := NewRepo(config.Group, config.Repo)
 	err := repo.Start()
 	if err != nil {
