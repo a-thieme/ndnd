@@ -1,0 +1,48 @@
+package distribution
+
+import (
+	"github.com/named-data/ndnd/repo/tlv"
+	enc "github.com/named-data/ndnd/std/encoding"
+	"time"
+)
+
+type TimeBased struct {
+	timers     map[*enc.Name]*time.Timer
+	single     *time.Timer
+	getAbility func(*tlv.RepoCommand) int
+	doJob      func(*tlv.RepoCommand)
+	releaseJob func(*tlv.RepoCommand)
+}
+
+func (t *TimeBased) Over(job *tlv.RepoCommand) {
+	// default
+	r := t.getAbility(job)
+	wait := calculateOver(r)
+	t.timers[&job.Target] = time.AfterFunc(wait, func() {
+		t.releaseJob(job)
+	})
+}
+
+func (t *TimeBased) Under(job *tlv.RepoCommand) {
+	a := t.getAbility(job)
+	wait := calculateUnder(a)
+	t.timers[&job.Target] = time.AfterFunc(wait, func() {
+		t.doJob(job)
+	})
+}
+
+func (t *TimeBased) Good(job *tlv.RepoCommand) {
+	timer := t.timers[&job.Target]
+	if timer != nil {
+		timer.Stop()
+	}
+}
+func calculateOver(a int) time.Duration {
+	// a
+	return time.Duration(a) * time.Second
+}
+
+func calculateUnder(a int) time.Duration {
+	// 1/a
+	return time.Duration(int(time.Second) / a)
+}
