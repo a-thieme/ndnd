@@ -67,7 +67,7 @@ func (p *TestRepoProducer) Start() error {
 	}
 
 	// Make object store database
-	p.store, err = storage.NewBadgerStore(p.producerName + "/badger")
+	p.store, err = storage.NewBadgerStore("/home/adam/.ndn/producers" + p.producerName + "/badger")
 	if err != nil {
 		log.Error(nil, "Unable to create store", "err", err)
 		return err
@@ -258,44 +258,45 @@ func main() {
 
 	time.Sleep(3 * time.Second)
 
-	for i := 0; i < totalData; i++ {
-		dataNameN, err := enc.NameFromStr(producerName + "/data/" + strconv.Itoa(i))
-		if err != nil {
-			log.Error(producer, "Failed to parse name", "name", dataNameN, "err", err)
-			continue
-		}
-		checkData[i] = producer.insertData(dataNameN, 1024*1024) // 1MB
-	}
+	// for i := 0; i < totalData; i++ {
+	dataNameN, err := enc.NameFromStr(producerName + "/data/1")
 
-	time.Sleep(4 * time.Second) // So the repo has time to process the data
-	for i := 0; i < totalData; i++ {
-		dataNameN, err := enc.NameFromStr(producerName + "/data/" + strconv.Itoa(i))
-		if err != nil {
-			log.Error(producer, "Failed to parse name", "name", dataNameN, "err", err)
-			continue
-		}
-		producer.sendStatusRequest(checkData[i])
+	if err != nil {
+		log.Error(producer, "Failed to parse name", "name", dataNameN, "err", err)
+	} else {
+		checkData[1] = producer.insertData(dataNameN, 1024*1024) // 1MB
 	}
-
-	time.Sleep(4 * time.Second)
-	for i := 0; i < totalData; i++ {
-		groupNameN, err := enc.NameFromStr("/test/group/" + strconv.Itoa(i))
-		if err != nil {
-			log.Error(producer, "Failed to parse name", "name", groupNameN, "err", err)
-			continue
-		}
-		producer.joinGroup(groupNameN)
-	}
-
-	time.Sleep(4 * time.Second)
-	for i := 0; i < totalData; i++ {
-		groupNameN, err := enc.NameFromStr("/test/group/" + strconv.Itoa(i))
-		if err != nil {
-			log.Error(producer, "Failed to parse name", "name", groupNameN, "err", err)
-			continue
-		}
-		producer.sendStatusRequest(groupNameN)
-	}
+	// }
+	//
+	// time.Sleep(4 * time.Second) // So the repo has time to process the data
+	// for i := 0; i < totalData; i++ {
+	// 	dataNameN, err := enc.NameFromStr(producerName + "/data/" + strconv.Itoa(i))
+	// 	if err != nil {
+	// 		log.Error(producer, "Failed to parse name", "name", dataNameN, "err", err)
+	// 		continue
+	// 	}
+	// 	producer.sendStatusRequest(checkData[i])
+	// }
+	//
+	// time.Sleep(4 * time.Second)
+	// for i := 0; i < totalData; i++ {
+	// 	groupNameN, err := enc.NameFromStr("/test/group/" + strconv.Itoa(i))
+	// 	if err != nil {
+	// 		log.Error(producer, "Failed to parse name", "name", groupNameN, "err", err)
+	// 		continue
+	// 	}
+	// 	producer.joinGroup(groupNameN)
+	// }
+	//
+	// time.Sleep(4 * time.Second)
+	// for i := 0; i < totalData; i++ {
+	// 	groupNameN, err := enc.NameFromStr("/test/group/" + strconv.Itoa(i))
+	// 	if err != nil {
+	// 		log.Error(producer, "Failed to parse name", "name", groupNameN, "err", err)
+	// 		continue
+	// 	}
+	// 	producer.sendStatusRequest(groupNameN)
+	// }
 
 	sigChannel := make(chan os.Signal, 1)
 	signal.Notify(sigChannel, os.Interrupt, syscall.SIGTERM)

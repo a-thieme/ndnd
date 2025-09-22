@@ -106,15 +106,15 @@ func (r *Repo) Start() (err error) {
 		r.engine,
 	)
 
-	// Create repo awareness
-	r.awareness = awareness.NewRepoAwareness(shared)
-	if err := r.awareness.Start(); err != nil {
-		return err
-	}
-
-	log.Debug(r, "here")
-	// Create repo storage
-	r.storage = storage.NewRepoStorage(shared)
+	// // Create repo awareness
+	// r.awareness = awareness.NewRepoAwareness(shared)
+	// if err := r.awareness.Start(); err != nil {
+	// 	return err
+	// }
+	//
+	// log.Debug(r, "here")
+	// // Create repo storage
+	// r.storage = storage.NewRepoStorage(shared)
 
 	// Create producer-facing
 	r.facing = facing.NewProducerFacing(shared)

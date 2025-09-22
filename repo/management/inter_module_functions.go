@@ -76,11 +76,11 @@ func (m *RepoManagement) GetAvailability(job string) int {
 }
 
 // FIXME: see if these calls need go routines
-func (m *RepoManagement) OnNewJob(job *tlv.RepoCommand) {
+func (m *RepoManagement) OnNewCommand(command *tlv.RepoCommand) {
 	// do job if you have the resources
-	m.DoJob(job)
+	m.DoJob(command)
 	// publish command to the commands SVS group, since it's new
-	m.commands.PublishCommand(job)
+	m.commands.PublishCommand(command)
 }
 
 // WonAuction prompts the awareness and storage module to register a new partition, as the result of winning auctions
@@ -95,10 +95,16 @@ func (m *RepoManagement) DoJob(job *tlv.RepoCommand) {
 		Node:       job.Target,
 		ActiveJobs: m.storage.GetJobs(),
 	}
+	// FIXME: this should only publish something if its state actually changes
 	m.awareness.PublishAwarenessUpdate(&tmp)
 }
+
 func (m *RepoManagement) AucDoJob(s string) {
 	m.DoJob(m.DecodeCommand(s))
+}
+
+func (m *RepoManagement) AucAucJob(job *tlv.RepoCommand) {
+	m.auction.AuctionItem(EncodeCommand(job))
 }
 
 // TODO: eventually remove these helpers

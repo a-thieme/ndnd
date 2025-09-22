@@ -104,5 +104,7 @@ func (p *RepoProducerFacing) onExternalNotify(args ndn.InterestHandlerArgs) {
 		return
 	}
 	args.Reply(data.Wire)
+	log.Debug(p, "replied with data", sr)
 	p.newCommandCallback(command)
+	log.Debug(p, "after callback for command", command)
 }

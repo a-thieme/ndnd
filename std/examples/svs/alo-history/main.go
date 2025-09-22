@@ -11,7 +11,6 @@ import (
 	"github.com/named-data/ndnd/std/engine"
 	"github.com/named-data/ndnd/std/log"
 	"github.com/named-data/ndnd/std/ndn"
-	spec "github.com/named-data/ndnd/std/ndn/spec_2022"
 	"github.com/named-data/ndnd/std/ndn/svs_ps"
 	"github.com/named-data/ndnd/std/object"
 	"github.com/named-data/ndnd/std/object/storage"
@@ -157,18 +156,15 @@ func main() {
 	//
 	// This command will fail with a log if repo is not running, or
 	// does not respond to the command.
+	g := spec_repo.RepoCommand{
+		Type:              "JOIN",
+		SnapshotThreshold: SnapshotThreshold,
+		Target:            group,
+	}
 	client.ExpressCommand(
 		repoName.Append(enc.NewKeywordComponent("cmd")),
 		name.Append(enc.NewKeywordComponent("repo")),
-		(&spec_repo.RepoCmd{
-			SyncJoin: &spec_repo.SyncJoin{
-				Protocol: &spec.NameContainer{Name: spec_repo.SyncProtocolSvsV3},
-				Group:    &spec.NameContainer{Name: group},
-				HistorySnapshot: &spec_repo.HistorySnapshotConfig{
-					Threshold: SnapshotThreshold,
-				},
-			},
-		}).Encode(),
+		g.Encode(),
 		func(w enc.Wire, err error) {
 			if err != nil {
 				log.Warn(nil, "Repo sync join command failed", "err", err)
@@ -254,10 +250,10 @@ func publishBlob(content []byte) {
 
 	// Publish a BlobFetch command for repo to the group
 	// This will trigger repo to fetch the published blob
-	cmd := spec_repo.RepoCmd{
-		BlobFetch: &spec_repo.BlobFetch{
-			Name: &spec.NameContainer{Name: verName},
-		},
+
+	cmd := spec_repo.RepoCommand{
+		Type:   "INSERT",
+		Target: verName,
 	}
 	publish(cmd.Encode().Join())
 }

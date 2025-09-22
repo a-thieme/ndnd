@@ -7,6 +7,7 @@ import (
 	"github.com/named-data/ndnd/repo/distribution"
 	pface "github.com/named-data/ndnd/repo/producer-facing"
 	"github.com/named-data/ndnd/repo/storage"
+	"github.com/named-data/ndnd/repo/tlv"
 	"github.com/named-data/ndnd/repo/types"
 )
 
@@ -18,10 +19,13 @@ type RepoManagement struct {
 
 	// Module references for coordination
 	awareness      *awareness.RepoAwareness
-	auction        *auction.AuctionEngine
+	auction        *distribution.AuctionEngine
 	storage        *storage.RepoStorage
 	producerFacing *pface.RepoProducerFacing
 	commands       *awareness.Commands
+
+	overReplication  func(command *tlv.RepoCommand)
+	underReplication func(command *tlv.RepoCommand)
 }
 
 func (m *RepoManagement) String() string {
@@ -37,12 +41,20 @@ func NewRepoManagement(repo *types.RepoShared, awareness *awareness.RepoAwarenes
 		producerFacing: producerFacing,
 	}
 	// Create repo auction
-	rm.auction = auction.NewAuctionEngine(
+	rm.auction = distribution.NewAuctionEngine(
 		repo,
 		awareness.GetOnlineNodes,
 		rm.GetAvailability,
 		rm.AucDoJob,
 	)
-	rm.auction.Start()
+	//rm.auction.Start()
 	return rm
+}
+
+func (rm *RepoManagement) setUnder(f func(command *tlv.RepoCommand)) {
+	rm.underReplication = f
+}
+
+func (rm *RepoManagement) setOver(f func(command *tlv.RepoCommand)) {
+	rm.underReplication = f
 }

@@ -1,6 +1,6 @@
 // Credits to Adam Thieme for the original implementation
 
-package auction
+package distribution
 
 import (
 	"fmt"
