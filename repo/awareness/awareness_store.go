@@ -78,8 +78,7 @@ func (s *RepoAwarenessStore) ProcessAwarenessUpdate(update *tlv.AwarenessUpdate)
 	defer s.mutex.Unlock()
 
 	log.Info(s, "Processing awareness update", "publisher", update.Node)
-	name := update.Node
-	node := s.getNode(name)
+	node := s.getNode(&update.Node)
 
 	// map to reduce duplicates
 	mapJobsToCheck := map[*tlv.RepoCommand]int{}
@@ -98,7 +97,7 @@ func (s *RepoAwarenessStore) ProcessAwarenessUpdate(update *tlv.AwarenessUpdate)
 	}
 
 	// check relevant jobs for replication factor
-	for job, _ := range mapJobsToCheck {
+	for job := range mapJobsToCheck {
 		// check if replicated or not
 		s.checkJob(job)
 	}

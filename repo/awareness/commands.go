@@ -35,7 +35,7 @@ func (c *Commands) Get(name *enc.Name) *tlv.RepoCommand {
 
 // call this when you get an update from the Commands svs group
 func (c *Commands) addCommand(command *tlv.RepoCommand) {
-	n := command.Target
+	n := &command.Target
 	c.jLookup[n] = command
 	current := c.jobs[n]
 	// FIXME: get this typing thing down, need to modify tlv, probably

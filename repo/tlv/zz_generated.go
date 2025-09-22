@@ -11,6 +11,8 @@ import (
 
 type RepoCommandEncoder struct {
 	Length uint
+
+	Target_length uint
 }
 
 type RepoCommandParsingContext struct {
@@ -18,10 +20,22 @@ type RepoCommandParsingContext struct {
 
 func (encoder *RepoCommandEncoder) Init(value *RepoCommand) {
 
+	if value.Target != nil {
+		encoder.Target_length = 0
+		for _, c := range value.Target {
+			encoder.Target_length += uint(c.EncodingLength())
+		}
+	}
+
 	l := uint(0)
 	l += 3
 	l += uint(enc.TLNum(len(value.Type)).EncodingLength())
 	l += uint(len(value.Type))
+	if value.Target != nil {
+		l += 3
+		l += uint(enc.TLNum(encoder.Target_length).EncodingLength())
+		l += encoder.Target_length
+	}
 	l += 3
 	l += uint(1 + enc.Nat(value.SnapshotThreshold).EncodingLength())
 	encoder.Length = l
@@ -42,6 +56,15 @@ func (encoder *RepoCommandEncoder) EncodeInto(value *RepoCommand, buf []byte) {
 	pos += uint(enc.TLNum(len(value.Type)).EncodeInto(buf[pos:]))
 	copy(buf[pos:], value.Type)
 	pos += uint(len(value.Type))
+	if value.Target != nil {
+		buf[pos] = 253
+		binary.BigEndian.PutUint16(buf[pos+1:], uint16(595))
+		pos += 3
+		pos += uint(enc.TLNum(encoder.Target_length).EncodeInto(buf[pos:]))
+		for _, c := range value.Target {
+			pos += uint(c.EncodeInto(buf[pos:]))
+		}
+	}
 	buf[pos] = 253
 	binary.BigEndian.PutUint16(buf[pos+1:], uint16(597))
 	pos += 3
@@ -63,6 +86,7 @@ func (encoder *RepoCommandEncoder) Encode(value *RepoCommand) enc.Wire {
 func (context *RepoCommandParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*RepoCommand, error) {
 
 	var handled_Type bool = false
+	var handled_Target bool = false
 	var handled_SnapshotThreshold bool = false
 
 	progress := -1
@@ -101,6 +125,13 @@ func (context *RepoCommandParsingContext) Parse(reader enc.WireView, ignoreCriti
 							value.Type = builder.String()
 						}
 					}
+				}
+			case 595:
+				if true {
+					handled = true
+					handled_Target = true
+					delegate := reader.Delegate(int(l))
+					value.Target, err = delegate.ReadName()
 				}
 			case 597:
 				if true {
@@ -142,6 +173,9 @@ func (context *RepoCommandParsingContext) Parse(reader enc.WireView, ignoreCriti
 	if !handled_Type && err == nil {
 		err = enc.ErrSkipRequired{Name: "Type", TypeNum: 594}
 	}
+	if !handled_Target && err == nil {
+		value.Target = nil
+	}
 	if !handled_SnapshotThreshold && err == nil {
 		err = enc.ErrSkipRequired{Name: "SnapshotThreshold", TypeNum: 597}
 	}
@@ -172,6 +206,7 @@ func ParseRepoCommand(reader enc.WireView, ignoreCritical bool) (*RepoCommand, e
 type AwarenessUpdateEncoder struct {
 	Length uint
 
+	Node_length           uint
 	ActiveJobs_subencoder []struct {
 		ActiveJobs_encoder RepoCommandEncoder
 	}
@@ -182,6 +217,12 @@ type AwarenessUpdateParsingContext struct {
 }
 
 func (encoder *AwarenessUpdateEncoder) Init(value *AwarenessUpdate) {
+	if value.Node != nil {
+		encoder.Node_length = 0
+		for _, c := range value.Node {
+			encoder.Node_length += uint(c.EncodingLength())
+		}
+	}
 	{
 		ActiveJobs_l := len(value.ActiveJobs)
 		encoder.ActiveJobs_subencoder = make([]struct {
@@ -207,6 +248,11 @@ func (encoder *AwarenessUpdateEncoder) Init(value *AwarenessUpdate) {
 	}
 
 	l := uint(0)
+	if value.Node != nil {
+		l += 3
+		l += uint(enc.TLNum(encoder.Node_length).EncodingLength())
+		l += encoder.Node_length
+	}
 	if value.ActiveJobs != nil {
 		for seq_i, seq_v := range value.ActiveJobs {
 			pseudoEncoder := &encoder.ActiveJobs_subencoder[seq_i]
@@ -233,6 +279,7 @@ func (encoder *AwarenessUpdateEncoder) Init(value *AwarenessUpdate) {
 }
 
 func (context *AwarenessUpdateParsingContext) Init() {
+
 	context.ActiveJobs_context.Init()
 }
 
@@ -240,6 +287,15 @@ func (encoder *AwarenessUpdateEncoder) EncodeInto(value *AwarenessUpdate, buf []
 
 	pos := uint(0)
 
+	if value.Node != nil {
+		buf[pos] = 253
+		binary.BigEndian.PutUint16(buf[pos+1:], uint16(576))
+		pos += 3
+		pos += uint(enc.TLNum(encoder.Node_length).EncodeInto(buf[pos:]))
+		for _, c := range value.Node {
+			pos += uint(c.EncodeInto(buf[pos:]))
+		}
+	}
 	if value.ActiveJobs != nil {
 		for seq_i, seq_v := range value.ActiveJobs {
 			pseudoEncoder := &encoder.ActiveJobs_subencoder[seq_i]
@@ -280,6 +336,7 @@ func (encoder *AwarenessUpdateEncoder) Encode(value *AwarenessUpdate) enc.Wire {
 
 func (context *AwarenessUpdateParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*AwarenessUpdate, error) {
 
+	var handled_Node bool = false
 	var handled_ActiveJobs bool = false
 
 	progress := -1
@@ -307,6 +364,13 @@ func (context *AwarenessUpdateParsingContext) Parse(reader enc.WireView, ignoreC
 		err = nil
 		if handled := false; true {
 			switch typ {
+			case 576:
+				if true {
+					handled = true
+					handled_Node = true
+					delegate := reader.Delegate(int(l))
+					value.Node, err = delegate.ReadName()
+				}
 			case 577:
 				if true {
 					handled = true
@@ -345,6 +409,9 @@ func (context *AwarenessUpdateParsingContext) Parse(reader enc.WireView, ignoreC
 	startPos = reader.Pos()
 	err = nil
 
+	if !handled_Node && err == nil {
+		value.Node = nil
+	}
 	if !handled_ActiveJobs && err == nil {
 		// sequence - skip
 	}
@@ -372,16 +439,166 @@ func ParseAwarenessUpdate(reader enc.WireView, ignoreCritical bool) (*AwarenessU
 	return context.Parse(reader, ignoreCritical)
 }
 
+type RepoStatusRequestEncoder struct {
+	Length uint
+
+	Target_length uint
+}
+
+type RepoStatusRequestParsingContext struct {
+}
+
+func (encoder *RepoStatusRequestEncoder) Init(value *RepoStatusRequest) {
+	if value.Target != nil {
+		encoder.Target_length = 0
+		for _, c := range value.Target {
+			encoder.Target_length += uint(c.EncodingLength())
+		}
+	}
+
+	l := uint(0)
+	if value.Target != nil {
+		l += 3
+		l += uint(enc.TLNum(encoder.Target_length).EncodingLength())
+		l += encoder.Target_length
+	}
+	encoder.Length = l
+
+}
+
+func (context *RepoStatusRequestParsingContext) Init() {
+
+}
+
+func (encoder *RepoStatusRequestEncoder) EncodeInto(value *RepoStatusRequest, buf []byte) {
+
+	pos := uint(0)
+
+	if value.Target != nil {
+		buf[pos] = 253
+		binary.BigEndian.PutUint16(buf[pos+1:], uint16(640))
+		pos += 3
+		pos += uint(enc.TLNum(encoder.Target_length).EncodeInto(buf[pos:]))
+		for _, c := range value.Target {
+			pos += uint(c.EncodeInto(buf[pos:]))
+		}
+	}
+}
+
+func (encoder *RepoStatusRequestEncoder) Encode(value *RepoStatusRequest) enc.Wire {
+
+	wire := make(enc.Wire, 1)
+	wire[0] = make([]byte, encoder.Length)
+	buf := wire[0]
+	encoder.EncodeInto(value, buf)
+
+	return wire
+}
+
+func (context *RepoStatusRequestParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*RepoStatusRequest, error) {
+
+	var handled_Target bool = false
+
+	progress := -1
+	_ = progress
+
+	value := &RepoStatusRequest{}
+	var err error
+	var startPos int
+	for {
+		startPos = reader.Pos()
+		if startPos >= reader.Length() {
+			break
+		}
+		typ := enc.TLNum(0)
+		l := enc.TLNum(0)
+		typ, err = reader.ReadTLNum()
+		if err != nil {
+			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
+		}
+		l, err = reader.ReadTLNum()
+		if err != nil {
+			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
+		}
+
+		err = nil
+		if handled := false; true {
+			switch typ {
+			case 640:
+				if true {
+					handled = true
+					handled_Target = true
+					delegate := reader.Delegate(int(l))
+					value.Target, err = delegate.ReadName()
+				}
+			default:
+				if !ignoreCritical && ((typ <= 31) || ((typ & 1) == 1)) {
+					return nil, enc.ErrUnrecognizedField{TypeNum: typ}
+				}
+				handled = true
+				err = reader.Skip(int(l))
+			}
+			if err == nil && !handled {
+			}
+			if err != nil {
+				return nil, enc.ErrFailToParse{TypeNum: typ, Err: err}
+			}
+		}
+	}
+
+	startPos = reader.Pos()
+	err = nil
+
+	if !handled_Target && err == nil {
+		value.Target = nil
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return value, nil
+}
+
+func (value *RepoStatusRequest) Encode() enc.Wire {
+	encoder := RepoStatusRequestEncoder{}
+	encoder.Init(value)
+	return encoder.Encode(value)
+}
+
+func (value *RepoStatusRequest) Bytes() []byte {
+	return value.Encode().Join()
+}
+
+func ParseRepoStatusRequest(reader enc.WireView, ignoreCritical bool) (*RepoStatusRequest, error) {
+	context := RepoStatusRequestParsingContext{}
+	context.Init()
+	return context.Parse(reader, ignoreCritical)
+}
+
 type RepoStatusResponseEncoder struct {
 	Length uint
+
+	Target_length uint
 }
 
 type RepoStatusResponseParsingContext struct {
 }
 
 func (encoder *RepoStatusResponseEncoder) Init(value *RepoStatusResponse) {
+	if value.Target != nil {
+		encoder.Target_length = 0
+		for _, c := range value.Target {
+			encoder.Target_length += uint(c.EncodingLength())
+		}
+	}
 
 	l := uint(0)
+	if value.Target != nil {
+		l += 3
+		l += uint(enc.TLNum(encoder.Target_length).EncodingLength())
+		l += encoder.Target_length
+	}
 	l += 3
 	l += uint(1 + enc.Nat(value.Status).EncodingLength())
 	encoder.Length = l
@@ -396,6 +613,15 @@ func (encoder *RepoStatusResponseEncoder) EncodeInto(value *RepoStatusResponse, 
 
 	pos := uint(0)
 
+	if value.Target != nil {
+		buf[pos] = 253
+		binary.BigEndian.PutUint16(buf[pos+1:], uint16(640))
+		pos += 3
+		pos += uint(enc.TLNum(encoder.Target_length).EncodeInto(buf[pos:]))
+		for _, c := range value.Target {
+			pos += uint(c.EncodeInto(buf[pos:]))
+		}
+	}
 	buf[pos] = 253
 	binary.BigEndian.PutUint16(buf[pos+1:], uint16(641))
 	pos += 3
@@ -416,6 +642,7 @@ func (encoder *RepoStatusResponseEncoder) Encode(value *RepoStatusResponse) enc.
 
 func (context *RepoStatusResponseParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*RepoStatusResponse, error) {
 
+	var handled_Target bool = false
 	var handled_Status bool = false
 
 	progress := -1
@@ -443,6 +670,13 @@ func (context *RepoStatusResponseParsingContext) Parse(reader enc.WireView, igno
 		err = nil
 		if handled := false; true {
 			switch typ {
+			case 640:
+				if true {
+					handled = true
+					handled_Target = true
+					delegate := reader.Delegate(int(l))
+					value.Target, err = delegate.ReadName()
+				}
 			case 641:
 				if true {
 					handled = true
@@ -480,6 +714,9 @@ func (context *RepoStatusResponseParsingContext) Parse(reader enc.WireView, igno
 	startPos = reader.Pos()
 	err = nil
 
+	if !handled_Target && err == nil {
+		value.Target = nil
+	}
 	if !handled_Status && err == nil {
 		err = enc.ErrSkipRequired{Name: "Status", TypeNum: 641}
 	}

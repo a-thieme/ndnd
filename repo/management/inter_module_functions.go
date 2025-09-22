@@ -43,7 +43,7 @@ func (m *RepoManagement) StatusRequestHandler(interestHandler *ndn.InterestHandl
 
 	// Prepare reply
 	reply := tlv.RepoStatusResponse{
-		Target: target,
+		Target: target.Clone(),
 		Status: 200,
 	}
 

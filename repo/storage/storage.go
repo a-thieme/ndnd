@@ -53,7 +53,7 @@ func (r *RepoStorage) GetJobs() []*tlv.RepoCommand {
 func (r *RepoStorage) DoingJob(job *tlv.RepoCommand) bool {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
-	return r.jobs[job.Target] != nil
+	return r.jobs[&job.Target] != nil
 }
 
 // Thread-safe
@@ -61,7 +61,7 @@ func (s *RepoStorage) DoCommand(command *tlv.RepoCommand) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	log.Info(s, "Handling command", "command", command)
-	s.jobs[command.Target] = command
+	s.jobs[&command.Target] = command
 	// FIXME: this needs to either consume data or join an svs group
 	// FIXME: for testing, maybe this can be....unused?
 }
@@ -71,7 +71,7 @@ func (s *RepoStorage) DoCommand(command *tlv.RepoCommand) {
 func (s *RepoStorage) HandleStatus(statusRequest *enc.Name) tlv.RepoStatusResponse {
 	log.Info(s, "Handling status request", "status request", statusRequest, "name", statusRequest)
 	reply := tlv.RepoStatusResponse{
-		Target: statusRequest,
+		Target: statusRequest.Clone(),
 		Status: 200, // TODO: actually do some checking
 	}
 	return reply

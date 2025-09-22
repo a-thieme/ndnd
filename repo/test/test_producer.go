@@ -13,7 +13,6 @@ import (
 	"github.com/named-data/ndnd/std/engine"
 	"github.com/named-data/ndnd/std/log"
 	"github.com/named-data/ndnd/std/ndn"
-	"github.com/named-data/ndnd/std/ndn/spec_2022"
 	"github.com/named-data/ndnd/std/object"
 	"github.com/named-data/ndnd/std/object/storage"
 	"github.com/named-data/ndnd/std/types/optional"
@@ -167,10 +166,12 @@ func (p *TestRepoProducer) sendCommand(commandType CommandType, name enc.Name) {
 
 	commandData := tlv.RepoCommand{
 		Type:   string(commandType),
-		Target: &spec_2022.NameContainer{Name: name},
+		Target: name,
 	}
 
-	notifyInterestName := p.notifyPrefix.Append(enc.NewGenericComponent(strconv.FormatUint(name.Hash(), 10))) // TODO: embed a nonce
+	// FIXME: see if this needs to be added. the way it is now, this is equivalent to the digest
+	nonce := strconv.FormatUint(name.Hash(), 10)
+	notifyInterestName := p.notifyPrefix.Append(enc.NewGenericComponent(nonce))
 	log.Info(p, "Sending command", "commandType", commandType, "name", name, "notifyInterestName", notifyInterestName)
 	p.client.ExpressR(ndn.ExpressRArgs{
 		Name:     notifyInterestName,
@@ -191,22 +192,22 @@ func (p *TestRepoProducer) sendCommand(commandType CommandType, name enc.Name) {
 }
 
 // sendStatusRequest sends a status request to the repo
-func (p *TestRepoProducer) sendStatusRequest(name enc.Name) {
-	log.Info(p, "Sending status request", "name", name)
+func (p *TestRepoProducer) sendStatusRequest(target enc.Name) {
+	log.Info(p, "Sending status request", "name", target)
 
 	// Add nil check to prevent segmentation fault
-	if name == nil {
+	if target == nil {
 		log.Error(p, "Cannot send status request with nil name")
 		return
 	}
 
-	statusRequest := &tlv.RepoStatus{
-		Name:  &spec_2022.NameContainer{Name: name},
-		Nonce: name.Hash(),
+	statusRequest := &tlv.RepoStatusRequest{
+		Target: target,
 	}
 
-	statusRequestInterestName := p.statusPrefix.Append(enc.NewGenericComponent(strconv.FormatUint(name.Hash(), 10)))
-	log.Info(p, "Sending status request", "name", name, "statusRequestInterestName", statusRequestInterestName)
+	// TODO: make sure this is necessary
+	statusRequestInterestName := p.statusPrefix.Append(enc.NewGenericComponent(strconv.FormatUint(target.Hash(), 10)))
+	log.Info(p, "Sending status request", "target", target, "statusRequestInterestName", statusRequestInterestName)
 
 	p.client.ExpressR(ndn.ExpressRArgs{
 		Name:     statusRequestInterestName,
@@ -218,14 +219,14 @@ func (p *TestRepoProducer) sendStatusRequest(name enc.Name) {
 		Retries: 0,
 		Callback: func(args ndn.ExpressCallbackArgs) {
 			if args.Result == ndn.InterestResultData {
-				reply, err := tlv.ParseRepoStatusReply(enc.NewWireView(args.Data.Content()), false)
+				reply, err := tlv.ParseRepoStatusResponse(enc.NewWireView(args.Data.Content()), false)
 				if err != nil {
-					log.Error(p, "Failed to parse status reply", "name", name, "err", err)
+					log.Error(p, "Failed to parse status reply", "target", target, "err", err)
 					return
 				}
-				log.Info(p, "Received status request from Repo", "name", name, "status", reply.Status)
+				log.Info(p, "Received status request from Repo", "target", target, "status", reply.Status)
 			} else {
-				log.Error(p, "Status request error", "name", name, "result", args.Result)
+				log.Error(p, "Status request error", "target", target, "result", args.Result)
 			}
 		},
 	})
