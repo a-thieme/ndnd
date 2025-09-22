@@ -8,10 +8,27 @@ import (
 
 type TimeBased struct {
 	timers     map[*enc.Name]*time.Timer
-	single     *time.Timer
 	getAbility func(*tlv.RepoCommand) int
 	doJob      func(*tlv.RepoCommand)
 	releaseJob func(*tlv.RepoCommand)
+}
+
+func (t *TimeBased) SetAbility(f func(*tlv.RepoCommand) int) {
+	t.getAbility = f
+}
+
+func (t *TimeBased) SetDoJob(f func(*tlv.RepoCommand)) {
+	t.doJob = f
+}
+
+func (t *TimeBased) SetRelease(f func(*tlv.RepoCommand)) {
+	t.releaseJob = f
+}
+
+func NewTimeBased() *TimeBased {
+	return &TimeBased{
+		timers: make(map[*enc.Name]*time.Timer),
+	}
 }
 
 func (t *TimeBased) Over(job *tlv.RepoCommand) {
