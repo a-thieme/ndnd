@@ -35,6 +35,6 @@ type RepoStatusRequest struct {
 type RepoStatusResponse struct {
 	//+field:name
 	Target enc.Name `tlv:"0x280"`
-	//+field:natural
-	Status uint64 `tlv:"0x281"`
+	//+field:string
+	Status string `tlv:"0x281"`
 }

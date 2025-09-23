@@ -56,12 +56,17 @@ func NewRepoManagement(repo *types.RepoShared, awareness *awareness.RepoAwarenes
 	// in addition, it sets the managemnt's decisions for what to do if a job is under, over, or well-replicated
 	// these decisions should be changed here for experiments. inter_module_functions should be standard.
 
+	// NOTE: these should in the order they will execute
+
 	// connect producer ingress to management
 	rm.producerFacing.SetCommandHandler(rm.OnNewCommand)
 
 	// connect storage to management
 	rm.storage.SetFetchDataHandler(rm.fetchData)
 	rm.storage.SetJoinSyncHandler(rm.joinSync)
+
+	// connect commands to management
+	rm.commands.SetCheckJob(rm.CheckJob)
 
 	// connect management to timers
 	rm.setUnder(rm.timeBased.Under)

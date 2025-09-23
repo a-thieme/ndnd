@@ -600,7 +600,8 @@ func (encoder *RepoStatusResponseEncoder) Init(value *RepoStatusResponse) {
 		l += encoder.Target_length
 	}
 	l += 3
-	l += uint(1 + enc.Nat(value.Status).EncodingLength())
+	l += uint(enc.TLNum(len(value.Status)).EncodingLength())
+	l += uint(len(value.Status))
 	encoder.Length = l
 
 }
@@ -625,9 +626,9 @@ func (encoder *RepoStatusResponseEncoder) EncodeInto(value *RepoStatusResponse, 
 	buf[pos] = 253
 	binary.BigEndian.PutUint16(buf[pos+1:], uint16(641))
 	pos += 3
-
-	buf[pos] = byte(enc.Nat(value.Status).EncodeInto(buf[pos+1:]))
-	pos += uint(1 + buf[pos])
+	pos += uint(enc.TLNum(len(value.Status)).EncodeInto(buf[pos:]))
+	copy(buf[pos:], value.Status)
+	pos += uint(len(value.Status))
 }
 
 func (encoder *RepoStatusResponseEncoder) Encode(value *RepoStatusResponse) enc.Wire {
@@ -681,18 +682,11 @@ func (context *RepoStatusResponseParsingContext) Parse(reader enc.WireView, igno
 				if true {
 					handled = true
 					handled_Status = true
-					value.Status = uint64(0)
 					{
-						for i := 0; i < int(l); i++ {
-							x := byte(0)
-							x, err = reader.ReadByte()
-							if err != nil {
-								if err == io.EOF {
-									err = io.ErrUnexpectedEOF
-								}
-								break
-							}
-							value.Status = uint64(value.Status<<8) | uint64(x)
+						var builder strings.Builder
+						_, err = reader.CopyN(&builder, int(l))
+						if err == nil {
+							value.Status = builder.String()
 						}
 					}
 				}

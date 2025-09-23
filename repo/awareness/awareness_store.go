@@ -22,7 +22,7 @@ type RepoAwarenessStore struct {
 	// job target to replica count
 	jobReplications map[*tlv.RepoCommand]int
 
-	// Callbacks for partition management
+	// check and handle if job is under or over-replicated
 	checkJob func(*tlv.RepoCommand)
 }
 

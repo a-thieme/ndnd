@@ -213,10 +213,10 @@ func (r *RepoAwareness) StartHeartbeat() (err error) {
 	return nil
 }
 
-// PublishAwarenessUpdate publishes an awareness update with the current node state
-// This method is called on-event, i.e. whenever local responsibility changes
+// PublishAwarenessUpdate publishes an awareness update with the given node state
+// This method is called on-event, i.e. whenever local jobs change
 // Thread-safe
-// FIXME: get the actual storage to compile the AwarenessUpdate, call from management.
+// this is called directly from storage because storage knows when it updates itself
 func (r *RepoAwareness) PublishAwarenessUpdate(awarenessUpdate *tlv.AwarenessUpdate) {
 	// publish to awareness SVS
 	log.Info(r, "Publishing awareness update for node", r.nodeNameN, "jobs", awarenessUpdate.ActiveJobs)

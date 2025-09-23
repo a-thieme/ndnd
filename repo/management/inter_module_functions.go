@@ -13,31 +13,50 @@ import (
 // NOTE: every handler registered by the management module will be ran in a separate goroutine, so blocking is not a concern
 
 func (m *RepoManagement) CheckJob(job *tlv.RepoCommand) {
-	// calculate job replications
+	status := m.getJobStatus(job)
+	// TODO: make it a switch statement
+	if status == "under" {
+		m.underReplication(job)
+	} else if status == "over" {
+		m.overReplication(job)
+	} else if status == "good" {
+		m.goodReplication(job)
+	} else {
+		log.Warn(m, "got bad status", status)
+	}
+}
+
+// calculate number of times a job is done
+func (m *RepoManagement) getJobStatus(job *tlv.RepoCommand) string {
+	// how many times the job should be done
+	r := 0
+	if m.commands.ShouldBeActive(job) {
+		r = m.repo.NumReplicas
+	}
+
+	// how many times the job is done (local understanding)
 	num := m.awareness.Storage.GetReplications(job)
 	if m.storage.DoingJob(job) {
 		num++
 	}
 
-	// do things
-	if num < m.repo.NumReplicas {
-		m.underReplication(job)
-	} else if num > m.repo.NumReplicas {
-		m.overReplication(job)
+	// status return
+	// TODO: maybe standardize this
+	if num < r {
+		return "under"
+	} else if num == r {
+		return "over"
 	}
-	m.goodReplication(job)
+	return "good"
 }
 
 // Launches a coordination job to check the status from responsible node
 func (m *RepoManagement) StatusRequestHandler(interestHandler *ndn.InterestHandlerArgs, target *enc.Name) {
 	log.Info(m, "Got status request for", target)
-	// FIXME: actually implement this to check replication for this target
-	//checkJob(target)
-
 	// Prepare reply
 	reply := tlv.RepoStatusResponse{
 		Target: target.Clone(),
-		Status: 200,
+		Status: m.getJobStatus(m.commands.Get(target)),
 	}
 
 	data, _ := m.repo.Engine.Spec().MakeData(
@@ -68,42 +87,55 @@ func (m *RepoManagement) GetAvailability(job *tlv.RepoCommand) int {
 }
 
 // got command from producer
-// FIXME: see if these calls need go routines
 func (m *RepoManagement) OnNewCommand(command *tlv.RepoCommand) {
-	// publish command to the commands SVS group, since it's new
-	m.commands.PublishCommand(command)
+	// NOTE: ideally, this would publish the command to the group, do the job, then check for replication
+	// however, PublishCommand does the first and last.
+	// Doing the job after publishing guarantees an incorrect replication count (off by 1)
+	// the underlying handlers for replication do not check to see if they are still needed; it is assumed that they are needed unless otherwise noted,
+	// The cost of avoiding this issue is losing a job if m.DoJob() causes the repo to crash, since it is not published to the group.
+	// for now, we're going to assume that the producer will do a status check on the repo to see if it is doing the command.
+	// if it isn't (m.DoJob crashed the node), then it should try again
+	//
+	// TODO: the way to fix this is by separating the check for replication out of the PublishCommand call.
+
 	// do job if you have the resources
 	m.DoJob(command)
+	// publish command to the commands SVS group, since it's new
+	m.commands.PublishCommand(command)
 }
 
 // storage will call awareness if an update happens
 // doing this in storage might be easier for coding+debugging since the checks to see if state changed need to happen regardless
-// FIXME: see if these calls need go routines
 func (m *RepoManagement) DoJob(job *tlv.RepoCommand) {
 	log.Info(m, "now doing job", job.Target)
 	if m.storage.DoingJob(job) {
 		log.Warn(m, "already doing job", job)
 		return
 	}
-	// FIXME: this should return an error if the node cannot do the command
-	// if using an auction, trigger one if something went wrong
-	m.storage.AddJob(job)
-}
-
-func (m *RepoManagement) doAwarenessUpdate() {
-	tmp := tlv.AwarenessUpdate{
-		Node:       m.repo.NodeNameN,
-		ActiveJobs: m.storage.GetJobs(),
-	}
-	// FIXME: this should only publish something if its state actually changes
-	m.awareness.PublishAwarenessUpdate(&tmp)
+	m.handleFromStorage(m.storage.AddJob(job))
 }
 
 func (m *RepoManagement) ReleaseJob(job *tlv.RepoCommand) {
 	log.Info(m, "releasing job", job.Target)
-	m.storage.ReleaseJob(job)
+	m.handleFromStorage(m.storage.ReleaseJob(job))
 }
 
+func (m *RepoManagement) handleFromStorage(err error) {
+	if err != nil {
+		log.Warn(m, err.Error())
+		// NOTE: if using auction, maybe run an auction here (this requires a refactor)
+		// this would return an error if type is invalid, state didn't change, or doesn't have enough storage
+	} else {
+		tmp := tlv.AwarenessUpdate{
+			Node:       m.repo.NodeNameN,
+			ActiveJobs: m.storage.GetJobs(),
+		}
+		m.awareness.PublishAwarenessUpdate(&tmp)
+	}
+
+}
+
+// TODO: eventually remove these helpers
 func (m *RepoManagement) AucDoJob(s string) {
 	m.DoJob(m.DecodeCommand(s))
 }
@@ -112,7 +144,6 @@ func (m *RepoManagement) AucAucJob(job *tlv.RepoCommand) {
 	m.auction.AuctionItem(EncodeCommand(job))
 }
 
-// TODO: eventually remove these helpers
 func EncodeCommand(command *tlv.RepoCommand) string {
 	return enc.Component{Typ: 8, Val: command.Target.Bytes()}.String()
 }

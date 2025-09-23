@@ -88,7 +88,7 @@ func (p *RepoProducerFacing) onExternalNotify(args ndn.InterestHandlerArgs) {
 	// Reply to the command - "Repo has received the command"
 	sr := &tlv.RepoStatusResponse{
 		Target: command.Target,
-		Status: 200,
+		Status: "recieved",
 	}
 
 	data, err := p.repo.Engine.Spec().MakeData(

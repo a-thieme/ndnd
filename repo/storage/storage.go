@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"errors"
 	"maps"
 	"slices"
 	"sync"
@@ -24,7 +25,12 @@ type RepoStorage struct {
 	jobs map[*enc.Name]*tlv.RepoCommand
 
 	fetchDataHandler func(name *enc.Name)
+
+	// TODO: move sync things into this struct
 	joinSyncHandler  func(name *enc.Name, threshold *uint64)
+	leaveSyncHandler func(name *enc.Name)
+
+	updateAwareness func([]*tlv.RepoCommand)
 }
 
 // NewRepoStorage creates a new repo storage
@@ -49,6 +55,10 @@ func (s *RepoStorage) SetJoinSyncHandler(f func(*enc.Name, *uint64)) {
 	s.joinSyncHandler = f
 }
 
+func (s *RepoStorage) SetLeaveSyncHandler(f func(*enc.Name)) {
+	s.leaveSyncHandler = f
+}
+
 // get all jobs that i'm doing
 func (r *RepoStorage) GetJobs() []*tlv.RepoCommand {
 	// TODO: if this is called multiple times between changes in r.jobs, have DoCommand() do the collection (pre-computation)
@@ -59,22 +69,17 @@ func (r *RepoStorage) GetJobs() []*tlv.RepoCommand {
 	return slices.Collect(maps.Values(r.jobs))
 }
 
-// either do or release job, depending on the type of command
-func (s *RepoStorage) DoCommand(command *tlv.RepoCommand) {
-	log.Info(s, "Handling command", "command", command)
-	if command.Type == "LEAVE" || command.Type == "REMOVE" {
-		log.Info(s, "stopping command target", command.Target)
-		s.ReleaseJob(command)
-	} else {
-		log.Info(s, "doing command target", command.Target)
-		s.addJob(command)
-	}
-}
-
 // start doing job
-func (s *RepoStorage) AddJob(job *tlv.RepoCommand) {
-	// FIXME: this needs to either consume data or join a sync group
+// TODO: check to see if you have the availability for this
+func (s *RepoStorage) AddJob(job *tlv.RepoCommand) error {
 	log.Info(s, "AddJob", job)
+	// FIXME: this needs to either consume data or join a sync group
+	// TODO: remove; this is only for debugging
+	if !s.DoingJob(job) {
+		msg := "tried to release job i'm not doing"
+		log.Warn(s, msg, job.Target)
+		return errors.New(msg)
+	}
 	t := job.Target
 	s.mutex.Lock()
 	s.jobs[&t] = job
@@ -86,17 +91,20 @@ func (s *RepoStorage) AddJob(job *tlv.RepoCommand) {
 		log.Debug(s, "consuming data", t)
 		s.fetchDataHandler(&t)
 	} else {
+		msg := "repo command is of invalid type and somehow got all the way down to storage"
 		log.Warn(s, "repo command is of invalid type", job.Type, "and somehow got all the way down to storage")
+		return errors.New(msg)
 	}
-	s.updateAwareness()
+	return nil
 }
 
 // release (stop doing) job
-func (s *RepoStorage) ReleaseJob(job *tlv.RepoCommand) {
+func (s *RepoStorage) ReleaseJob(job *tlv.RepoCommand) error {
 	log.Info(s, "Releasing job", job)
 	if !s.DoingJob(job) {
-		log.Warn(s, "tried to release job i'm not doing", job.Target)
-		return
+		msg := "tried to release job i'm not doing"
+		log.Warn(s, msg, job.Target)
+		return errors.New(msg)
 	}
 	// FIXME: this needs to either remove data or leave a sync group
 	s.mutex.Lock()
@@ -105,18 +113,21 @@ func (s *RepoStorage) ReleaseJob(job *tlv.RepoCommand) {
 	t := job.Target
 	if job.Type == "LEAVE" {
 		log.Debug(s, "leaving sync group", t)
-		s.leaveSyncHandler(&t, &job.SnapshotThreshold)
+		s.leaveSyncHandler(&t)
 	} else if job.Type == "REMOVE" {
 		log.Debug(s, "removing data", t)
 		err := s.Remove(t)
 		if err != nil {
-			log.Warn(s, "tried to remove data but it didn't work", err)
+			msg := "tried to remove data but it didn't work"
+			log.Warn(s, msg, err)
+			return errors.New(msg)
 		}
 	} else {
+		msg := "repo command is of invalid type and somehow got all the way down to storage"
 		log.Warn(s, "repo command is of invalid type", job.Type, "and somehow got all the way down to storage")
-		return // cheap way to not update awareness
+		return errors.New(msg)
 	}
-	s.updateAwareness()
+	return nil
 }
 
 // returns whether the node is doing the job
