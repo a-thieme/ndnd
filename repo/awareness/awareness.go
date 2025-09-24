@@ -221,6 +221,7 @@ func (r *RepoAwareness) PublishAwarenessUpdate(awarenessUpdate *tlv.AwarenessUpd
 	// publish to awareness SVS
 	log.Info(r, "Publishing awareness update for node", r.nodeNameN, "jobs", awarenessUpdate.ActiveJobs)
 	_, _, err := r.awarenessSvs.Publish(awarenessUpdate.Encode())
+	log.Debug(r, "after Publish() in awareness for update", awarenessUpdate)
 	if err != nil {
 		log.Error(r, "Error publishing awareness update", "err", err, "time", time.Now())
 	}

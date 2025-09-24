@@ -28,6 +28,7 @@ type Repo struct {
 	client ndn.Client
 
 	awareness  *awareness.RepoAwareness
+	commands   *awareness.Commands
 	storage    *storage.RepoStorage
 	facing     *facing.RepoProducerFacing
 	management *management.RepoManagement
@@ -70,7 +71,6 @@ func (r *Repo) Start() (err error) {
 		return err
 	}
 
-	log.Debug(r, "here")
 	// TODO: specify a real trust schema
 	schema := trust_schema.NewNullSchema()
 
@@ -83,7 +83,6 @@ func (r *Repo) Start() (err error) {
 		return err
 	}
 
-	log.Debug(r, "here")
 	// Attach data name as forwarding hint to cert Interests
 	trust.UseDataNameFwHint = true
 
@@ -106,25 +105,38 @@ func (r *Repo) Start() (err error) {
 		r.engine,
 	)
 
+	log.Debug(r, "create awareness")
 	// // Create repo awareness
-	// r.awareness = awareness.NewRepoAwareness(shared)
-	// if err := r.awareness.Start(); err != nil {
-	// 	return err
-	// }
-	//
-	// log.Debug(r, "here")
-	// // Create repo storage
-	// r.storage = storage.NewRepoStorage(shared)
+	r.awareness = awareness.NewRepoAwareness(shared)
+	log.Debug(r, "start awareness")
+	if err := r.awareness.Start(); err != nil {
+		return err
+	}
 
+	log.Debug(r, "create commands")
+	r.commands = awareness.NewCommands(shared)
+	log.Debug(r, "start awareness")
+	if err := r.commands.Start(); err != nil {
+		return err
+	}
+
+	log.Debug(r, "create storage")
+	// Create repo storage
+	r.storage = storage.NewRepoStorage(shared)
+
+	log.Debug(r, "create producer-facing")
 	// Create producer-facing
 	r.facing = facing.NewProducerFacing(shared)
+	log.Debug(r, "start producer-facing")
 	if err := r.facing.Start(); err != nil {
 		return err
 	}
 
+	log.Debug(r, "create management")
 	// Create repo management
 	r.management = management.NewRepoManagement(shared, r.awareness, r.storage, r.facing)
 
+	log.Debug(r, "end of Start()")
 	return nil
 }
 

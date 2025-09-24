@@ -39,7 +39,7 @@ func NewRepoStorage(repo *types.RepoShared) *RepoStorage {
 
 	return &RepoStorage{
 		repo: repo,
-		jobs: make(map[*enc.Name]*tlv.RepoCommand),
+		jobs: map[*enc.Name]*tlv.RepoCommand{},
 	}
 }
 
@@ -66,12 +66,6 @@ func (r *RepoStorage) GetJobs() []*tlv.RepoCommand {
 func (s *RepoStorage) AddJob(job *tlv.RepoCommand) error {
 	log.Info(s, "AddJob", job)
 	// FIXME: this needs to either consume data or join a sync group
-	// TODO: remove; this is only for debugging
-	if !s.DoingJob(job) {
-		msg := "tried to release job i'm not doing"
-		log.Warn(s, msg, job.Target)
-		return errors.New(msg)
-	}
 	t := job.Target
 	s.mutex.Lock()
 	s.jobs[&t] = job
@@ -81,7 +75,8 @@ func (s *RepoStorage) AddJob(job *tlv.RepoCommand) error {
 		s.joinSync(s.repo, job)
 	} else if job.Type == "INSERT" {
 		log.Debug(s, "consuming data", t)
-		s.fetchDataHandler(&t)
+		log.Warn(s, "should fetch data here but not implemented")
+		// s.fetchDataHandler(&t)
 	} else {
 		msg := "repo command is of invalid type and somehow got all the way down to storage"
 		log.Warn(s, "repo command is of invalid type", job.Type, "and somehow got all the way down to storage")
@@ -124,9 +119,21 @@ func (s *RepoStorage) ReleaseJob(job *tlv.RepoCommand) error {
 
 // returns whether the node is doing the job
 func (r *RepoStorage) DoingJob(job *tlv.RepoCommand) bool {
+	log.Debug(r, "asked for DoingJob()")
 	r.mutex.Lock()
+	log.Debug(r, "after first mutex")
 	defer r.mutex.Unlock()
-	return r.jobs[&job.Target] != nil
+	log.Debug(r, "after second mutex")
+	value, contains := r.jobs[&job.Target]
+	log.Debug(r, "after grabbed")
+	if contains {
+		log.Debug(r, "contains key")
+		log.Debug(r, value.Target.String())
+	} else {
+		log.Debug(r, "does not contain key")
+	}
+	log.Debug(r, "returning from DoingJob()")
+	return contains
 }
 
 func (r *RepoStorage) joinSync(repo *types.RepoShared, job *tlv.RepoCommand) {

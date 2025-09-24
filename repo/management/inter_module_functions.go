@@ -112,7 +112,9 @@ func (m *RepoManagement) DoJob(job *tlv.RepoCommand) {
 		log.Warn(m, "already doing job", job)
 		return
 	}
+	log.Debug(m, "after storage.DoingJob() check for job", job.Target)
 	m.handleFromStorage(m.storage.AddJob(job))
+	log.Debug(m, "after adding job and publishing awareness for job", job.Target)
 }
 
 func (m *RepoManagement) ReleaseJob(job *tlv.RepoCommand) {
@@ -121,11 +123,14 @@ func (m *RepoManagement) ReleaseJob(job *tlv.RepoCommand) {
 }
 
 func (m *RepoManagement) handleFromStorage(err error) {
+	log.Debug(m, "handling callback from storage")
 	if err != nil {
+		log.Debug(m, "got an error")
 		log.Warn(m, err.Error())
 		// NOTE: if using auction, maybe run an auction here (this requires a refactor)
 		// this would return an error if type is invalid, state didn't change, or doesn't have enough storage
 	} else {
+		log.Debug(m, "making awareness update")
 		tmp := tlv.AwarenessUpdate{
 			Node:       m.repo.NodeNameN,
 			ActiveJobs: m.storage.GetJobs(),

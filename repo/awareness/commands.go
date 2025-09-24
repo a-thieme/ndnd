@@ -7,6 +7,7 @@ import (
 	"github.com/named-data/ndnd/std/log"
 	"github.com/named-data/ndnd/std/ndn"
 	ndn_sync "github.com/named-data/ndnd/std/sync"
+	"strconv"
 	"sync"
 )
 
@@ -38,11 +39,15 @@ func NewCommands(repo *types.RepoShared) *Commands {
 		nodeName: &repo.RepoNameN,
 		prefix:   &name,
 		client:   repo.Client,
+		jobs:     map[*enc.Name]bool{},
+		jLookup:  map[*enc.Name]*tlv.RepoCommand{},
 	}
 }
 
 func (c *Commands) SetCheckJob(f func(*tlv.RepoCommand)) {
+	log.Debug(c, "set check job")
 	c.checkJob = f
+	log.Debug(c, "after set check job")
 }
 
 func (c *Commands) String() string {
@@ -50,7 +55,9 @@ func (c *Commands) String() string {
 }
 
 func (c *Commands) Start() (err error) {
+	log.Info(c, "starting commands")
 	// FIXME: actually do this correctly
+	log.Debug(c, "new svs alo")
 	c.cmdSvs, err = ndn_sync.NewSvsALO(ndn_sync.SvsAloOpts{
 		Name: c.nodeName.Clone(),
 		Svs: ndn_sync.SvSyncOpts{
@@ -63,11 +70,13 @@ func (c *Commands) Start() (err error) {
 	if err != nil {
 		return err
 	}
+	log.Debug(c, "set on error")
 	// Set error handler
 	c.cmdSvs.SetOnError(func(err error) {
 		log.Error(c, "SVS ALO error", "err", err)
 	})
 
+	log.Debug(c, "subscribe publisher")
 	// Subscribe to all publishers
 	c.cmdSvs.SubscribePublisher(enc.Name{}, func(pub ndn_sync.SvsPub) {
 		if pub.IsSnapshot {
@@ -86,6 +95,7 @@ func (c *Commands) Start() (err error) {
 		}
 	})
 
+	log.Debug(c, "set prefixes and announce")
 	// Announce group prefix route
 	for _, route := range []enc.Name{
 		c.cmdSvs.SyncPrefix(),
@@ -105,6 +115,7 @@ func (c *Commands) Start() (err error) {
 		return err
 	}
 
+	log.Debug(c, "end of Start()")
 	return err
 }
 func (c *Commands) Stop() {
@@ -156,7 +167,17 @@ func (c *Commands) ShouldBeActive(command *tlv.RepoCommand) bool {
 // add command to local understanding and publish to the svs group
 func (c *Commands) PublishCommand(command *tlv.RepoCommand) {
 	// FIXME: decide here what to name it and signing and all that
-	c.cmdSvs.Publish(command.Encode())
-
+	log.Info(c, "PublishCommand:", command)
+	log.Debug(c, "adding command", command.Target.String())
 	c.addCommand(command)
+	log.Debug(c, "after addCommand", command.Target.String())
+	log.Debug(c, "publishing to cmdSvs", command.Target.String())
+	log.Debug(c, "encode", command.Target.String())
+	// FIXME: invalid memory address or nil pointer dereference
+	a := command.Encode()
+	log.Debug(c, "length", command.Target.String())
+	b := a.Length()
+	log.Trace(c, "publish", strconv.Itoa(int(b)))
+	c.cmdSvs.Publish(command.Encode())
+	log.Debug(c, "after publishing to cmdSvs", command.Target.String())
 }

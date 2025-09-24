@@ -51,7 +51,6 @@ func (p *RepoProducerFacing) Start() error {
 
 	// Register command handler prefixes
 	p.repo.Engine.AttachHandler(p.externalNotifyPrefixN, p.onExternalNotify)
-
 	return nil
 }
 
@@ -103,7 +102,9 @@ func (p *RepoProducerFacing) onExternalNotify(args ndn.InterestHandlerArgs) {
 		log.Error(p, "Failed to make reply data", "err", err)
 		return
 	}
+	// FIXME: producer didn't get this back
 	args.Reply(data.Wire)
+
 	log.Debug(p, "replied with data", sr)
 	p.newCommandCallback(command)
 	log.Debug(p, "after callback for command", command)
