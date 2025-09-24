@@ -31,11 +31,10 @@ type UserSvs struct {
 	svs_alo     *ndn_sync.SvsALO
 }
 
-func NewUserSvs(partitionId uint64, repo *types.RepoShared, command *tlv.RepoCommand) *UserSvs {
+func NewUserSvs(repo *types.RepoShared, command *tlv.RepoCommand) *UserSvs {
 	return &UserSvs{
-		partitionId: partitionId,
-		repo:        repo,
-		command:     command,
+		repo:    repo,
+		command: command,
 	}
 }
 
@@ -79,8 +78,10 @@ func (p *UserSvs) Start() (err error) {
 	})
 
 	// Subscribe to all publishers
-	// FIXME: probably fix something in here to process publications?
+	// FIXME: this has a blank name as a prefix
 	p.svs_alo.SubscribePublisher(enc.Name{}, func(pub ndn_sync.SvsPub) {
+		// TODO: this content is the actual published content, right?
+		log.Debug(p, "got a publication from", pub.Publisher, "at state", pub.State.Join())
 		p.commitState(pub.State)
 	})
 
@@ -129,14 +130,12 @@ func (p *UserSvs) Stop() (err error) {
 	return nil
 }
 
-// FIXME: make sure this is necessary
-// FIXME: what???
 func (r *UserSvs) commitState(state enc.Wire) {
 	name := r.command.Target.Append(enc.NewKeywordComponent("alo-state"))
 	r.repo.Client.Store().Put(name, state.Join())
 }
 
-// FIXME: reference original, see what this does
+// NOTE: only used for getting the initial state of a group. only helpful if rejoining a group AND not removing data when you leave a group
 func (r *UserSvs) readState() enc.Wire {
 	name := r.command.Target.Append(enc.NewKeywordComponent("alo-state"))
 	if stateWire, _ := r.repo.Client.Store().Get(name, false); stateWire != nil {

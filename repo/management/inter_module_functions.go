@@ -135,7 +135,7 @@ func (m *RepoManagement) handleFromStorage(err error) {
 
 }
 
-// TODO: eventually remove these helpers
+// TODO: these are helpers to interface with auction
 func (m *RepoManagement) AucDoJob(s string) {
 	m.DoJob(m.DecodeCommand(s))
 }
@@ -154,22 +154,4 @@ func (m *RepoManagement) DecodeCommand(s string) *tlv.RepoCommand {
 		n, _ = enc.NameFromStr("somethingwentwronginDecodeCommand")
 	}
 	return m.commands.Get(&n)
-}
-
-// NOTE: these next two can be more or less sophisticated about handling edge cases and timeouts (see comments)
-// at the very least (and for now), they simply join a sync group or fetch data,
-// they are also (so far) only called by storage, since storage knows whether it has joined a sync group, fetched data, or not
-
-// fetch application data from the network
-func (m *RepoManagement) fetchData(name *enc.Name) {
-	log.Info(m, "Fetching data", "name", name)
-	// haotian: the assumption here is that command can be committed to the group state before the data is available, hence we keep retrying to fetch the relevant data. This, however, cause unnecessary traffics. Also, if the producer, for any reason, send the command again, we need to fetch the data again immediately, so the handler's id should not be tied to the data name.
-	// at: tie it to the data name, reset the wait period if you need to fetch the data immediately
-
-	// use m.repo.Client
-}
-
-// join sync group
-func (m *RepoManagement) joinSync(syncGroupName *enc.Name, threshold *uint64) {
-	log.Info(m, "joining sync group", syncGroupName, "with threshold", threshold)
 }

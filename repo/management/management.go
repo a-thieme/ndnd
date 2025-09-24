@@ -62,8 +62,7 @@ func NewRepoManagement(repo *types.RepoShared, awareness *awareness.RepoAwarenes
 	rm.producerFacing.SetCommandHandler(rm.OnNewCommand)
 
 	// connect storage to management
-	rm.storage.SetFetchDataHandler(rm.fetchData)
-	rm.storage.SetJoinSyncHandler(rm.joinSync)
+	// TODO: move data fetching and sync joining logic into management
 
 	// connect commands to management
 	rm.commands.SetCheckJob(rm.CheckJob)

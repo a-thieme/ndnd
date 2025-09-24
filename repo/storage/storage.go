@@ -24,11 +24,11 @@ type RepoStorage struct {
 	// map target to the job
 	jobs map[*enc.Name]*tlv.RepoCommand
 
-	fetchDataHandler func(name *enc.Name)
+	// svs groups
+	// groups[target]->user_svs
+	groups map[*enc.Name]*UserSvs
 
-	// TODO: move sync things into this struct
-	joinSyncHandler  func(name *enc.Name, threshold *uint64)
-	leaveSyncHandler func(name *enc.Name)
+	fetchDataHandler func(name *enc.Name)
 
 	updateAwareness func([]*tlv.RepoCommand)
 }
@@ -49,14 +49,6 @@ func (s *RepoStorage) String() string {
 
 func (s *RepoStorage) SetFetchDataHandler(f func(*enc.Name)) {
 	s.fetchDataHandler = f
-}
-
-func (s *RepoStorage) SetJoinSyncHandler(f func(*enc.Name, *uint64)) {
-	s.joinSyncHandler = f
-}
-
-func (s *RepoStorage) SetLeaveSyncHandler(f func(*enc.Name)) {
-	s.leaveSyncHandler = f
 }
 
 // get all jobs that i'm doing
@@ -86,7 +78,7 @@ func (s *RepoStorage) AddJob(job *tlv.RepoCommand) error {
 	s.mutex.Unlock()
 	if job.Type == "JOIN" {
 		log.Debug(s, "joining sync group", t)
-		s.joinSyncHandler(&t, &job.SnapshotThreshold)
+		s.joinSync(s.repo, job)
 	} else if job.Type == "INSERT" {
 		log.Debug(s, "consuming data", t)
 		s.fetchDataHandler(&t)
@@ -113,10 +105,10 @@ func (s *RepoStorage) ReleaseJob(job *tlv.RepoCommand) error {
 	t := job.Target
 	if job.Type == "LEAVE" {
 		log.Debug(s, "leaving sync group", t)
-		s.leaveSyncHandler(&t)
+		s.leaveSync(job)
 	} else if job.Type == "REMOVE" {
 		log.Debug(s, "removing data", t)
-		err := s.Remove(t)
+		err := s.remove(job.Target)
 		if err != nil {
 			msg := "tried to remove data but it didn't work"
 			log.Warn(s, msg, err)
@@ -137,12 +129,23 @@ func (r *RepoStorage) DoingJob(job *tlv.RepoCommand) bool {
 	return r.jobs[&job.Target] != nil
 }
 
+func (r *RepoStorage) joinSync(repo *types.RepoShared, job *tlv.RepoCommand) {
+	log.Info(r, "joining sync group", job.Target)
+	// NewUserSvs(r.repo, job)
+}
+
+func (r *RepoStorage) leaveSync(command *tlv.RepoCommand) {
+	log.Info(r, "leaving sync group", command.Target)
+}
+
 // Put puts data into the storage
-func (s *RepoStorage) Put(name enc.Name, data []byte) (err error) {
-	return s.repo.Store.Put(name, data)
+func (r *RepoStorage) put(name enc.Name, data []byte) (err error) {
+	log.Info(r, "leaving sync group", name)
+	return r.repo.Store.Put(name, data)
 }
 
 // Remove removes data from the storage
-func (s *RepoStorage) Remove(name enc.Name) (err error) {
-	return s.repo.Store.Remove(name)
+func (r *RepoStorage) remove(name enc.Name) (err error) {
+	log.Info(r, "leaving sync group", name)
+	return r.repo.Store.Remove(name)
 }
