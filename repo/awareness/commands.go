@@ -170,14 +170,8 @@ func (c *Commands) PublishCommand(command *tlv.RepoCommand) {
 	log.Info(c, "PublishCommand:", command)
 	log.Debug(c, "adding command", command.Target.String())
 	c.addCommand(command)
-	log.Debug(c, "after addCommand", command.Target.String())
-	log.Debug(c, "publishing to cmdSvs", command.Target.String())
-	log.Debug(c, "encode", command.Target.String())
+	log.Debug(c, "publishing command", command.Target.String())
 	// FIXME: invalid memory address or nil pointer dereference
-	a := command.Encode()
-	log.Debug(c, "length", command.Target.String())
-	b := a.Length()
-	log.Trace(c, "publish", strconv.Itoa(int(b)))
-	// c.cmdSvs.Publish(command.Encode())
+	c.cmdSvs.Publish(command.Encode())
 	log.Debug(c, "after publishing to cmdSvs", command.Target.String())
 }
