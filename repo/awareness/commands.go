@@ -178,6 +178,6 @@ func (c *Commands) PublishCommand(command *tlv.RepoCommand) {
 	log.Debug(c, "length", command.Target.String())
 	b := a.Length()
 	log.Trace(c, "publish", strconv.Itoa(int(b)))
-	c.cmdSvs.Publish(command.Encode())
+	// c.cmdSvs.Publish(command.Encode())
 	log.Debug(c, "after publishing to cmdSvs", command.Target.String())
 }
