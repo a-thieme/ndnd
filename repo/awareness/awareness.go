@@ -228,8 +228,8 @@ func (r *RepoAwareness) PublishAwarenessUpdate(awarenessUpdate *tlv.AwarenessUpd
 }
 
 // GetOnlineNodes returns the nodes that are known to be online
-func (r *RepoAwareness) GetOnlineNodes() []*enc.Name {
-	nameNs := make([]*enc.Name, 0)
+func (r *RepoAwareness) getOnlineNodes() []string {
+	nameNs := make([]string, 0)
 	for name, awareness := range r.Storage.nodeStates {
 		if awareness.status == Up {
 			nameNs = append(nameNs, name)

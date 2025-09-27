@@ -2,12 +2,12 @@ package distribution
 
 import (
 	"github.com/named-data/ndnd/repo/tlv"
-	enc "github.com/named-data/ndnd/std/encoding"
+	"github.com/named-data/ndnd/std/log"
 	"time"
 )
 
 type TimeBased struct {
-	timers     map[*enc.Name]*time.Timer
+	timers     map[string]*time.Timer
 	getAbility func(*tlv.RepoCommand) int
 	doJob      func(*tlv.RepoCommand)
 	releaseJob func(*tlv.RepoCommand)
@@ -27,29 +27,35 @@ func (t *TimeBased) SetRelease(f func(*tlv.RepoCommand)) {
 
 func NewTimeBased() *TimeBased {
 	return &TimeBased{
-		timers: make(map[*enc.Name]*time.Timer),
+		timers: make(map[string]*time.Timer),
 	}
 }
 
+func (t *TimeBased) String() string {
+	return "time-based"
+}
+
 func (t *TimeBased) Over(job *tlv.RepoCommand) {
-	// default
+	log.Debug(t, "called over replication")
 	r := t.getAbility(job)
 	wait := calculateOver(r)
-	t.timers[&job.Target] = time.AfterFunc(wait, func() {
+	t.timers[job.Target.String()] = time.AfterFunc(wait, func() {
 		t.releaseJob(job)
 	})
 }
 
 func (t *TimeBased) Under(job *tlv.RepoCommand) {
+	log.Debug(t, "called under replication")
 	a := t.getAbility(job)
 	wait := calculateUnder(a)
-	t.timers[&job.Target] = time.AfterFunc(wait, func() {
+	t.timers[job.Target.String()] = time.AfterFunc(wait, func() {
 		t.doJob(job)
 	})
 }
 
 func (t *TimeBased) Good(job *tlv.RepoCommand) {
-	timer := t.timers[&job.Target]
+	log.Debug(t, "called good replication")
+	timer := t.timers[job.Target.String()]
 	if timer != nil {
 		timer.Stop()
 	}

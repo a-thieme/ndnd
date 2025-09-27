@@ -7,7 +7,6 @@ import (
 	"github.com/named-data/ndnd/std/log"
 	"github.com/named-data/ndnd/std/ndn"
 	ndn_sync "github.com/named-data/ndnd/std/sync"
-	"strconv"
 	"sync"
 )
 
@@ -21,8 +20,8 @@ type Commands struct {
 	client ndn.Client
 
 	// store job targets, bool is whether it should be active
-	jobs    map[*enc.Name]bool
-	jLookup map[*enc.Name]*tlv.RepoCommand
+	jobs    map[string]bool
+	jLookup map[string]*tlv.RepoCommand
 	// FIXME: do svs group here
 	cmdSvs *ndn_sync.SvsALO
 
@@ -39,15 +38,14 @@ func NewCommands(repo *types.RepoShared) *Commands {
 		nodeName: &repo.RepoNameN,
 		prefix:   &name,
 		client:   repo.Client,
-		jobs:     map[*enc.Name]bool{},
-		jLookup:  map[*enc.Name]*tlv.RepoCommand{},
+		jobs:     map[string]bool{},
+		jLookup:  map[string]*tlv.RepoCommand{},
 	}
 }
 
 func (c *Commands) SetCheckJob(f func(*tlv.RepoCommand)) {
 	log.Debug(c, "set check job")
 	c.checkJob = f
-	log.Debug(c, "after set check job")
 }
 
 func (c *Commands) String() string {
@@ -55,7 +53,7 @@ func (c *Commands) String() string {
 }
 
 func (c *Commands) Start() (err error) {
-	log.Info(c, "starting commands")
+	log.Info(c, "starting commands, node", c.nodeName, "prefix", c.prefix)
 	// FIXME: actually do this correctly
 	log.Debug(c, "new svs alo")
 	c.cmdSvs, err = ndn_sync.NewSvsALO(ndn_sync.SvsAloOpts{
@@ -64,8 +62,7 @@ func (c *Commands) Start() (err error) {
 			Client:      c.client,
 			GroupPrefix: c.prefix.Clone(),
 		},
-		Snapshot:        &ndn_sync.SnapshotNull{},
-		FetchLatestOnly: false,
+		Snapshot: &ndn_sync.SnapshotNull{},
 	})
 	if err != nil {
 		return err
@@ -126,13 +123,13 @@ func (c *Commands) Stop() {
 func (c *Commands) Get(name *enc.Name) *tlv.RepoCommand {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	return c.jLookup[name]
+	return c.jLookup[name.String()]
 }
 
 // call this when you get an update from the Commands svs group
 func (c *Commands) addCommand(command *tlv.RepoCommand) {
 	log.Debug(c, "addCommand for", command)
-	n := &command.Target
+	n := command.Target.String()
 	// FIXME: could do 2 different mutexes, 1 for each map, but this shouldn't cause much delay
 	c.mutex.Lock()
 	c.jLookup[n] = command
@@ -142,16 +139,21 @@ func (c *Commands) addCommand(command *tlv.RepoCommand) {
 	// FIXME: get this typing thing down, need to modify tlv, probably
 	if command.Type == "INSERT" || command.Type == "JOIN" {
 		if !current {
+			log.Debug(c, "push command type and not already doing it")
 			c.jobs[n] = true
 			c.mutex.Unlock()
+			log.Debug(c, "since state changed, check for RF")
 			c.checkJob(command)
 		} else {
+			log.Debug(c, "push command type but already doing it")
 			c.mutex.Unlock()
 		}
 	} else { // remove thing
 		if current {
+			log.Debug(c, "pop command type and already doing it")
 			c.jobs[n] = false
 			c.mutex.Unlock()
+			log.Debug(c, "since state changed, check for RF")
 			c.checkJob(command)
 		} else {
 			c.mutex.Unlock()
@@ -159,9 +161,11 @@ func (c *Commands) addCommand(command *tlv.RepoCommand) {
 	}
 }
 
-// FIXME: mutex and check if command exists
 func (c *Commands) ShouldBeActive(command *tlv.RepoCommand) bool {
-	return c.jobs[&command.Target]
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	active, exists := c.jobs[command.Target.String()]
+	return exists && active
 }
 
 // add command to local understanding and publish to the svs group
@@ -172,6 +176,11 @@ func (c *Commands) PublishCommand(command *tlv.RepoCommand) {
 	c.addCommand(command)
 	log.Debug(c, "publishing command", command.Target.String())
 	// FIXME: invalid memory address or nil pointer dereference
-	c.cmdSvs.Publish(command.Encode())
+	log.Debug(c, "after encode", command.Target.String())
+	_, _, err := c.cmdSvs.Publish(command.Encode())
+	if err != nil {
+		log.Warn(c, err.Error())
+	}
+
 	log.Debug(c, "after publishing to cmdSvs", command.Target.String())
 }

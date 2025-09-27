@@ -14,13 +14,13 @@ type RepoAwarenessStore struct {
 	mutex sync.RWMutex
 
 	// Node states store
-	nodeStates map[*enc.Name]*RepoNodeAwareness
+	nodeStates map[string]*RepoNodeAwareness
 
 	// heartbeat
 	heartbeatExpiry time.Duration
 
 	// job target to replica count
-	jobReplications map[*tlv.RepoCommand]int
+	jobReplications map[string]int
 
 	// check and handle if job is under or over-replicated
 	checkJob func(*tlv.RepoCommand)
@@ -28,8 +28,8 @@ type RepoAwarenessStore struct {
 
 func NewRepoAwarenessStore(repo *types.RepoShared) *RepoAwarenessStore {
 	return &RepoAwarenessStore{
-		nodeStates:      make(map[*enc.Name]*RepoNodeAwareness),
-		jobReplications: make(map[*tlv.RepoCommand]int),
+		nodeStates:      make(map[string]*RepoNodeAwareness),
+		jobReplications: make(map[string]int),
 		heartbeatExpiry: repo.HeartbeatExpiry,
 	}
 }
@@ -45,13 +45,13 @@ func (s *RepoAwarenessStore) SetCheckJob(checkJob func(*tlv.RepoCommand)) {
 func (s *RepoAwarenessStore) GetReplications(job *tlv.RepoCommand) int {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	return s.jobReplications[job]
+	return s.jobReplications[job.Target.String()]
 
 }
 
 // get node awareness if it exists, otherwise create it
 func (s *RepoAwarenessStore) getNode(name *enc.Name) *RepoNodeAwareness {
-	node := s.nodeStates[name]
+	node := s.nodeStates[name.String()]
 	if node == nil {
 		log.Info(s, "New node added", "name", name)
 		node = NewRepoNodeAwareness(name, s.onHeartbeatExpire)
@@ -85,14 +85,14 @@ func (s *RepoAwarenessStore) ProcessAwarenessUpdate(update *tlv.AwarenessUpdate)
 
 	// subtract 1 from jobs node is doing
 	for _, value := range node.jobs {
-		s.jobReplications[value]--
+		s.jobReplications[value.Target.String()]--
 		mapJobsToCheck[value] = 1
 	}
 	node.Update(update.ActiveJobs)
 
 	// add 1 to jobs node is now confirmed to do
 	for _, value := range node.jobs {
-		s.jobReplications[value]++
+		s.jobReplications[value.Target.String()]++
 		mapJobsToCheck[value] = 1
 	}
 

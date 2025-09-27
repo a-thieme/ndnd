@@ -22,11 +22,11 @@ type RepoStorage struct {
 	repo *types.RepoShared
 
 	// map target to the job
-	jobs map[*enc.Name]*tlv.RepoCommand
+	jobs map[string]*tlv.RepoCommand
 
 	// svs groups
 	// groups[target]->user_svs
-	groups map[*enc.Name]*UserSvs
+	groups map[string]*UserSvs
 
 	fetchDataHandler func(name *enc.Name)
 
@@ -39,7 +39,7 @@ func NewRepoStorage(repo *types.RepoShared) *RepoStorage {
 
 	return &RepoStorage{
 		repo: repo,
-		jobs: map[*enc.Name]*tlv.RepoCommand{},
+		jobs: map[string]*tlv.RepoCommand{},
 	}
 }
 
@@ -65,11 +65,14 @@ func (r *RepoStorage) GetJobs() []*tlv.RepoCommand {
 // TODO: check to see if you have the availability for this
 func (s *RepoStorage) AddJob(job *tlv.RepoCommand) error {
 	log.Info(s, "AddJob", job)
+
 	// FIXME: this needs to either consume data or join a sync group
 	t := job.Target
 	s.mutex.Lock()
-	s.jobs[&t] = job
+
+	s.jobs[t.String()] = job
 	s.mutex.Unlock()
+	log.Trace(s, "after length of getjobs:", len(s.GetJobs()))
 	if job.Type == "JOIN" {
 		log.Debug(s, "joining sync group", t)
 		s.joinSync(s.repo, job)
@@ -81,6 +84,15 @@ func (s *RepoStorage) AddJob(job *tlv.RepoCommand) error {
 		msg := "repo command is of invalid type and somehow got all the way down to storage"
 		log.Warn(s, "repo command is of invalid type", job.Type, "and somehow got all the way down to storage")
 		return errors.New(msg)
+	}
+	gj := s.GetJobs()
+	l := len(gj)
+	log.Trace(s, "length of getjobs:", l)
+	if l >= 1 {
+		log.Trace(s, "entry", gj[0])
+		if l >= 2 {
+			log.Trace(s, "entry", gj[1])
+		}
 	}
 	return nil
 }
@@ -95,7 +107,7 @@ func (s *RepoStorage) ReleaseJob(job *tlv.RepoCommand) error {
 	}
 	// FIXME: this needs to either remove data or leave a sync group
 	s.mutex.Lock()
-	s.jobs[&job.Target] = nil
+	s.jobs[job.Target.String()] = nil
 	s.mutex.Unlock()
 	t := job.Target
 	if job.Type == "LEAVE" {
@@ -118,21 +130,13 @@ func (s *RepoStorage) ReleaseJob(job *tlv.RepoCommand) error {
 }
 
 // returns whether the node is doing the job
+// FIXME: this function doesn't work
 func (r *RepoStorage) DoingJob(job *tlv.RepoCommand) bool {
-	log.Debug(r, "asked for DoingJob()")
+	log.Debug(r, "asked whether doing job", job.Target.String())
 	r.mutex.Lock()
-	log.Debug(r, "after first mutex")
 	defer r.mutex.Unlock()
-	log.Debug(r, "after second mutex")
-	value, contains := r.jobs[&job.Target]
-	log.Debug(r, "after grabbed")
-	if contains {
-		log.Debug(r, "contains key")
-		log.Debug(r, value.Target.String())
-	} else {
-		log.Debug(r, "does not contain key")
-	}
-	log.Debug(r, "returning from DoingJob()")
+	_, contains := r.jobs[job.Target.String()]
+	log.Debug(r, "returning from DoingJob() with value", contains)
 	return contains
 }
 

@@ -86,7 +86,7 @@ func (rm *RepoManagement) setUnder(f func(command *tlv.RepoCommand)) {
 }
 
 func (rm *RepoManagement) setOver(f func(command *tlv.RepoCommand)) {
-	rm.underReplication = f
+	rm.overReplication = f
 }
 
 func (rm *RepoManagement) setGood(f func(command *tlv.RepoCommand)) {

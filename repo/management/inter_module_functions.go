@@ -13,13 +13,22 @@ import (
 // NOTE: every handler registered by the management module will be ran in a separate goroutine, so blocking is not a concern
 
 func (m *RepoManagement) CheckJob(job *tlv.RepoCommand) {
+	log.Info(m, "checking job", job.Target)
 	status := m.getJobStatus(job)
 	// TODO: make it a switch statement
 	if status == "under" {
-		m.underReplication(job)
+		log.Info(m, job.Target.String(), "is under replicated")
+		if !m.storage.DoingJob(job) {
+			log.Debug(m, job.Target.String(), "under replication handler")
+			m.underReplication(job)
+		} else {
+			log.Debug(m, job.Target.String(), "under but already doing job")
+		}
 	} else if status == "over" {
+		log.Info(m, job.Target.String(), "is over replicated")
 		m.overReplication(job)
 	} else if status == "good" {
+		log.Info(m, job.Target.String(), "is replicated")
 		m.goodReplication(job)
 	} else {
 		log.Warn(m, "got bad status", status)
@@ -28,17 +37,23 @@ func (m *RepoManagement) CheckJob(job *tlv.RepoCommand) {
 
 // calculate number of times a job is done
 func (m *RepoManagement) getJobStatus(job *tlv.RepoCommand) string {
+	log.Info(m, "getJobStatus")
 	// how many times the job should be done
 	r := 0
+	log.Debug(m, "get whether it should be active")
 	if m.commands.ShouldBeActive(job) {
 		r = m.repo.NumReplicas
 	}
 
+	log.Debug(m, "from awareness, get whether it is done by others")
 	// how many times the job is done (local understanding)
 	num := m.awareness.Storage.GetReplications(job)
+	log.Debug(m, "get whether i'm doing it")
 	if m.storage.DoingJob(job) {
 		num++
 	}
+	log.Trace(m, "job is done", num, "times")
+	log.Trace(m, "job should be done", r, "times")
 
 	// status return
 	// TODO: maybe standardize this
@@ -98,6 +113,7 @@ func (m *RepoManagement) OnNewCommand(command *tlv.RepoCommand) {
 	//
 	// TODO: the way to fix this is by separating the check for replication out of the PublishCommand call.
 
+	log.Info(m, "new command from producer")
 	// do job if you have the resources
 	m.DoJob(command)
 	// publish command to the commands SVS group, since it's new
@@ -119,14 +135,15 @@ func (m *RepoManagement) DoJob(job *tlv.RepoCommand) {
 
 func (m *RepoManagement) ReleaseJob(job *tlv.RepoCommand) {
 	log.Info(m, "releasing job", job.Target)
+	log.Debug(m, "not really releasing job", job.Target)
+
 	m.handleFromStorage(m.storage.ReleaseJob(job))
 }
 
 func (m *RepoManagement) handleFromStorage(err error) {
 	log.Debug(m, "handling callback from storage")
 	if err != nil {
-		log.Debug(m, "got an error")
-		log.Warn(m, err.Error())
+		log.Debug(m, "got an error:", err.Error())
 		// NOTE: if using auction, maybe run an auction here (this requires a refactor)
 		// this would return an error if type is invalid, state didn't change, or doesn't have enough storage
 	} else {
@@ -135,6 +152,7 @@ func (m *RepoManagement) handleFromStorage(err error) {
 			Node:       m.repo.NodeNameN,
 			ActiveJobs: m.storage.GetJobs(),
 		}
+		log.Debug(m, "publishing awareness update")
 		m.awareness.PublishAwarenessUpdate(&tmp)
 	}
 
