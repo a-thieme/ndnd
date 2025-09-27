@@ -170,11 +170,10 @@ func (p *TestRepoProducer) sendCommand(commandType CommandType, name enc.Name) {
 	}
 
 	// FIXME: see if this needs to be added. the way it is now, this is equivalent to the digest
-	nonce := strconv.FormatUint(name.Hash(), 10)
-	notifyInterestName := p.notifyPrefix.Append(enc.NewGenericComponent(nonce))
+	notifyInterestName := p.notifyPrefix.Append(enc.NewGenericComponent(strconv.FormatUint(name.Hash(), 10)))
 	log.Info(p, "Sending command", "commandType", commandType, "name", name, "notifyInterestName", notifyInterestName)
 	p.client.ExpressR(ndn.ExpressRArgs{
-		Name:     notifyInterestName,
+		Name:     p.notifyPrefix,
 		AppParam: commandData.Encode(),
 		Config: &ndn.InterestConfig{
 			MustBeFresh: true,

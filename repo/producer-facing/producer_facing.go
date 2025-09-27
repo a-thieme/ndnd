@@ -7,6 +7,7 @@ import (
 	"github.com/named-data/ndnd/std/log"
 	"github.com/named-data/ndnd/std/ndn"
 	"github.com/named-data/ndnd/std/types/optional"
+	"time"
 )
 
 // RepoProducerFacing is the producer facing component of the repo
@@ -69,6 +70,7 @@ func (p *RepoProducerFacing) Stop() error {
 // onExternalNotify is called when a repo notify interest is received
 func (p *RepoProducerFacing) onExternalNotify(args ndn.InterestHandlerArgs) {
 	interest := args.Interest
+	log.Info(p, "got new command, interest name", interest.Name())
 
 	if interest.AppParam() == nil {
 		log.Trace(p, "Notify interest has no app param, ignoring")
@@ -94,15 +96,16 @@ func (p *RepoProducerFacing) onExternalNotify(args ndn.InterestHandlerArgs) {
 		interest.Name(),
 		&ndn.DataConfig{
 			ContentType: optional.Some(ndn.ContentTypeBlob), // TODO: see if this needs to be set
+			Freshness:   optional.Some(10 * time.Second),
 		},
 		sr.Encode(),
+		// enc.Wire{[]byte{}},
 		nil, // TODO: sign this data
 	)
 	if err != nil {
 		log.Error(p, "Failed to make reply data", "err", err)
 		return
 	}
-	// FIXME: producer didn't get this back
 	args.Reply(data.Wire)
 
 	log.Debug(p, "replied with data", sr)

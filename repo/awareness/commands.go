@@ -156,6 +156,7 @@ func (c *Commands) addCommand(command *tlv.RepoCommand) {
 			log.Debug(c, "since state changed, check for RF")
 			c.checkJob(command)
 		} else {
+			log.Debug(c, "pop command type but not doing anyway")
 			c.mutex.Unlock()
 		}
 	}
@@ -181,6 +182,5 @@ func (c *Commands) PublishCommand(command *tlv.RepoCommand) {
 	if err != nil {
 		log.Warn(c, err.Error())
 	}
-
 	log.Debug(c, "after publishing to cmdSvs", command.Target.String())
 }

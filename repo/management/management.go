@@ -35,14 +35,14 @@ func (m *RepoManagement) String() string {
 }
 
 // NewRepoManagement creates a new repo management instance
-func NewRepoManagement(repo *types.RepoShared, aware *awareness.RepoAwareness, storage *storage.RepoStorage, producerFacing *pface.RepoProducerFacing) *RepoManagement {
+func NewRepoManagement(repo *types.RepoShared, aware *awareness.RepoAwareness, storage *storage.RepoStorage, producerFacing *pface.RepoProducerFacing, commands *awareness.Commands) *RepoManagement {
 	rm := &RepoManagement{
 		repo:           repo,
 		awareness:      aware,
 		storage:        storage,
 		producerFacing: producerFacing,
 		timeBased:      distribution.NewTimeBased(),
-		commands:       awareness.NewCommands(repo),
+		commands:       commands,
 	}
 	// // Create repo auction
 	// rm.auction = distribution.NewAuctionEngine(
