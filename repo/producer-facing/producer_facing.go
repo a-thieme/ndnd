@@ -12,8 +12,8 @@ import (
 // It is responsible for announcing the repo prefix and handling the notify interests
 // It also handles the direct command interests from the node
 type RepoProducerFacing struct {
-	repo                  *types.RepoShared
-	externalNotifyPrefixN enc.Name
+	repo         *types.RepoShared
+	notifyPrefix enc.Name
 	// TODO: add status checking
 	//externalStatusPrefixN enc.Name
 
@@ -25,11 +25,11 @@ func (p *RepoProducerFacing) String() string {
 }
 
 func NewProducerFacing(repo *types.RepoShared) *RepoProducerFacing {
-	externalNotifyPrefixN := repo.RepoNameN.Append(enc.NewGenericComponent("notify"))
+	notifyPrefix := repo.RepoNameN.Append(enc.NewGenericComponent("notify"))
 
 	return &RepoProducerFacing{
-		repo:                  repo,
-		externalNotifyPrefixN: externalNotifyPrefixN,
+		repo:         repo,
+		notifyPrefix: notifyPrefix,
 	}
 }
 
@@ -41,7 +41,7 @@ func (p *RepoProducerFacing) Start() error {
 	log.Info(p, "Starting Repo Producer Facing")
 
 	// Announce command & status request handler prefixes
-	for _, prefix := range []enc.Name{p.externalNotifyPrefixN} {
+	for _, prefix := range []enc.Name{p.notifyPrefix} {
 		p.repo.Client.AnnouncePrefix(ndn.Announcement{
 			Name:   prefix,
 			Expose: true,
@@ -49,7 +49,7 @@ func (p *RepoProducerFacing) Start() error {
 	}
 
 	// Register command handler prefixes
-	p.repo.Client.AttachCommandHandler(p.externalNotifyPrefixN, p.onCommand)
+	p.repo.Client.AttachCommandHandler(p.notifyPrefix, p.onCommand)
 	return nil
 }
 
@@ -57,8 +57,8 @@ func (p *RepoProducerFacing) Stop() error {
 	log.Info(p, "Stopping Repo Producer Facing")
 
 	// Unregister command & status request handler prefixes
-	for _, prefix := range []enc.Name{p.externalNotifyPrefixN} {
-		p.repo.Engine.DetachHandler(p.externalNotifyPrefixN)
+	for _, prefix := range []enc.Name{p.notifyPrefix} {
+		p.repo.Engine.DetachHandler(p.notifyPrefix)
 		p.repo.Client.WithdrawPrefix(prefix, nil)
 	}
 
