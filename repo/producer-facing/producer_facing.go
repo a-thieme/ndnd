@@ -6,6 +6,7 @@ import (
 	enc "github.com/named-data/ndnd/std/encoding"
 	"github.com/named-data/ndnd/std/log"
 	"github.com/named-data/ndnd/std/ndn"
+	sec_pib "github.com/named-data/ndnd/std/security/pib"
 	"github.com/named-data/ndnd/std/types/optional"
 	"time"
 )
@@ -21,6 +22,8 @@ type RepoProducerFacing struct {
 
 	newCommandCallback func(*tlv.RepoCommand)
 }
+
+var pib *sec_pib.SqlitePib
 
 func (p *RepoProducerFacing) String() string {
 	return "producer-facing"
@@ -92,23 +95,27 @@ func (p *RepoProducerFacing) onExternalNotify(args ndn.InterestHandlerArgs) {
 		Status: "recieved",
 	}
 
+	log.Debug(p, "making data")
 	data, err := p.repo.Engine.Spec().MakeData(
-		interest.Name(),
+		interest.Name().WithVersion(enc.VersionUnixMicro),
 		&ndn.DataConfig{
 			ContentType: optional.Some(ndn.ContentTypeBlob), // TODO: see if this needs to be set
 			Freshness:   optional.Some(10 * time.Second),
 		},
 		sr.Encode(),
-		// enc.Wire{[]byte{}},
 		nil, // TODO: sign this data
 	)
 	if err != nil {
 		log.Error(p, "Failed to make reply data", "err", err)
 		return
 	}
-	args.Reply(data.Wire)
+	err = args.Reply(data.Wire)
+	if err != nil {
+		log.Debug(p, "error replying:", err)
+	}
 
 	log.Debug(p, "replied with data", sr)
-	p.newCommandCallback(command)
+	log.Debug(p, "replied with data", data)
+	// p.newCommandCallback(command)
 	log.Debug(p, "after callback for command", command)
 }

@@ -170,24 +170,24 @@ func (p *TestRepoProducer) sendCommand(commandType CommandType, name enc.Name) {
 	}
 
 	// FIXME: see if this needs to be added. the way it is now, this is equivalent to the digest
+	log.Info(p, "Sending command", "commandType", commandType, "name", name, "notifyInterestName")
 	notifyInterestName := p.notifyPrefix.Append(enc.NewGenericComponent(strconv.FormatUint(name.Hash(), 10)))
-	log.Info(p, "Sending command", "commandType", commandType, "name", name, "notifyInterestName", notifyInterestName)
-	p.client.ExpressR(ndn.ExpressRArgs{
-		Name:     p.notifyPrefix,
-		AppParam: commandData.Encode(),
-		Config: &ndn.InterestConfig{
-			MustBeFresh: true,
-			Lifetime:    optional.Some(10 * time.Second),
-		},
-		Retries: 0,
-		Callback: func(args ndn.ExpressCallbackArgs) {
-			if args.Result == ndn.InterestResultData {
-				log.Info(p, "Command received by Repo", "command", commandType, "name", name)
-			} else {
-				log.Error(p, "Command error", "command", commandType, "name", name, "result", args.Result)
+	log.Debug(p, "Expressing Command")
+	p.client.ExpressCommand(p.notifyPrefix, notifyInterestName, commandData.Encode(),
+		func(w enc.Wire, e error) {
+			if e != nil {
+				log.Warn(p, e.Error())
+				return
 			}
-		},
-	})
+			sr, err := tlv.ParseRepoStatusResponse(enc.NewWireView(w), false)
+			if err != nil {
+				log.Info(p, "sr error", err.Error())
+
+			}
+
+			log.Info(p, "got status response", sr)
+		})
+
 }
 
 // sendStatusRequest sends a status request to the repo
@@ -207,13 +207,13 @@ func (p *TestRepoProducer) sendStatusRequest(target enc.Name) {
 	// TODO: make sure this is necessary
 	statusRequestInterestName := p.statusPrefix.Append(enc.NewGenericComponent(strconv.FormatUint(target.Hash(), 10)))
 	log.Info(p, "Sending status request", "target", target, "statusRequestInterestName", statusRequestInterestName)
-
 	p.client.ExpressR(ndn.ExpressRArgs{
 		Name:     statusRequestInterestName,
 		AppParam: statusRequest.Encode(),
 		Config: &ndn.InterestConfig{
 			MustBeFresh: true,
 			Lifetime:    optional.Some(10 * time.Second),
+			CanBePrefix: true,
 		},
 		Retries: 0,
 		Callback: func(args ndn.ExpressCallbackArgs) {
@@ -233,6 +233,7 @@ func (p *TestRepoProducer) sendStatusRequest(target enc.Name) {
 }
 
 func main() {
+	log.Default().SetLevel(log.LevelDebug)
 	if len(os.Args) < 3 {
 		log.Fatal(nil, "Usage: test_producer <repoName> <producerName>")
 		os.Exit(1)
@@ -247,15 +248,15 @@ func main() {
 	totalData := 10
 	checkData := make([]enc.Name, totalData)
 
-	for i := 0; i < totalData; i++ {
-		dataNameN, _ := enc.NameFromStr(producerName + "/data/" + strconv.Itoa(i))
-		producer.client.AnnouncePrefix(ndn.Announcement{
-			Name:   dataNameN,
-			Expose: true,
-		})
-	}
+	// for i := 0; i < totalData; i++ {
+	// 	dataNameN, _ := enc.NameFromStr(producerName + "/data/" + strconv.Itoa(i))
+	// 	producer.client.AnnouncePrefix(ndn.Announcement{
+	// 		Name: dataNameN,
+	// 		// Expose: true,
+	// 	})
+	// }
 
-	time.Sleep(3 * time.Second)
+	// time.Sleep(3 * time.Second)
 
 	// for i := 0; i < totalData; i++ {
 	dataNameN, err := enc.NameFromStr(producerName + "/data/1")
