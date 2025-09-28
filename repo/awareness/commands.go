@@ -120,10 +120,11 @@ func (c *Commands) Stop() {
 	c.cmdSvs.Stop()
 }
 
-func (c *Commands) Get(name *enc.Name) *tlv.RepoCommand {
+func (c *Commands) Get(name *enc.Name) (*tlv.RepoCommand, bool) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	return c.jLookup[name.String()]
+	rc, exists := c.jLookup[name.String()]
+	return rc, exists
 }
 
 // call this when you get an update from the Commands svs group
@@ -165,7 +166,11 @@ func (c *Commands) addCommand(command *tlv.RepoCommand) {
 func (c *Commands) ShouldBeActive(command *tlv.RepoCommand) bool {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	active, exists := c.jobs[command.Target.String()]
+	log.Info(c, "should be active")
+	t := command.Target.String()
+	log.Info(c, "converted")
+	active, exists := c.jobs[t]
+	log.Info(c, "after mem access")
 	return exists && active
 }
 

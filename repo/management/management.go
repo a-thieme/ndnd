@@ -61,6 +61,7 @@ func NewRepoManagement(repo *types.RepoShared, aware *awareness.RepoAwareness, s
 
 	// connect producer ingress to management
 	rm.producerFacing.SetCommandHandler(rm.OnNewCommand)
+	rm.producerFacing.SetStatusHandler(rm.OnStatus)
 
 	// connect storage to management
 	// TODO: move data fetching and sync joining logic into management

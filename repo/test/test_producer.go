@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
 
@@ -15,7 +14,6 @@ import (
 	"github.com/named-data/ndnd/std/ndn"
 	"github.com/named-data/ndnd/std/object"
 	"github.com/named-data/ndnd/std/object/storage"
-	"github.com/named-data/ndnd/std/types/optional"
 )
 
 type CommandType string
@@ -158,22 +156,14 @@ func (p *TestRepoProducer) leaveGroup(groupName enc.Name) {
 
 // sendCommand sends a command to the repo
 func (p *TestRepoProducer) sendCommand(commandType CommandType, name enc.Name) {
-	// Add nil check to prevent segmentation fault
-	if name == nil {
-		log.Error(p, "Cannot send command with nil name", "commandType", commandType)
-		return
-	}
-
+	log.Info(p, "Sending %s command for %s", commandType, name)
 	commandData := tlv.RepoCommand{
 		Type:   string(commandType),
 		Target: name,
 	}
 
-	// FIXME: see if this needs to be added. the way it is now, this is equivalent to the digest
-	log.Info(p, "Sending command", "commandType", commandType, "name", name, "notifyInterestName")
-	notifyInterestName := p.notifyPrefix.Append(enc.NewGenericComponent(strconv.FormatUint(name.Hash(), 10)))
-	log.Debug(p, "Expressing Command")
-	p.client.ExpressCommand(p.notifyPrefix, notifyInterestName, commandData.Encode(),
+	log.Info(p, "Sending command", "commandType", commandType, "name", name)
+	p.client.ExpressCommand(p.notifyPrefix, p.producerNameN.Append(enc.NewVersionComponent(enc.VersionImmutable)), commandData.Encode(),
 		func(w enc.Wire, e error) {
 			if e != nil {
 				log.Warn(p, e.Error())
@@ -182,54 +172,32 @@ func (p *TestRepoProducer) sendCommand(commandType CommandType, name enc.Name) {
 			sr, err := tlv.ParseRepoStatusResponse(enc.NewWireView(w), false)
 			if err != nil {
 				log.Info(p, "sr error", err.Error())
-
 			}
 
 			log.Info(p, "got status response", sr)
 		})
-
 }
 
 // sendStatusRequest sends a status request to the repo
 func (p *TestRepoProducer) sendStatusRequest(target enc.Name) {
 	log.Info(p, "Sending status request", "name", target)
 
-	// Add nil check to prevent segmentation fault
-	if target == nil {
-		log.Error(p, "Cannot send status request with nil name")
-		return
-	}
-
 	statusRequest := &tlv.RepoStatusRequest{
 		Target: target,
 	}
 
-	// TODO: make sure this is necessary
-	statusRequestInterestName := p.statusPrefix.Append(enc.NewGenericComponent(strconv.FormatUint(target.Hash(), 10)))
-	log.Info(p, "Sending status request", "target", target, "statusRequestInterestName", statusRequestInterestName)
-	p.client.ExpressR(ndn.ExpressRArgs{
-		Name:     statusRequestInterestName,
-		AppParam: statusRequest.Encode(),
-		Config: &ndn.InterestConfig{
-			MustBeFresh: true,
-			Lifetime:    optional.Some(10 * time.Second),
-			CanBePrefix: true,
-		},
-		Retries: 0,
-		Callback: func(args ndn.ExpressCallbackArgs) {
-			if args.Result == ndn.InterestResultData {
-				reply, err := tlv.ParseRepoStatusResponse(enc.NewWireView(args.Data.Content()), false)
-				if err != nil {
-					log.Error(p, "Failed to parse status reply", "target", target, "err", err)
-					return
-				}
-				log.Info(p, "Received status request from Repo", "target", target, "status", reply.Status)
-			} else {
-				log.Error(p, "Status request error", "target", target, "result", args.Result)
-			}
-		},
+	p.client.ExpressCommand(p.repoNameN.Append(enc.NewGenericComponent("status")), p.producerNameN, statusRequest.Encode(), func(w enc.Wire, e error) {
+		re, err := tlv.ParseRepoStatusResponse(enc.NewWireView(w), false)
+		if err != nil {
+			log.Warn(p, "error from repo status request", err.Error())
+			return
+		}
+		log.Info(p, "status request response for target", re.Target.String(), re.Status)
+		if re.Status == "unknown" {
+			time.Sleep(1 * time.Second)
+			p.sendStatusRequest(target)
+		}
 	})
-
 }
 
 func main() {
@@ -266,6 +234,7 @@ func main() {
 	} else {
 		checkData[1] = producer.insertData(dataNameN, 1024*1024) // 1MB
 	}
+	producer.sendStatusRequest(checkData[1])
 	// }
 	//
 	// time.Sleep(4 * time.Second) // So the repo has time to process the data

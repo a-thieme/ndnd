@@ -135,7 +135,6 @@ func (r *Repo) Start() (err error) {
 	log.Debug(r, "create management")
 	// Create repo management
 	r.management = management.NewRepoManagement(shared, r.awareness, r.storage, r.facing, r.commands)
-
 	log.Debug(r, "end of Start()")
 	return nil
 }

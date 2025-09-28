@@ -7,11 +7,9 @@ import (
 	"github.com/named-data/ndnd/repo/tlv"
 	enc "github.com/named-data/ndnd/std/encoding"
 	"github.com/named-data/ndnd/std/log"
-	"github.com/named-data/ndnd/std/ndn"
 )
 
-// NOTE: every handler registered by the management module will be ran in a separate goroutine, so blocking is not a concern
-
+// TODO: need to figure out whether any of these need goroutines
 func (m *RepoManagement) CheckJob(job *tlv.RepoCommand) {
 	log.Info(m, "checking job", job.Target)
 	status := m.getJobStatus(job)
@@ -33,9 +31,27 @@ func (m *RepoManagement) CheckJob(job *tlv.RepoCommand) {
 	} else {
 		log.Warn(m, "got bad status", status)
 	}
+	log.Trace(m, "end of CheckJob")
 }
 
 // calculate number of times a job is done
+func (m *RepoManagement) OnStatus(name enc.Name, content enc.Wire, reply func(wire enc.Wire) error) {
+	log.Info(m, "Getting status for name", name)
+	job, exists := m.commands.Get(&name)
+	sr := tlv.RepoStatusResponse{
+		Target: name,
+	}
+	if !exists {
+		sr.Status = "unknown"
+	} else {
+		sr.Status = m.getJobStatus(job)
+	}
+
+	err := reply(sr.Encode())
+	if err != nil {
+		log.Warn(m, "error replying to status request", name)
+	}
+}
 func (m *RepoManagement) getJobStatus(job *tlv.RepoCommand) string {
 	log.Info(m, "getJobStatus")
 	// how many times the job should be done
@@ -52,8 +68,7 @@ func (m *RepoManagement) getJobStatus(job *tlv.RepoCommand) string {
 	if m.storage.DoingJob(job) {
 		num++
 	}
-	log.Trace(m, "job is done", num, "times")
-	log.Trace(m, "job should be done", r, "times")
+	log.Trace(m, "job is done", num, "times and should be", r)
 
 	// status return
 	// TODO: maybe standardize this
@@ -65,25 +80,6 @@ func (m *RepoManagement) getJobStatus(job *tlv.RepoCommand) string {
 	return "good"
 }
 
-// Launches a coordination job to check the status from responsible node
-func (m *RepoManagement) StatusRequestHandler(interestHandler *ndn.InterestHandlerArgs, target *enc.Name) {
-	log.Info(m, "Got status request for", target)
-	// Prepare reply
-	reply := tlv.RepoStatusResponse{
-		Target: target.Clone(),
-		Status: m.getJobStatus(m.commands.Get(target)),
-	}
-
-	data, _ := m.repo.Engine.Spec().MakeData(
-		interestHandler.Interest.Name(),
-		&ndn.DataConfig{},
-		reply.Encode(),
-		nil, // TODO: security
-	)
-
-	interestHandler.Reply(data.Wire)
-}
-
 func (m *RepoManagement) GetAvailability(job *tlv.RepoCommand) int {
 	// Get storage state
 	var stat unix.Statfs_t
@@ -91,14 +87,16 @@ func (m *RepoManagement) GetAvailability(job *tlv.RepoCommand) int {
 	unix.Statfs(wd, &stat)
 
 	// Get free spaces
-	// FIXME: if you are already doing the job, add more to the availability
 	freeSpace := stat.Bavail * uint64(stat.Bsize)
-	log.Info(m, "Availability: free space", freeSpace, "for job", job)
+	log.Debug(m, "Availability: free space", freeSpace, "for job", job)
 
 	// Calculate bid
-	bid := int(freeSpace)
+	// NOTE: if you are already doing the job, add more to the availability
+	if m.storage.DoingJob(job) {
+		return int(freeSpace * 3 / 2)
+	}
 
-	return bid
+	return int(freeSpace)
 }
 
 // got command from producer
@@ -128,9 +126,9 @@ func (m *RepoManagement) DoJob(job *tlv.RepoCommand) {
 		log.Warn(m, "already doing job", job)
 		return
 	}
-	log.Debug(m, "after storage.DoingJob() check for job", job.Target)
+	log.Trace(m, "after storage.DoingJob() check for job", job.Target)
 	m.handleFromStorage(m.storage.AddJob(job))
-	log.Debug(m, "after adding job and publishing awareness for job", job.Target)
+	log.Trace(m, "end of DoJob() for", job.Target)
 }
 
 func (m *RepoManagement) ReleaseJob(job *tlv.RepoCommand) {
@@ -160,7 +158,10 @@ func (m *RepoManagement) handleFromStorage(err error) {
 
 // TODO: these are helpers to interface with auction
 func (m *RepoManagement) AucDoJob(s string) {
-	m.DoJob(m.DecodeCommand(s))
+	job := m.DecodeCommand(s)
+	if job != nil {
+		m.DoJob(job)
+	}
 }
 
 func (m *RepoManagement) AucAucJob(job *tlv.RepoCommand) {
@@ -176,5 +177,9 @@ func (m *RepoManagement) DecodeCommand(s string) *tlv.RepoCommand {
 	if err != nil {
 		n, _ = enc.NameFromStr("somethingwentwronginDecodeCommand")
 	}
-	return m.commands.Get(&n)
+	rc, exists := m.commands.Get(&n)
+	if exists {
+		return rc
+	}
+	return nil
 }
