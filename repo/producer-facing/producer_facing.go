@@ -83,4 +83,7 @@ func (p *RepoProducerFacing) onCommand(name enc.Name, content enc.Wire, reply fu
 
 	log.Debug(p, "responding")
 	reply(sr.Encode())
+	log.Debug(p, "running new command callback")
+	p.newCommandCallback(command)
+	log.Trace(p, "end of onCommand")
 }
