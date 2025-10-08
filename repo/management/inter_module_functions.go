@@ -37,17 +37,27 @@ func (m *RepoManagement) CheckJob(job *tlv.RepoCommand) {
 // calculate number of times a job is done
 func (m *RepoManagement) OnStatus(name enc.Name, content enc.Wire, reply func(wire enc.Wire) error) {
 	log.Info(m, "Getting status for name", name)
-	job, exists := m.commands.Get(&name)
+	request, err := tlv.ParseRepoStatusRequest(enc.NewWireView(content), false)
+	if err != nil {
+		log.Warn(m, "got error when trying to parse status from producer", name)
+		sr := tlv.RepoStatusResponse{Target: name, Status: "parsing error"}
+		reply(sr.Encode())
+		return
+	}
+	target := request.Target
+	job, exists := m.commands.Get(&target)
 	sr := tlv.RepoStatusResponse{
-		Target: name,
+		Target: target,
 	}
 	if !exists {
+		log.Warn(m, "could not find job. it is for target", job.Target)
 		sr.Status = "unknown"
 	} else {
+		log.Debug(m, "job exists, getting status", job.Target)
 		sr.Status = m.getJobStatus(job)
 	}
 
-	err := reply(sr.Encode())
+	err = reply(sr.Encode())
 	if err != nil {
 		log.Warn(m, "error replying to status request", name)
 	}
