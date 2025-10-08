@@ -7,4 +7,3 @@ repo_group:
   heartbeat_interval: 5
   # [required] Heartbeat expiry
   heartbeat_expiry: 20
-

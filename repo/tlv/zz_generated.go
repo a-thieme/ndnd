@@ -476,7 +476,7 @@ func (encoder *RepoStatusRequestEncoder) EncodeInto(value *RepoStatusRequest, bu
 
 	if value.Target != nil {
 		buf[pos] = 253
-		binary.BigEndian.PutUint16(buf[pos+1:], uint16(640))
+		binary.BigEndian.PutUint16(buf[pos+1:], uint16(608))
 		pos += 3
 		pos += uint(enc.TLNum(encoder.Target_length).EncodeInto(buf[pos:]))
 		for _, c := range value.Target {
@@ -524,7 +524,7 @@ func (context *RepoStatusRequestParsingContext) Parse(reader enc.WireView, ignor
 		err = nil
 		if handled := false; true {
 			switch typ {
-			case 640:
+			case 608:
 				if true {
 					handled = true
 					handled_Target = true
@@ -734,6 +734,141 @@ func (value *RepoStatusResponse) Bytes() []byte {
 
 func ParseRepoStatusResponse(reader enc.WireView, ignoreCritical bool) (*RepoStatusResponse, error) {
 	context := RepoStatusResponseParsingContext{}
+	context.Init()
+	return context.Parse(reader, ignoreCritical)
+}
+
+type RepoAvailabilityUpdateEncoder struct {
+	Length uint
+}
+
+type RepoAvailabilityUpdateParsingContext struct {
+}
+
+func (encoder *RepoAvailabilityUpdateEncoder) Init(value *RepoAvailabilityUpdate) {
+
+	l := uint(0)
+	l += 3
+	l += uint(1 + enc.Nat(value.Availability).EncodingLength())
+	encoder.Length = l
+
+}
+
+func (context *RepoAvailabilityUpdateParsingContext) Init() {
+
+}
+
+func (encoder *RepoAvailabilityUpdateEncoder) EncodeInto(value *RepoAvailabilityUpdate, buf []byte) {
+
+	pos := uint(0)
+
+	buf[pos] = 253
+	binary.BigEndian.PutUint16(buf[pos+1:], uint16(624))
+	pos += 3
+
+	buf[pos] = byte(enc.Nat(value.Availability).EncodeInto(buf[pos+1:]))
+	pos += uint(1 + buf[pos])
+}
+
+func (encoder *RepoAvailabilityUpdateEncoder) Encode(value *RepoAvailabilityUpdate) enc.Wire {
+
+	wire := make(enc.Wire, 1)
+	wire[0] = make([]byte, encoder.Length)
+	buf := wire[0]
+	encoder.EncodeInto(value, buf)
+
+	return wire
+}
+
+func (context *RepoAvailabilityUpdateParsingContext) Parse(reader enc.WireView, ignoreCritical bool) (*RepoAvailabilityUpdate, error) {
+
+	var handled_Availability bool = false
+
+	progress := -1
+	_ = progress
+
+	value := &RepoAvailabilityUpdate{}
+	var err error
+	var startPos int
+	for {
+		startPos = reader.Pos()
+		if startPos >= reader.Length() {
+			break
+		}
+		typ := enc.TLNum(0)
+		l := enc.TLNum(0)
+		typ, err = reader.ReadTLNum()
+		if err != nil {
+			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
+		}
+		l, err = reader.ReadTLNum()
+		if err != nil {
+			return nil, enc.ErrFailToParse{TypeNum: 0, Err: err}
+		}
+
+		err = nil
+		if handled := false; true {
+			switch typ {
+			case 624:
+				if true {
+					handled = true
+					handled_Availability = true
+					value.Availability = uint64(0)
+					{
+						for i := 0; i < int(l); i++ {
+							x := byte(0)
+							x, err = reader.ReadByte()
+							if err != nil {
+								if err == io.EOF {
+									err = io.ErrUnexpectedEOF
+								}
+								break
+							}
+							value.Availability = uint64(value.Availability<<8) | uint64(x)
+						}
+					}
+				}
+			default:
+				if !ignoreCritical && ((typ <= 31) || ((typ & 1) == 1)) {
+					return nil, enc.ErrUnrecognizedField{TypeNum: typ}
+				}
+				handled = true
+				err = reader.Skip(int(l))
+			}
+			if err == nil && !handled {
+			}
+			if err != nil {
+				return nil, enc.ErrFailToParse{TypeNum: typ, Err: err}
+			}
+		}
+	}
+
+	startPos = reader.Pos()
+	err = nil
+
+	if !handled_Availability && err == nil {
+		err = enc.ErrSkipRequired{Name: "Availability", TypeNum: 624}
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return value, nil
+}
+
+func (value *RepoAvailabilityUpdate) Encode() enc.Wire {
+	encoder := RepoAvailabilityUpdateEncoder{}
+	encoder.Init(value)
+	return encoder.Encode(value)
+}
+
+func (value *RepoAvailabilityUpdate) Bytes() []byte {
+	return value.Encode().Join()
+}
+
+func ParseRepoAvailabilityUpdate(reader enc.WireView, ignoreCritical bool) (*RepoAvailabilityUpdate, error) {
+	context := RepoAvailabilityUpdateParsingContext{}
 	context.Init()
 	return context.Parse(reader, ignoreCritical)
 }

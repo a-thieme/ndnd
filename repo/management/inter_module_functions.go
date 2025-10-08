@@ -44,23 +44,29 @@ func (m *RepoManagement) OnStatus(name enc.Name, content enc.Wire, reply func(wi
 		reply(sr.Encode())
 		return
 	}
+	log.Debug(m, "request is parsed, now getting the target")
 	target := request.Target
+	log.Debug(m, "getting command")
 	job, exists := m.commands.Get(&target)
+	log.Debug(m, "generating response")
 	sr := tlv.RepoStatusResponse{
 		Target: target,
 	}
+	log.Debug(m, "check exists")
 	if !exists {
-		log.Warn(m, "could not find job. it is for target", job.Target)
+		log.Warn(m, "could not find job")
 		sr.Status = "unknown"
 	} else {
 		log.Debug(m, "job exists, getting status", job.Target)
 		sr.Status = m.getJobStatus(job)
 	}
 
+	log.Debug(m, "Reply with status response")
 	err = reply(sr.Encode())
 	if err != nil {
 		log.Warn(m, "error replying to status request", name)
 	}
+	log.Debug(m, "end of OnStatus()")
 }
 func (m *RepoManagement) getJobStatus(job *tlv.RepoCommand) string {
 	log.Info(m, "getJobStatus")
@@ -84,7 +90,7 @@ func (m *RepoManagement) getJobStatus(job *tlv.RepoCommand) string {
 	// TODO: maybe standardize this
 	if num < r {
 		return "under"
-	} else if num == r {
+	} else if num > r {
 		return "over"
 	}
 	return "good"

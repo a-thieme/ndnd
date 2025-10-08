@@ -123,8 +123,9 @@ func (c *Commands) Stop() {
 func (c *Commands) Get(name *enc.Name) (*tlv.RepoCommand, bool) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	log.Debug(c, "looking up name", name, "with string", name.String())
+	log.Debug(c, "before lookup")
 	rc, exists := c.jLookup[name.String()]
+	log.Trace(c, "after lookup")
 	return rc, exists
 }
 

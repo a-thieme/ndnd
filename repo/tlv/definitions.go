@@ -29,7 +29,7 @@ type AwarenessUpdate struct {
 
 type RepoStatusRequest struct {
 	//+field:name
-	Target enc.Name `tlv:"0x280"`
+	Target enc.Name `tlv:"0x260"`
 }
 
 type RepoStatusResponse struct {
@@ -37,4 +37,9 @@ type RepoStatusResponse struct {
 	Target enc.Name `tlv:"0x280"`
 	//+field:string
 	Status string `tlv:"0x281"`
+}
+
+type RepoAvailabilityUpdate struct {
+	//+field:natural
+	Availability uint64 `tlv:"0x270"`
 }
