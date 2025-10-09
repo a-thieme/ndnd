@@ -66,9 +66,6 @@ func NewRepoManagement(repo *types.RepoShared, aware *awareness.RepoAwareness, s
 	// connect storage to management
 	// TODO: move data fetching and sync joining logic into management
 
-	// connect commands to management
-	rm.commands.SetCheckJob(rm.CheckJob)
-
 	// connect management to timers
 	rm.setUnder(rm.timeBased.Under)
 	rm.setOver(rm.timeBased.Over)

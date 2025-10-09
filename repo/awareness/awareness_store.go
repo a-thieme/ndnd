@@ -23,6 +23,7 @@ type RepoAwarenessStore struct {
 	jobReplications map[string]int
 
 	// check and handle if job is under or over-replicated
+	// FIXME: NEVER SET
 	checkJob func(*tlv.RepoCommand)
 }
 
