@@ -101,6 +101,9 @@ func (s *RepoAwarenessStore) ProcessAwarenessUpdate(update *tlv.AwarenessUpdate)
 	// check relevant jobs for replication factor
 	for job := range mapJobsToCheck {
 		// check if replicated or not
+		if s.checkJob == nil {
+			panic("checkJob is nil")
+		}
 		s.checkJob(job)
 	}
 }

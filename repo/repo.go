@@ -108,17 +108,9 @@ func (r *Repo) Start() (err error) {
 	log.Debug(r, "create awareness")
 	// // Create repo awareness
 	r.awareness = awareness.NewRepoAwareness(shared)
-	log.Debug(r, "start awareness")
-	if err := r.awareness.Start(); err != nil {
-		return err
-	}
 
 	log.Debug(r, "create commands")
 	r.commands = awareness.NewCommands(shared)
-	log.Debug(r, "start awareness")
-	if err := r.commands.Start(); err != nil {
-		return err
-	}
 
 	log.Debug(r, "create storage")
 	// Create repo storage
@@ -127,10 +119,6 @@ func (r *Repo) Start() (err error) {
 	log.Debug(r, "create producer-facing")
 	// Create producer-facing
 	r.facing = facing.NewProducerFacing(shared)
-	log.Debug(r, "start producer-facing")
-	if err := r.facing.Start(); err != nil {
-		return err
-	}
 
 	log.Debug(r, "create management")
 	// Create repo management
@@ -138,6 +126,21 @@ func (r *Repo) Start() (err error) {
 
 	// connect commands to management
 	r.commands.SetCheckJob(r.management.CheckJob)
+
+	log.Debug(r, "start awareness")
+	if err := r.awareness.Start(); err != nil {
+		return err
+	}
+
+	log.Debug(r, "start commands")
+	if err := r.commands.Start(); err != nil {
+		return err
+	}
+
+	log.Debug(r, "start producer-facing")
+	if err := r.facing.Start(); err != nil {
+		return err
+	}
 
 	log.Debug(r, "end of Start()")
 	return nil
