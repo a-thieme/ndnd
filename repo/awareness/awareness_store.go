@@ -55,6 +55,7 @@ func (s *RepoAwarenessStore) getNode(name *enc.Name) *RepoNodeAwareness {
 	if node == nil {
 		log.Info(s, "New node added", "name", name)
 		node = NewRepoNodeAwareness(name, s.onHeartbeatExpire)
+		s.nodeStates[name.String()] = node
 	}
 	return node
 }

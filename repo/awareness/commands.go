@@ -78,7 +78,7 @@ func (c *Commands) Start() (err error) {
 			panic("Snapshot publications are not supported in Repo Commands")
 		} else {
 			// Process the publication.
-			log.Debug(c, "Received non-snapshot publication", "pub", pub.Content)
+			log.Debug(c, "got command", pub.Content)
 
 			update, err := tlv.ParseRepoCommand(enc.NewWireView(pub.Content), true)
 			if err != nil {

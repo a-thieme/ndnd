@@ -234,6 +234,7 @@ func main() {
 	} else {
 		checkData[1] = producer.insertData(dataNameN, 1024*1024) // 1MB
 	}
+	time.Sleep(5 * time.Second)
 	producer.sendStatusRequest(checkData[1])
 	// }
 	//

@@ -74,8 +74,8 @@ func (r *RepoAwareness) Start() (err error) {
 			Client:      r.client,
 			GroupPrefix: r.awarenessSvsPrefix,
 		},
-		Snapshot:        &ndn_sync.SnapshotNull{},
-		FetchLatestOnly: true,
+		Snapshot: &ndn_sync.SnapshotNull{},
+		// FetchLatestOnly: true,
 	})
 	if err != nil {
 		panic(err)
@@ -93,7 +93,7 @@ func (r *RepoAwareness) Start() (err error) {
 			panic("Snapshot publications are not supported in Repo Awareness")
 		} else {
 			// Process the publication.
-			log.Debug(r, "Received non-snapshot publication", "pub", pub.Content)
+			log.Debug(r, "got awareness update", pub.Content)
 
 			update, err := tlv.ParseAwarenessUpdate(enc.NewWireView(pub.Content), true)
 			if err != nil {
@@ -109,7 +109,7 @@ func (r *RepoAwareness) Start() (err error) {
 	for _, route := range []enc.Name{
 		r.awarenessSvs.SyncPrefix(),
 		r.awarenessSvs.DataPrefix(),
-		r.heartbeatSvsPrefix,
+		r.heartbeatSvsPrefix.Clone(),
 	} {
 		r.client.AnnouncePrefix(ndn.Announcement{
 			Name:   route,
@@ -168,7 +168,7 @@ func (r *RepoAwareness) Stop() (err error) {
 		for _, route := range []enc.Name{
 			r.awarenessSvs.SyncPrefix(),
 			r.awarenessSvs.DataPrefix(),
-			r.heartbeatSvsPrefix,
+			r.heartbeatSvsPrefix.Clone(),
 		} {
 			r.client.WithdrawPrefix(route, nil)
 		}
