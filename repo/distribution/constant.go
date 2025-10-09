@@ -19,6 +19,12 @@ type Sharing struct {
 	client            ndn.Client
 	nodeName          enc.Name
 	groupAvailability map[*enc.Name]uint64
+
+	ticker *time.Ticker
+	// tell ticker to stop
+	stop chan struct{}
+
+	getAbility func(*tlv.RepoCommand) int
 }
 
 func NewSharing(repo *types.RepoShared) *Sharing {
@@ -87,8 +93,31 @@ func (s *Sharing) Start() (err error) {
 	if err := s.availabilitySvs.Start(); err != nil {
 		log.Error(s, "Failed to start availability SVS", "err", err)
 		return err
-	}
-	return err
+	} // start ticker
+	s.ticker = time.NewTicker(s.interval)
+
+	// create stop channel
+	s.stop = make(chan struct{})
+
+	// start heartbeat loop
+	go func() {
+		for {
+			select {
+			case <-s.ticker.C:
+				log.Info(s, "publishing availability")
+				au := tlv.RepoAvailabilityUpdate{
+					Availability: uint64(s.getAbility(nil)),
+				}
+				_, _, err := s.availabilitySvs.Publish(au.Encode())
+				if err != nil {
+					log.Warn(s, "issue publishing availability", err.Error)
+				}
+			case <-s.stop:
+				return
+			}
+		}
+	}()
+	return nil
 }
 
 type Pair struct {
@@ -96,23 +125,17 @@ type Pair struct {
 	Value uint64
 }
 
-// sortMapByValue takes a map[string]int and returns a slice of strings
-// (the keys), sorted in ascending order based on their corresponding integer values.
-func (s *Sharing) getNodes() []*enc.Name {
-	// 1. Convert the map into a slice of Pair structs.
+// get nodes in order of availability
+func (s *Sharing) GetNodes() []*enc.Name {
 	var pairs []Pair
 	for k, v := range s.groupAvailability {
 		pairs = append(pairs, Pair{Key: k, Value: v})
 	}
 
-	// 2. Sort the slice of Pair structs using sort.Slice.
-	// The function provided to sort.Slice defines the comparison logic.
-	// It sorts by 'Value' in descending order (a > b).
 	sort.Slice(pairs, func(i, j int) bool {
 		return pairs[i].Value > pairs[j].Value
 	})
 
-	// 3. Extract the sorted keys (strings) back into a []string slice.
 	var sortedKeys []*enc.Name
 	for _, p := range pairs {
 		sortedKeys = append(sortedKeys, p.Key)
@@ -120,8 +143,6 @@ func (s *Sharing) getNodes() []*enc.Name {
 
 	return sortedKeys
 }
-
-// FIXME:  needs timer/ticker similar to heartbeat and a callback to get the availability
 
 func (s *Sharing) String() string {
 	return "sharing"

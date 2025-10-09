@@ -106,9 +106,10 @@ func (m *RepoManagement) GetAvailability(job *tlv.RepoCommand) int {
 	freeSpace := stat.Bavail * uint64(stat.Bsize)
 	log.Debug(m, "Availability: free space", freeSpace, "for job", job)
 
+	// add checking for nil for continuous publishing, since it doesn't calculate on each command
 	// Calculate bid
 	// NOTE: if you are already doing the job, add more to the availability
-	if m.storage.DoingJob(job) {
+	if job != nil && m.storage.DoingJob(job) {
 		return int(freeSpace * 3 / 2)
 	}
 

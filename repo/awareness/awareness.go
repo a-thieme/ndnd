@@ -26,7 +26,7 @@ type RepoAwareness struct {
 	awarenessSvs *ndn_sync.SvsALO
 	heartbeatSvs *ndn_sync.SvSync
 
-	// TODO: make put into a configuration struct
+	// TODO: make into a configuration struct
 	awarenessSvsPrefix enc.Name // group prefix for awareness SVS
 
 	// heartbeat interval

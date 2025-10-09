@@ -10,7 +10,6 @@ import (
 	"sync"
 )
 
-// FIXME: do mutex stuff
 type Commands struct {
 	mutex    sync.RWMutex
 	nodeName *enc.Name
@@ -22,8 +21,7 @@ type Commands struct {
 	// store job targets, bool is whether it should be active
 	jobs    map[string]bool
 	jLookup map[string]*tlv.RepoCommand
-	// FIXME: do svs group here
-	cmdSvs *ndn_sync.SvsALO
+	cmdSvs  *ndn_sync.SvsALO
 
 	checkJob func(*tlv.RepoCommand)
 }
@@ -54,7 +52,6 @@ func (c *Commands) String() string {
 
 func (c *Commands) Start() (err error) {
 	log.Info(c, "starting commands, node", c.nodeName, "prefix", c.prefix)
-	// FIXME: actually do this correctly
 	log.Debug(c, "new svs alo")
 	c.cmdSvs, err = ndn_sync.NewSvsALO(ndn_sync.SvsAloOpts{
 		Name: c.nodeName.Clone(),
@@ -133,13 +130,12 @@ func (c *Commands) Get(name *enc.Name) (*tlv.RepoCommand, bool) {
 func (c *Commands) addCommand(command *tlv.RepoCommand) {
 	log.Debug(c, "addCommand for", command)
 	n := command.Target.String()
-	// FIXME: could do 2 different mutexes, 1 for each map, but this shouldn't cause much delay
+	// NOTE: could do 2 different mutexes, 1 for each map, but this shouldn't cause much delay
 	c.mutex.Lock()
 	c.jLookup[n] = command
 	current := c.jobs[n]
 	// NOTE: this checks the job only if the command resulted in a change in state
 	// if the state didn't change, then there's no reason to trigger a check
-	// FIXME: get this typing thing down, need to modify tlv, probably
 	if command.Type == "INSERT" || command.Type == "JOIN" {
 		if !current {
 			log.Debug(c, "push command type and not already doing it")
@@ -180,11 +176,8 @@ func (c *Commands) ShouldBeActive(command *tlv.RepoCommand) bool {
 func (c *Commands) PublishCommand(command *tlv.RepoCommand) {
 	// FIXME: decide here what to name it and signing and all that
 	log.Info(c, "PublishCommand:", command)
-	log.Debug(c, "adding command", command.Target.String())
 	c.addCommand(command)
 	log.Debug(c, "publishing command", command.Target.String())
-	// FIXME: invalid memory address or nil pointer dereference
-	log.Debug(c, "after encode", command.Target.String())
 	_, _, err := c.cmdSvs.Publish(command.Encode())
 	if err != nil {
 		log.Warn(c, err.Error())
