@@ -126,6 +126,7 @@ func (r *Repo) Start() (err error) {
 
 	// connect commands to management
 	r.commands.SetCheckJob(r.management.CheckJob)
+	r.awareness.Storage.SetCheckJob(r.management.CheckJob)
 
 	log.Debug(r, "start awareness")
 	if err := r.awareness.Start(); err != nil {

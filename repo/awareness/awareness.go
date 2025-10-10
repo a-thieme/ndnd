@@ -149,32 +149,28 @@ func (r *RepoAwareness) Stop() (err error) {
 
 	// stop heartbeat svs
 	// TODO: try removing these outer-layer if statements
-	if r.heartbeatSvs != nil {
-		if err := r.heartbeatSvs.Stop(); err != nil {
-			log.Error(r, "Error stopping heartbeat SVS", "err", err)
-		}
-		close(r.stop)
-		r.ticker.Stop()
+	if err := r.heartbeatSvs.Stop(); err != nil {
+		log.Error(r, "Error stopping heartbeat SVS", "err", err)
 	}
+	close(r.stop)
+	r.ticker.Stop()
 
 	// Stop awareness SVS
-	if r.awarenessSvs != nil {
-		// stop awareness svs_alo
-		if err := r.awarenessSvs.Stop(); err != nil {
-			log.Error(r, "Error stopping health SVS", "err", err)
-		}
-
-		// Withdraw group prefix route
-		for _, route := range []enc.Name{
-			r.awarenessSvs.SyncPrefix(),
-			r.awarenessSvs.DataPrefix(),
-			r.heartbeatSvsPrefix.Clone(),
-		} {
-			r.client.WithdrawPrefix(route, nil)
-		}
-
-		r.awarenessSvs = nil
+	// stop awareness svs_alo
+	if err := r.awarenessSvs.Stop(); err != nil {
+		log.Error(r, "Error stopping health SVS", "err", err)
 	}
+
+	// Withdraw group prefix route
+	for _, route := range []enc.Name{
+		r.awarenessSvs.SyncPrefix(),
+		r.awarenessSvs.DataPrefix(),
+		r.heartbeatSvsPrefix.Clone(),
+	} {
+		r.client.WithdrawPrefix(route, nil)
+	}
+
+	// r.awarenessSvs = nil
 
 	return nil
 }
