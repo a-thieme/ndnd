@@ -152,12 +152,10 @@ func (r *RepoAwareness) Stop() (err error) {
 	// stop heartbeat svs
 	// TODO: try removing these outer-layer if statements
 
-	log.Debug(r, "Stopping ticker")
+	log.Trace(r, "Stopping ticker")
 	r.ticker.Stop()
-	time.Sleep(1 * time.Second)
-	log.Debug(r, "sending close")
+	log.Trace(r, "sending close")
 	close(r.stop)
-	time.Sleep(1 * time.Second)
 	log.Debug(r, "stopping heartbeat svs")
 	if err := r.heartbeatSvs.Stop(); err != nil {
 		log.Error(r, "Error stopping heartbeat SVS", "err", err)
@@ -176,8 +174,6 @@ func (r *RepoAwareness) Stop() (err error) {
 	} {
 		r.client.WithdrawPrefix(route, nil)
 	}
-
-	// r.awarenessSvs = nil
 
 	return nil
 }
