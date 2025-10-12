@@ -46,7 +46,6 @@ func NewRepoNodeAwareness(name *enc.Name, expiryFunc func([]*tlv.RepoCommand)) *
 }
 
 // Update updates the node's jobs and resets its state to Up.
-// FIXME: setting r.jobs causes invalid memory address or nil pointer dereference
 func (r *RepoNodeAwareness) Update(jobs []*tlv.RepoCommand) {
 	log.Info(r, "Updating node awareness", "node", r.name, "jobs", jobs)
 	if r.jobs == nil {

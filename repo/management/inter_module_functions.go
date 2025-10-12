@@ -10,6 +10,7 @@ import (
 )
 
 // TODO: need to figure out whether any of these need goroutines
+// FIXME: if this is run after an update from others, it never stops, which blocks awareness and commands from stopping
 func (m *RepoManagement) CheckJob(job *tlv.RepoCommand) {
 	log.Info(m, "checking job", job.Target)
 	status := m.getJobStatus(job)
@@ -79,12 +80,15 @@ func (m *RepoManagement) getJobStatus(job *tlv.RepoCommand) string {
 
 	log.Debug(m, "from awareness, get whether it is done by others")
 	// how many times the job is done (local understanding)
+	// FIXME: this blocks
 	num := m.awareness.Storage.GetReplications(job)
 	log.Debug(m, "get whether i'm doing it")
 	if m.storage.DoingJob(job) {
 		num++
 	}
 	log.Trace(m, "job is done", num, "times and should be", r)
+	// FIXME: remove this, just doing debug since i'm not at trace level
+	log.Debug(m, "job is done", num, "times and should be", r)
 
 	// status return
 	// TODO: maybe standardize this

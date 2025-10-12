@@ -23,7 +23,6 @@ type RepoAwarenessStore struct {
 	jobReplications map[string]int
 
 	// check and handle if job is under or over-replicated
-	// FIXME: NEVER SET
 	checkJob func(*tlv.RepoCommand)
 }
 
@@ -43,14 +42,21 @@ func (s *RepoAwarenessStore) SetCheckJob(checkJob func(*tlv.RepoCommand)) {
 	s.checkJob = checkJob
 }
 
+// FIXME: THIS BLOCKS FOR WHATEVER REASON
 func (s *RepoAwarenessStore) GetReplications(job *tlv.RepoCommand) int {
+	log.Debug(s, "getting replications for job", job.Target)
+	// FIXME: THIS BLOCKS FOR WHATEVER REASON
 	s.mutex.Lock()
+	log.Debug(s, "after mutex lock")
 	defer s.mutex.Unlock()
-	return s.jobReplications[job.Target.String()]
+	val := s.jobReplications[job.Target.String()]
+	log.Debug(s, "val for replications:", val)
+	return val
 
 }
 
 // get node awareness if it exists, otherwise create it
+// not thread safe; must hold mutex
 func (s *RepoAwarenessStore) getNode(name *enc.Name) *RepoNodeAwareness {
 	node := s.nodeStates[name.String()]
 	if node == nil {
@@ -77,9 +83,8 @@ func (s *RepoAwarenessStore) ProcessHeartbeat(name *enc.Name) {
 // Thread-safe.
 func (s *RepoAwarenessStore) ProcessAwarenessUpdate(update *tlv.AwarenessUpdate) {
 	s.mutex.Lock()
-	defer s.mutex.Unlock()
 
-	log.Info(s, "Processing awareness update", "publisher", update.Node)
+	log.Info(s, "Processing awareness update", update.Node)
 	node := s.getNode(&update.Node)
 
 	// map to reduce duplicates
@@ -92,11 +97,12 @@ func (s *RepoAwarenessStore) ProcessAwarenessUpdate(update *tlv.AwarenessUpdate)
 	}
 	node.Update(update.ActiveJobs)
 
-	// add 1 to jobs node is now confirmed to do
+	// add 1 to jobs node is now confirmed to do, should be the same as update.ActiveJobs
 	for _, value := range node.jobs {
 		s.jobReplications[value.Target.String()]++
 		mapJobsToCheck[value] = 1
 	}
+	s.mutex.Unlock()
 
 	// check relevant jobs for replication factor
 	for job := range mapJobsToCheck {

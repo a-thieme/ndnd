@@ -26,7 +26,6 @@ type Commands struct {
 	checkJob func(*tlv.RepoCommand)
 }
 
-// FIXME: add onUpdate, will require callback for checking a command's replica count
 func NewCommands(repo *types.RepoShared) *Commands {
 	name, err := enc.NameFromStr(repo.RepoNameN.String() + "/commands")
 	if err != nil {
