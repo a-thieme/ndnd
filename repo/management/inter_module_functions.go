@@ -100,6 +100,7 @@ func (m *RepoManagement) getJobStatus(job *tlv.RepoCommand) string {
 	return "good"
 }
 
+// FIXME: get this to actuall do storage analysis. for now, just number of commands, and total is 100
 func (m *RepoManagement) GetAvailability(job *tlv.RepoCommand) int {
 	// Get storage state
 	var stat unix.Statfs_t
@@ -116,8 +117,9 @@ func (m *RepoManagement) GetAvailability(job *tlv.RepoCommand) int {
 	if job != nil && m.storage.DoingJob(job) {
 		return int(freeSpace * 3 / 2)
 	}
-
-	return int(freeSpace)
+	numJobs := len(m.storage.GetJobs())
+	// return int(freeSpace)
+	return 100 - numJobs
 }
 
 // got command from producer
