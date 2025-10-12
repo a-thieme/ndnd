@@ -2,7 +2,7 @@ repo:
   # [required] Name of the node
   node_name: /ndn/node6
   # [required] Repo storage directory
-  storage_dir: $HOME/.ndn/repo/test6/storage
+  storage_dir: /tmp/.ndn/repo/test6/storage
   # [required] Keychain URI for security
   # - Example: dir:///absolute/path/to/keychain
   keychain: "dir:///home/adam/.ndn/repo/keys"
