@@ -42,10 +42,8 @@ func (s *RepoAwarenessStore) SetCheckJob(checkJob func(*tlv.RepoCommand)) {
 	s.checkJob = checkJob
 }
 
-// FIXME: THIS BLOCKS FOR WHATEVER REASON
 func (s *RepoAwarenessStore) GetReplications(job *tlv.RepoCommand) int {
 	log.Debug(s, "getting replications for job", job.Target)
-	// FIXME: THIS BLOCKS FOR WHATEVER REASON
 	s.mutex.Lock()
 	log.Debug(s, "after mutex lock")
 	defer s.mutex.Unlock()
