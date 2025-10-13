@@ -1,31 +1,10 @@
 # syntax=docker/dockerfile:1
 # NOTE: run this in the NDN root directory
 
-FROM ubuntu:22.04
-
-# Install dependencies
-RUN <<EOF
-    set -eux
-    apt-get update -y
-    apt-get install --no-install-recommends -y \
-        lsb-release sudo \
-        zip unzip wget git ca-certificates \
-        curl iproute2 iputils-ping net-tools \
-        python3 python3-pip python-is-python3 \
-        tcpdump vim x11-xserver-utils xterm
-    rm -rf /var/lib/apt/lists/*
-    update-ca-certificates
-EOF
-
-# Install golang
-RUN <<EOF
-    curl -LO https://go.dev/dl/go1.23.0.linux-amd64.tar.gz
-    rm -rf /usr/local/go && tar -C /usr/local -xzf go1.23.0.linux-amd64.tar.gz
-    export PATH="/usr/local/go/bin:$PATH"
-EOF
+FROM ghcr.io/named-data/mini-ndn:latest
 
 # Clone ndnd from Haotian's fork
-RUN git clone https://github.com/AnoldGH/ndnd.git /ndnd
+RUN git clone https://github.com/a-thieme/ndnd.git /ndnd
 
 COPY . /repo
 

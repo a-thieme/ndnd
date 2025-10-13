@@ -70,10 +70,9 @@ func (s *RepoAwarenessStore) getNode(name *enc.Name) *RepoNodeAwareness {
 // ProcessHeartbeat sets status to Up and resets the expirationTimer
 // Thread-safe
 func (s *RepoAwarenessStore) ProcessHeartbeat(name *enc.Name) {
+	log.Trace(s, "Processing heartbeat", "publisher", name)
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-
-	log.Info(s, "Processing heartbeat", "publisher", name)
 
 	node := s.getNode(name)
 	node.Heartbeat(s.heartbeatExpiry)

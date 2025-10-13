@@ -133,7 +133,7 @@ func (r *RepoAwareness) Start() (err error) {
 		Client:      r.client,
 		GroupPrefix: r.heartbeatSvsPrefix,
 		OnUpdate: func(pub ndn_sync.SvSyncUpdate) {
-			log.Debug(r, "Received heartbeat", pub)
+			log.Trace(r, "Received heartbeat", pub)
 			r.Storage.ProcessHeartbeat(&pub.Name)
 		},
 	})
@@ -201,7 +201,7 @@ func (r *RepoAwareness) StartHeartbeat() (err error) {
 		for {
 			select {
 			case <-r.ticker.C:
-				log.Info(r, "Heartbeat published")
+				log.Debug(r, "Heartbeat published")
 				r.heartbeatSvs.IncrSeqNo(r.nodeNameN)
 			case <-r.stop:
 				return

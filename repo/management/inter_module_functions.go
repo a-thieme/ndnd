@@ -25,7 +25,9 @@ func (m *RepoManagement) CheckJob(job *tlv.RepoCommand) {
 		}
 	} else if status == "over" {
 		log.Info(m, job.Target.String(), "is over replicated")
-		m.overReplication(job)
+		if m.storage.DoingJob(job) {
+			m.overReplication(job)
+		}
 	} else if status == "good" {
 		log.Info(m, job.Target.String(), "is replicated")
 		m.goodReplication(job)
@@ -108,18 +110,35 @@ func (m *RepoManagement) GetAvailability(job *tlv.RepoCommand) int {
 	unix.Statfs(wd, &stat)
 
 	// Get free spaces
-	freeSpace := stat.Bavail * uint64(stat.Bsize)
-	log.Debug(m, "Availability: free space", freeSpace, "for job", job)
+	// freeSpace := stat.Bavail * uint64(stat.Bsize)
+	total := 20
+	numJobs := len(m.storage.GetJobs())
+	free := total - numJobs
+	// log.Debug(m, "Availability: free space", freeSpace, "for job", job)
 
 	// add checking for nil for continuous publishing, since it doesn't calculate on each command
 	// Calculate bid
+	setting := free * free / total
 	// NOTE: if you are already doing the job, add more to the availability
 	if job != nil && m.storage.DoingJob(job) {
-		return int(freeSpace * 3 / 2)
+		// return int(freeSpace * 3 / 2)
+		return (setting) * 3 / 2
 	}
-	numJobs := len(m.storage.GetJobs())
 	// return int(freeSpace)
-	return 100 - numJobs
+	log.Debug(m, "Availability", setting)
+	return setting
+}
+
+func (m *RepoManagement) GetUsage(job *tlv.RepoCommand) int {
+	usage := len(m.storage.GetJobs()) + 1
+	total := 20
+	setting := usage * usage / total
+	if job != nil && m.storage.DoingJob(job) {
+		// return int(freeSpace * 3 / 2)
+		return (setting) / 2
+	}
+	return setting
+
 }
 
 // got command from producer

@@ -3,18 +3,28 @@ package distribution
 import (
 	"github.com/named-data/ndnd/repo/tlv"
 	"github.com/named-data/ndnd/std/log"
+	"math/rand/v2"
+	"sync"
 	"time"
 )
 
 type TimeBased struct {
+	mutex      sync.RWMutex
 	timers     map[string]*time.Timer
+	types      map[string]string
 	getAbility func(*tlv.RepoCommand) int
+	getUsage   func(*tlv.RepoCommand) int
+
 	doJob      func(*tlv.RepoCommand)
 	releaseJob func(*tlv.RepoCommand)
 }
 
 func (t *TimeBased) SetAbility(f func(*tlv.RepoCommand) int) {
 	t.getAbility = f
+}
+
+func (t *TimeBased) SetUsage(f func(*tlv.RepoCommand) int) {
+	t.getUsage = f
 }
 
 func (t *TimeBased) SetDoJob(f func(*tlv.RepoCommand)) {
@@ -28,6 +38,7 @@ func (t *TimeBased) SetRelease(f func(*tlv.RepoCommand)) {
 func NewTimeBased() *TimeBased {
 	return &TimeBased{
 		timers: make(map[string]*time.Timer),
+		types:  make(map[string]string),
 	}
 }
 
@@ -36,36 +47,78 @@ func (t *TimeBased) String() string {
 }
 
 func (t *TimeBased) Over(job *tlv.RepoCommand) {
-	log.Debug(t, "called over replication")
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+	target := job.Target.String()
+	log.Debug(t, "called over replication for", "target", target)
+	if t.types[target] == "over" {
+		return
+	}
+	t.types[target] = "over"
+
 	r := t.getAbility(job)
 	wait := calculateOver(r)
-	t.timers[job.Target.String()] = time.AfterFunc(wait, func() {
+	log.Debug(t, "waiting", r, wait)
+
+	timer := t.timers[target]
+	if timer != nil {
+		timer.Stop()
+	}
+	t.timers[target] = time.AfterFunc(wait, func() {
 		t.releaseJob(job)
+		t.reset(target)
 	})
 }
 
+func (t *TimeBased) reset(target string) {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+	delete(t.timers, target)
+	delete(t.types, target)
+}
+
 func (t *TimeBased) Under(job *tlv.RepoCommand) {
-	log.Debug(t, "called under replication")
-	a := t.getAbility(job)
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+	target := job.Target.String()
+	log.Debug(t, "called under replication for", "target", target)
+	if t.types[target] == "under" {
+		return
+	}
+	a := t.getUsage(job)
 	wait := calculateUnder(a)
-	t.timers[job.Target.String()] = time.AfterFunc(wait, func() {
+	log.Debug(t, "waiting", a, wait)
+
+	timer := t.timers[target]
+	if timer != nil {
+		timer.Stop()
+	}
+	t.timers[target] = time.AfterFunc(wait, func() {
 		t.doJob(job)
+		t.reset(target)
 	})
 }
 
 func (t *TimeBased) Good(job *tlv.RepoCommand) {
-	log.Debug(t, "called good replication")
-	timer := t.timers[job.Target.String()]
+	t.mutex.Lock()
+	target := job.Target.String()
+	log.Debug(t, "called good replication for", target)
+	t.types[target] = "good"
+	timer := t.timers[target]
 	if timer != nil {
 		timer.Stop()
 	}
+	t.mutex.Unlock()
+	t.reset(target)
 }
+
 func calculateOver(a int) time.Duration {
 	// a
-	return time.Duration(a) * time.Second
+	return time.Duration(float32(a)*(0.5+rand.Float32())) * time.Second
+	// return time.Duration(a) * time.Second
 }
 
 func calculateUnder(a int) time.Duration {
-	// 1/a
-	return time.Duration(int(time.Second) / a)
+	// max a is 20, so shooting for max 400ms wait
+	return time.Duration(a) * time.Millisecond * 20
 }

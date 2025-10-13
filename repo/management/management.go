@@ -74,6 +74,7 @@ func NewRepoManagement(repo *types.RepoShared, aware *awareness.RepoAwareness, s
 	// connect timers to management
 	rm.timeBased.SetDoJob(rm.DoJob)
 	rm.timeBased.SetAbility(rm.GetAvailability)
+	rm.timeBased.SetUsage(rm.GetUsage)
 	rm.timeBased.SetRelease(rm.ReleaseJob)
 
 	return rm

@@ -59,7 +59,7 @@ func (r *RepoNodeAwareness) Update(jobs []*tlv.RepoCommand) {
 }
 
 func (r *RepoNodeAwareness) Heartbeat(expire time.Duration) {
-	log.Info(r, "heartbeat for", "node", r.name, "expires in", expire)
+	log.Trace(r, "heartbeat for node", r.name, "expires in", expire)
 	r.timer.Reset(expire)
 	r.status = Up
 }

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"maps"
 	"slices"
+	"strings"
 	"sync"
 
 	enc "github.com/named-data/ndnd/std/encoding"
@@ -62,16 +63,16 @@ func (r *RepoStorage) GetJobs() []*tlv.RepoCommand {
 }
 
 // start doing job
-// TODO: check to see if you have the availability for this
+// FIXME: check to see if you have the availability for this. if not, return error and no awareness update will be made
 func (s *RepoStorage) AddJob(job *tlv.RepoCommand) error {
 	log.Info(s, "AddJob", job)
 
 	// FIXME: this needs to either consume data or join a sync group
 	t := job.Target
 	s.mutex.Lock()
-
 	s.jobs[t.String()] = job
 	s.mutex.Unlock()
+	s.logJobs()
 	log.Trace(s, "after length of getjobs:", len(s.GetJobs()))
 	if job.Type == "JOIN" {
 		log.Debug(s, "joining sync group", t)
@@ -97,6 +98,16 @@ func (s *RepoStorage) AddJob(job *tlv.RepoCommand) error {
 	return nil
 }
 
+func (s *RepoStorage) logJobs() {
+	var out strings.Builder
+	for _, job := range s.GetJobs() {
+		if job != nil {
+			out.WriteString(job.Target.String())
+		}
+	}
+	log.Info(s, "logjobs", "jobs", out.String())
+}
+
 // release (stop doing) job
 func (s *RepoStorage) ReleaseJob(job *tlv.RepoCommand) error {
 	log.Info(s, "Releasing job", job)
@@ -107,13 +118,14 @@ func (s *RepoStorage) ReleaseJob(job *tlv.RepoCommand) error {
 	}
 	// FIXME: this needs to either remove data or leave a sync group
 	s.mutex.Lock()
-	s.jobs[job.Target.String()] = nil
+	delete(s.jobs, job.Target.String())
 	s.mutex.Unlock()
+	s.logJobs()
 	t := job.Target
-	if job.Type == "LEAVE" {
+	if job.Type == "LEAVE" || job.Type == "JOIN" {
 		log.Debug(s, "leaving sync group", t)
 		s.leaveSync(job)
-	} else if job.Type == "REMOVE" {
+	} else if job.Type == "REMOVE" || job.Type == "INSERT" {
 		log.Debug(s, "removing data", t)
 		err := s.remove(job.Target)
 		if err != nil {
@@ -123,7 +135,7 @@ func (s *RepoStorage) ReleaseJob(job *tlv.RepoCommand) error {
 		}
 	} else {
 		msg := "repo command is of invalid type and somehow got all the way down to storage"
-		log.Warn(s, "repo command is of invalid type", job.Type, "and somehow got all the way down to storage")
+		log.Warn(s, job.Type, "repo command is of invalid type and somehow got all the way down to storage")
 		return errors.New(msg)
 	}
 	return nil
