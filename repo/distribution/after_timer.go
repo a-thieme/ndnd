@@ -52,13 +52,14 @@ func (t *TimeBased) Over(job *tlv.RepoCommand) {
 	target := job.Target.String()
 	log.Debug(t, "called over replication for", "target", target)
 	if t.types[target] == "over" {
+		log.Debug(t, "already over for", "target", target)
 		return
 	}
 	t.types[target] = "over"
 
 	r := t.getAbility(job)
 	wait := calculateOver(r)
-	log.Debug(t, "waiting", r, wait)
+	log.Debug(t, "waiting", "ability", r, "time", wait, "target", target)
 
 	timer := t.timers[target]
 	if timer != nil {
@@ -83,11 +84,12 @@ func (t *TimeBased) Under(job *tlv.RepoCommand) {
 	target := job.Target.String()
 	log.Debug(t, "called under replication for", "target", target)
 	if t.types[target] == "under" {
+		log.Debug(t, "already under for", "target", target)
 		return
 	}
 	a := t.getUsage(job)
 	wait := calculateUnder(a)
-	log.Debug(t, "waiting", a, wait)
+	log.Debug(t, "waiting", a, wait, "target", target)
 
 	timer := t.timers[target]
 	if timer != nil {
@@ -114,7 +116,8 @@ func (t *TimeBased) Good(job *tlv.RepoCommand) {
 
 func calculateOver(a int) time.Duration {
 	// a
-	return time.Duration(float32(a)*(0.5+rand.Float32())) * time.Second
+	// return time.Duration(float32(a)*(0.5+rand.Float32()*0.5)) * time.Second
+	return time.Duration(a) * time.Second
 	// return time.Duration(a) * time.Second
 }
 

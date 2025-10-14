@@ -74,8 +74,6 @@ if __name__ == "__main__":
         repo.cmd(
             f"/repo/running/bin/producer /ndn/repo /test/producer/{i + 1} &> /repo/running/plogs/producer{i + 1} &"
         )
-        if i > 1:
-            break
 
     MiniNDNCLI(ndn.net)
     ndn.stop()
