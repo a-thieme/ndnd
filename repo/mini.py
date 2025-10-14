@@ -23,16 +23,10 @@ if __name__ == "__main__":
     sleep(10)
 
     # using local testbed.conf topology, taken from named-data.github.io/testbed/ on 10/12/2025
-    # arizona delft frankfurt memphis minho mml1 mml2 savi singapore srru tno ucla ufba urjc waseda wu
-    repo1 = ndn.net["ucla"]
-    repo2 = ndn.net["arizona"]
-    repo3 = ndn.net["memphis"]
-    repo4 = ndn.net["tno"]
-    repo5 = ndn.net["wu"]
-    repos = [repo1, repo2, repo3, repo4, repo5]
-
-    producer = ndn.net["mml1"]
-    # nodes:
+    nodes = "arizona delft frankfurt memphis minho mml1 mml2 savi singapore srru tno ucla ufba urjc waseda wu".split(
+        " "
+    )
+    repos = [ndn.net[node] for node in nodes]
 
     info("Adding static routes to NFD\n")
     grh = NdnRoutingHelper(ndn.net, "udp", "link-state")
@@ -42,13 +36,14 @@ if __name__ == "__main__":
             [repo],
             [
                 "/ndn/repo",
-                # f"/ndn/node{i + 1}",
+                f"/ndn/node{i + 1}",
                 # f"/ndn/node{i + 1}/notify",
                 # f"/ndn/node{i + 1}/status",
             ],
         )
     # add producer address
-    grh.addOrigin([producer], ["/test/producer/1", "/test"])
+    # for i, producer in enumerate(repos):
+    #     grh.addOrigin([producer], [f"/test/producer/{i}", "/test"])
     grh.calculateNPossibleRoutes()
 
     info("Starting Repo on nodes\n")
@@ -63,15 +58,24 @@ if __name__ == "__main__":
             "nfdc strategy set /ndn/repo/commands /localhost/nfd/strategy/multicast"
         )
 
-    for i, repo in enumerate(repos):
-        repo.cmd(f"echo hi > /logs/echo{i}.log")
-        repo.cmd(
-            f"/repo/running/bin/repo /repo/running/repo_test_{i + 1}.yml /repo/running/repo_group_1.yml &> /repo/running/logs/repo_{i + 1}.log &"
-        )
+    template = open("running/repo_test_template.yml").read()
+    for i in range(len(repos)):
+        new = template
+        new = new.replace("%%num%%", f"{i + 1}")
+        open(f"running/repo_test_{i + 1}.yml", "w").write(new)
 
-    sleep(10)
-    producer.cmd(
-        "/repo/running/bin/producer /ndn/repo /test/producer/1 &> /repo/running/logs/producer &"
-    )
+    for i, repo in enumerate(repos):
+        info(f"starting repo {i + 1}\n")
+        repo.cmd(
+            f"/repo/running/bin/repo /repo/running/repo_test_{i + 1}.yml /repo/running/repo_group_1.yml &> /repo/running/logs/repo_{i + 1}.lg &"
+        )
+    for i, repo in enumerate(repos):
+        info(f"starting producer {i + 1}\n")
+        repo.cmd(
+            f"/repo/running/bin/producer /ndn/repo /test/producer/{i + 1} &> /repo/running/plogs/producer{i + 1} &"
+        )
+        if i > 1:
+            break
+
     MiniNDNCLI(ndn.net)
     ndn.stop()

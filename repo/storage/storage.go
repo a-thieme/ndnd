@@ -103,6 +103,7 @@ func (s *RepoStorage) logJobs() {
 	for _, job := range s.GetJobs() {
 		if job != nil {
 			out.WriteString(job.Target.String())
+			out.WriteString(" ")
 		}
 	}
 	log.Info(s, "logjobs", "jobs", out.String())

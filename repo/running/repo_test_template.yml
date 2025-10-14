@@ -1,6 +1,6 @@
 repo:
-  node_name: /ndn/node5
-  storage_dir: /tmp/.ndn/repo/test5/storage
+  node_name: /ndn/node%%num%%
+  storage_dir: /tmp/.ndn/repo/test%%num%%/storage
   keychain: "dir:///etc/ndn/repo/keys"
   trust_anchors:
     - "/root/KEY/%F1Z%FF%91Ie%9Dx/self/v=1758346449776"

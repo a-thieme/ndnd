@@ -113,6 +113,7 @@ func (r *RepoAwareness) Start() (err error) {
 		r.awarenessSvs.DataPrefix(),
 		r.heartbeatSvsPrefix.Clone(),
 	} {
+		log.Debug(r, "announcing prefix", "prefix", route)
 		r.client.AnnouncePrefix(ndn.Announcement{
 			Name:   route,
 			Expose: true,

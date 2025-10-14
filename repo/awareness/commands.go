@@ -11,9 +11,9 @@ import (
 )
 
 type Commands struct {
-	mutex    sync.RWMutex
-	nodeName *enc.Name
-	prefix   *enc.Name
+	mutex      sync.RWMutex
+	nodeName   *enc.Name
+	syncPrefix *enc.Name
 
 	// health ndn client
 	client ndn.Client
@@ -32,11 +32,11 @@ func NewCommands(repo *types.RepoShared) *Commands {
 		panic("couldn't convert string to name in NewCommands")
 	}
 	return &Commands{
-		nodeName: &repo.RepoNameN,
-		prefix:   &name,
-		client:   repo.Client,
-		jobs:     map[string]bool{},
-		jLookup:  map[string]*tlv.RepoCommand{},
+		nodeName:   &repo.NodeNameN,
+		syncPrefix: &name,
+		client:     repo.Client,
+		jobs:       map[string]bool{},
+		jLookup:    map[string]*tlv.RepoCommand{},
 	}
 }
 
@@ -50,13 +50,13 @@ func (c *Commands) String() string {
 }
 
 func (c *Commands) Start() (err error) {
-	log.Info(c, "starting commands, node", c.nodeName, "prefix", c.prefix)
+	log.Info(c, "starting commands, node", c.nodeName, "syncPrefix", c.syncPrefix)
 	log.Debug(c, "new svs alo")
 	c.cmdSvs, err = ndn_sync.NewSvsALO(ndn_sync.SvsAloOpts{
 		Name: c.nodeName.Clone(),
 		Svs: ndn_sync.SvSyncOpts{
 			Client:      c.client,
-			GroupPrefix: c.prefix.Clone(),
+			GroupPrefix: c.syncPrefix.Clone(),
 		},
 		Snapshot: &ndn_sync.SnapshotNull{},
 	})
@@ -88,12 +88,12 @@ func (c *Commands) Start() (err error) {
 		}
 	})
 
-	log.Debug(c, "set prefixes and announce")
+	log.Debug(c, "set prefixes and announce", "sync", c.cmdSvs.SyncPrefix(), "data", c.cmdSvs.DataPrefix(), "prefix", c.syncPrefix.Clone())
 	// Announce group prefix route
 	for _, route := range []enc.Name{
 		c.cmdSvs.SyncPrefix(),
 		c.cmdSvs.DataPrefix(),
-		c.prefix.Clone(),
+		// c.prefix.Clone(),
 	} {
 		c.client.AnnouncePrefix(ndn.Announcement{
 			Name:   route,
@@ -119,15 +119,13 @@ func (c *Commands) Stop() {
 func (c *Commands) Get(name *enc.Name) (*tlv.RepoCommand, bool) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	log.Debug(c, "before lookup")
 	rc, exists := c.jLookup[name.String()]
-	log.Trace(c, "after lookup")
 	return rc, exists
 }
 
 // call this when you get an update from the Commands svs group
 func (c *Commands) addCommand(command *tlv.RepoCommand) {
-	log.Debug(c, "addCommand for", command)
+	log.Info(c, "addCommand for", "target", command.Target)
 	n := command.Target.String()
 	// NOTE: could do 2 different mutexes, 1 for each map, but this shouldn't cause much delay
 	c.mutex.Lock()
@@ -163,11 +161,8 @@ func (c *Commands) addCommand(command *tlv.RepoCommand) {
 func (c *Commands) ShouldBeActive(command *tlv.RepoCommand) bool {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	log.Info(c, "should be active")
 	t := command.Target.String()
-	log.Info(c, "converted")
 	active, exists := c.jobs[t]
-	log.Info(c, "after mem access")
 	return exists && active
 }
 

@@ -201,6 +201,7 @@ func (p *TestRepoProducer) sendStatusRequest(target enc.Name) {
 }
 
 func main() {
+	time.Sleep(10 * time.Second)
 	log.Default().SetLevel(log.LevelDebug)
 	if len(os.Args) < 3 {
 		log.Fatal(nil, "Usage: test_producer <repoName> <producerName>")

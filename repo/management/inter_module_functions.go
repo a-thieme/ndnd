@@ -9,14 +9,12 @@ import (
 	"github.com/named-data/ndnd/std/log"
 )
 
-// TODO: need to figure out whether any of these need goroutines
-// FIXME: if this is run after an update from others, it never stops, which blocks awareness and commands from stopping
 func (m *RepoManagement) CheckJob(job *tlv.RepoCommand) {
 	log.Info(m, "checking job", job.Target)
 	status := m.getJobStatus(job)
 	// TODO: make it a switch statement
 	if status == "under" {
-		log.Info(m, job.Target.String(), "is under replicated")
+		log.Debug(m, job.Target.String(), "is under replicated")
 		if !m.storage.DoingJob(job) {
 			log.Debug(m, job.Target.String(), "under replication handler")
 			m.underReplication(job)
@@ -24,12 +22,12 @@ func (m *RepoManagement) CheckJob(job *tlv.RepoCommand) {
 			log.Debug(m, job.Target.String(), "under but already doing job")
 		}
 	} else if status == "over" {
-		log.Info(m, job.Target.String(), "is over replicated")
+		log.Debug(m, job.Target.String(), "is over replicated")
 		if m.storage.DoingJob(job) {
 			m.overReplication(job)
 		}
 	} else if status == "good" {
-		log.Info(m, job.Target.String(), "is replicated")
+		log.Debug(m, job.Target.String(), "is replicated")
 		m.goodReplication(job)
 	} else {
 		log.Warn(m, "got bad status", status)
@@ -72,7 +70,6 @@ func (m *RepoManagement) OnStatus(name enc.Name, content enc.Wire, reply func(wi
 	log.Debug(m, "end of OnStatus()")
 }
 func (m *RepoManagement) getJobStatus(job *tlv.RepoCommand) string {
-	log.Info(m, "getJobStatus")
 	// how many times the job should be done
 	r := 0
 	log.Debug(m, "get whether it should be active")
@@ -82,7 +79,6 @@ func (m *RepoManagement) getJobStatus(job *tlv.RepoCommand) string {
 
 	log.Debug(m, "from awareness, get whether it is done by others")
 	// how many times the job is done (local understanding)
-	// FIXME: this blocks
 	num := m.awareness.Storage.GetReplications(job)
 	log.Debug(m, "get whether i'm doing it")
 	if m.storage.DoingJob(job) {
@@ -90,7 +86,7 @@ func (m *RepoManagement) getJobStatus(job *tlv.RepoCommand) string {
 	}
 	log.Trace(m, "job is done", num, "times and should be", r)
 	// FIXME: remove this, just doing debug since i'm not at trace level
-	log.Debug(m, "job is done", num, "times and should be", r)
+	log.Info(m, job.Target.String(), "done", num, "target", r)
 
 	// status return
 	// TODO: maybe standardize this
@@ -102,7 +98,7 @@ func (m *RepoManagement) getJobStatus(job *tlv.RepoCommand) string {
 	return "good"
 }
 
-// FIXME: get this to actuall do storage analysis. for now, just number of commands, and total is 100
+// FIXME: get this to actuall do storage analysis. for now, just number of commands, and total is 20
 func (m *RepoManagement) GetAvailability(job *tlv.RepoCommand) int {
 	// Get storage state
 	var stat unix.Statfs_t
