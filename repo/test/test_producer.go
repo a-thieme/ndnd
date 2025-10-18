@@ -1,7 +1,8 @@
 package main
 
 import (
-	"crypto/rand"
+	// "crypto/rand"
+	"math/rand/v2"
 	"os"
 	"os/signal"
 	"syscall"
@@ -121,7 +122,7 @@ func (p *TestRepoProducer) insertData(name enc.Name, size int) enc.Name {
 	})
 
 	content := make([]byte, size)
-	rand.Read(content)
+	// rand.Read(content)
 
 	finalNameN, err := p.client.Produce(ndn.ProduceArgs{
 		Name:    name.WithVersion(enc.VersionUnixMicro),
@@ -214,7 +215,7 @@ func main() {
 	producer.Start()
 	defer producer.Stop()
 
-	totalData := 10
+	totalData := 16
 	checkData := make([]enc.Name, totalData)
 
 	// for i := 0; i < totalData; i++ {
@@ -227,17 +228,17 @@ func main() {
 
 	// time.Sleep(3 * time.Second)
 
-	// for i := 0; i < totalData; i++ {
-	dataNameN, err := enc.NameFromStr(producerName + "/data/1")
+	for i := 0; i < totalData; i++ {
+		dataNameN, err := enc.NameFromStr(producerName + "/data/" + string(i))
 
-	if err != nil {
-		log.Error(producer, "Failed to parse name", "name", dataNameN, "err", err)
-	} else {
-		checkData[1] = producer.insertData(dataNameN, 1024*1024) // 1MB
+		if err != nil {
+			log.Error(producer, "Failed to parse name", "name", dataNameN, "err", err)
+		} else {
+			checkData[i] = producer.insertData(dataNameN, 1024*1024) // 1MB
+		}
+		time.Sleep(time.Second * time.Duration(rand.Float64()))
+		// producer.sendStatusRequest(checkData[i])
 	}
-	time.Sleep(5 * time.Second)
-	producer.sendStatusRequest(checkData[1])
-	// }
 	//
 	// time.Sleep(4 * time.Second) // So the repo has time to process the data
 	// for i := 0; i < totalData; i++ {

@@ -47,7 +47,7 @@ func NewRepoNodeAwareness(name *enc.Name, expiryFunc func([]*tlv.RepoCommand)) *
 
 // Update updates the node's jobs and resets its state to Up.
 func (r *RepoNodeAwareness) Update(jobs []*tlv.RepoCommand) {
-	log.Info(r, "Updating node awareness", "node", r.name, "jobs", jobs)
+	log.Debug(r, "Updating node awareness", "node", r.name, "jobs", jobs)
 	if r.jobs == nil {
 		log.Warn(r, "r.jobs is nil for", r.name)
 	}

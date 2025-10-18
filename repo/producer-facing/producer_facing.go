@@ -79,13 +79,14 @@ func (p *RepoProducerFacing) Stop() error {
 
 // onExternalNotify is called when a repo notify interest is received
 func (p *RepoProducerFacing) onCommand(name enc.Name, content enc.Wire, reply func(wire enc.Wire) error) {
-	log.Info(p, "got new command, interest name", name)
+	log.Debug(p, "got new command", "interest name", name)
 
 	command, err := tlv.ParseRepoCommand(enc.NewWireView(content), false)
 	if err != nil {
 		log.Trace(p, "Failed to parse notify app param", "err", err)
 		return
 	}
+	log.Info(p, "got command", "newTarget", command.Target)
 
 	log.Debug(p, "making response")
 	sr := &tlv.RepoStatusResponse{

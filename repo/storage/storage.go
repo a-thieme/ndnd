@@ -65,7 +65,7 @@ func (r *RepoStorage) GetJobs() []*tlv.RepoCommand {
 // start doing job
 // FIXME: check to see if you have the availability for this. if not, return error and no awareness update will be made
 func (s *RepoStorage) AddJob(job *tlv.RepoCommand) error {
-	log.Info(s, "AddJob", job)
+	log.Info(s, "AddJob", "target", job.Target)
 
 	// FIXME: this needs to either consume data or join a sync group
 	t := job.Target
@@ -117,7 +117,6 @@ func (s *RepoStorage) ReleaseJob(job *tlv.RepoCommand) error {
 		log.Warn(s, msg, job.Target)
 		return errors.New(msg)
 	}
-	// FIXME: this needs to either remove data or leave a sync group
 	s.mutex.Lock()
 	delete(s.jobs, job.Target.String())
 	s.mutex.Unlock()
@@ -164,12 +163,12 @@ func (r *RepoStorage) leaveSync(command *tlv.RepoCommand) {
 
 // Put puts data into the storage
 func (r *RepoStorage) put(name enc.Name, data []byte) (err error) {
-	log.Info(r, "leaving sync group", name)
+	log.Info(r, "putting data", "target", name)
 	return r.repo.Store.Put(name, data)
 }
 
 // Remove removes data from the storage
 func (r *RepoStorage) remove(name enc.Name) (err error) {
-	log.Info(r, "leaving sync group", name)
+	log.Info(r, "removing data", "target", name)
 	return r.repo.Store.Remove(name)
 }

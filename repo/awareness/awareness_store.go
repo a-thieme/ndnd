@@ -81,7 +81,7 @@ func (s *RepoAwarenessStore) ProcessHeartbeat(name *enc.Name) {
 func (s *RepoAwarenessStore) ProcessAwarenessUpdate(update *tlv.AwarenessUpdate) {
 	s.mutex.Lock()
 
-	log.Info(s, "Processing awareness update", update.Node)
+	log.Debug(s, "Processing awareness update", update.Node)
 	node := s.getNode(&update.Node)
 
 	// map to reduce duplicates

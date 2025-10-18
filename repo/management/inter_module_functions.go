@@ -10,7 +10,7 @@ import (
 )
 
 func (m *RepoManagement) CheckJob(job *tlv.RepoCommand) {
-	log.Info(m, "checking job", job.Target)
+	log.Debug(m, "checking job", job.Target)
 	status := m.getJobStatus(job)
 	// TODO: make it a switch statement
 	if status == "under" {
@@ -86,7 +86,7 @@ func (m *RepoManagement) getJobStatus(job *tlv.RepoCommand) string {
 	}
 	log.Trace(m, "job is done", num, "times and should be", r)
 	// FIXME: remove this, just doing debug since i'm not at trace level
-	log.Info(m, job.Target.String(), "done", num, "target", r)
+	log.Debug(m, job.Target.String(), "done", num, "target", r)
 
 	// status return
 	// TODO: maybe standardize this
@@ -98,8 +98,8 @@ func (m *RepoManagement) getJobStatus(job *tlv.RepoCommand) string {
 	return "good"
 }
 
-// FIXME: get this to actuall do storage analysis. for now, just number of commands, and total is 20
-func (m *RepoManagement) GetAvailability(job *tlv.RepoCommand) int {
+// FIXME: get this to actuall do storage analysis. for now, just number of commands, and total is 50
+func (m *RepoManagement) GetAvailability(job *tlv.RepoCommand) float64 {
 	// Get storage state
 	var stat unix.Statfs_t
 	wd, _ := os.Getwd()
@@ -107,9 +107,9 @@ func (m *RepoManagement) GetAvailability(job *tlv.RepoCommand) int {
 
 	// Get free spaces
 	// freeSpace := stat.Bavail * uint64(stat.Bsize)
-	total := 20
+	total := 50.
 	numJobs := len(m.storage.GetJobs())
-	free := total - numJobs
+	free := total - float64(numJobs)
 	// log.Debug(m, "Availability: free space", freeSpace, "for job", job)
 
 	// add checking for nil for continuous publishing, since it doesn't calculate on each command
@@ -125,9 +125,10 @@ func (m *RepoManagement) GetAvailability(job *tlv.RepoCommand) int {
 	return setting
 }
 
-func (m *RepoManagement) GetUsage(job *tlv.RepoCommand) int {
-	usage := len(m.storage.GetJobs()) + 1
-	total := 20
+func (m *RepoManagement) GetUsage(job *tlv.RepoCommand) float64 {
+	usage := float64(len(m.storage.GetJobs()))
+	log.Info(m, "usage", "lengetjobs", usage)
+	total := 50.
 	setting := usage * usage / total
 	if job != nil && m.storage.DoingJob(job) {
 		// return int(freeSpace * 3 / 2)
