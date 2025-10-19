@@ -219,7 +219,7 @@ func (r *RepoAwareness) StartHeartbeat() (err error) {
 // this is called directly from storage because storage knows when it updates itself
 func (r *RepoAwareness) PublishAwarenessUpdate(awarenessUpdate *tlv.AwarenessUpdate) {
 	// publish to awareness SVS
-	log.Info(r, "Publishing awareness update for node", r.nodeNameN, "jobs", awarenessUpdate.ActiveJobs)
+	log.Debug(r, "Publishing awareness update for node", r.nodeNameN)
 	_, _, err := r.awarenessSvs.Publish(awarenessUpdate.Encode())
 	log.Debug(r, "after Publish() in awareness for update", awarenessUpdate)
 	if err != nil {

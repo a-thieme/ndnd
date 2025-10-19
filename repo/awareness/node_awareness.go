@@ -39,6 +39,7 @@ func NewRepoNodeAwareness(name *enc.Name, expiryFunc func([]*tlv.RepoCommand)) *
 		expiryFunc: expiryFunc,
 	}
 	rna.timer = time.AfterFunc(0, func() {
+		log.Info(rna, "node went down", "node", rna.name)
 		rna.status = Down
 		rna.expiryFunc(rna.jobs)
 	})

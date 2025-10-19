@@ -128,17 +128,23 @@ def get_diffs(starts, replications):
     for data_name in starts:
         for timestamp, replication in get_job_over_time(data_name, replications):
             diff = (
-                convert_timestamp(timestamp) - convert_timestamp(start_times[data_name])
+                convert_timestamp(timestamp) - convert_timestamp(starts[data_name])
             ).total_seconds()
             out.append(f"{diff}\t{replication}")
     return out
 
 
-def rounding(diffs, precision):
+def rounding(diffs):
+    from math import floor, log
+
     new = []
     for line in diffs:
         t, r = line.split("\t")
-        rounded = round(float(t), precision)
+        t = float(t)
+        if t == 0:
+            continue
+        precision = -1 * floor(log(t, 10))
+        rounded = round(t, precision)
         new.append([rounded, r])
     return new
 
@@ -169,17 +175,33 @@ def get_medians(combined):
     return out
 
 
-if __name__ == "__main__":
+def full_processing(ope):
     lines = read_all("running/logs")
-    open("all_logs", "w").writelines(for_write(lines))
+    open("all_logs", ope).writelines(for_write(lines))
     job_logs = filter_replication(lines)
     jobs = [job_line(line) for line in job_logs]
     reps = get_times(jobs)
-    open("jobs", "w").writelines(for_write(reps))
+    open("jobs", ope).writelines(for_write(reps))
     start_times = get_starts(lines)
     diffs = get_diffs(start_times, reps)
-    open("running/data/saved", "w").writelines(for_write(diffs))
-    rounded = rounding(diffs, 1)
+    open("running/data/saved", ope).writelines(for_write(diffs))
+    rounded = rounding(diffs)
     combined = combine(rounded)
-    open("rounded", "w").writelines(for_write(rounded))
-    open("running/data/average", "w").writelines(for_write(get_averages(combined)))
+    open("rounded", ope).writelines(for_write(diffs))
+    open("running/data/combined", ope).writelines(for_write(diffs))
+    open("running/data/average", ope).writelines(for_write(get_averages(combined)))
+    open("running/data/median", ope).writelines(for_write(get_medians(combined)))
+
+
+def big_wrapper():
+    full_processing("a")
+    c = open("running/data/combined").readlines()
+    d = [line.strip() for line in c]
+    e = rounding(d)
+    f = combine(e)
+    g = get_averages(f)
+    open("big_combined", "w").writelines(for_write(g))
+
+
+if __name__ == "__main__":
+    print()

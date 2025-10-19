@@ -5,6 +5,7 @@ import (
 	"github.com/named-data/ndnd/std/log"
 	"math/rand/v2"
 	// "strconv"
+	// "math"
 	"sync"
 	"time"
 )
@@ -100,7 +101,7 @@ func (t *TimeBased) Under(job *tlv.RepoCommand) {
 	log.Info(t, "waiting", "usage", u, "time", wait, "target", target)
 
 	t.timers[target] = time.AfterFunc(wait, func() {
-		if t.getAbility(job) > 1 {
+		if t.getAbility(job) > 0 {
 			t.doJob(job)
 		}
 		t.reset(target)
@@ -126,7 +127,7 @@ func (t *TimeBased) calculateOver(a float64) time.Duration {
 	// 1000 * 1000 -> ms
 	// 1000 * 1000 * 1000 -> s
 	// this works ~ 15s until == 3, little bounce, tail to ~25s, sequences max 50
-	return time.Duration(a * 1000 * 1000 * 10000 * (0.5 + 0.5*rand.Float64()))
+	return time.Duration(a * 1000 * 1000 * 1000 * rand.Float64())
 
 	// this one bounced at ~1.5s, converged at 10
 	// return time.Duration(a * 1000 * 1000 * 100 * rand.Float64())
@@ -138,5 +139,5 @@ func (t *TimeBased) calculateOver(a float64) time.Duration {
 func calculateUnder(a float64) time.Duration {
 	// max a is 50, so shooting for max 400ms wait
 	// this works ~ 800ms until >= 3
-	return time.Duration(a * 1000 * 1000 * 50 * (0.5 + 0.5*rand.Float64()))
+	return time.Duration(a * 1000 * 1000 * 1000 * rand.Float64())
 }
