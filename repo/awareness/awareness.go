@@ -238,3 +238,13 @@ func (r *RepoAwareness) getOnlineNodes() []string {
 	}
 	return nameNs
 }
+
+func (r *RepoAwareness) GetNodes() map[string]int {
+	out := make(map[string]int)
+	for name, awareness := range r.Storage.GetNodeStates() {
+		if awareness.status == Up {
+			out[name] = awareness.NumJobs
+		}
+	}
+	return out
+}

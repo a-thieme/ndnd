@@ -31,6 +31,10 @@ func (r *RepoNodeAwareness) String() string {
 	return fmt.Sprintf("Node Awareness: %s", r.name)
 }
 
+func (r *RepoNodeAwareness) GetJobs() []*tlv.RepoCommand {
+	return r.jobs
+}
+
 // NewRepoNodeAwareness creates a new RepoNodeAwareness instance
 // with the given name and initializes the lastKnown time to now.
 func NewRepoNodeAwareness(name *enc.Name, expiryFunc func([]*tlv.RepoCommand)) *RepoNodeAwareness {

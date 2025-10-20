@@ -49,10 +49,10 @@ func (t *TimeBased) String() string {
 }
 
 func (t *TimeBased) Over(job *tlv.RepoCommand) {
+	target := job.Target.String()
+	log.Info(t, "called over replication for", "target", target)
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
-	target := job.Target.String()
-	log.Debug(t, "called over replication for", "target", target)
 	if t.types[target] == "over" {
 		log.Debug(t, "already over for", "target", target)
 		return

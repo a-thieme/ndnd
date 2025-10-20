@@ -335,4 +335,5 @@ def process_the_seqs():
 
 
 if __name__ == "__main__":
+    full_processing()
     print()

@@ -38,6 +38,12 @@ func (s *RepoAwarenessStore) String() string {
 	return "repo-awareness-store"
 }
 
+func (s *RepoAwarenessStore) GetNodeStates() map[string]*RepoNodeAwareness {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	return s.nodeStates
+}
+
 func (s *RepoAwarenessStore) SetCheckJob(checkJob func(*tlv.RepoCommand)) {
 	s.checkJob = checkJob
 }
@@ -63,6 +69,23 @@ func (s *RepoAwarenessStore) getNode(name *enc.Name) *RepoNodeAwareness {
 		s.nodeStates[name.String()] = node
 	}
 	return node
+}
+
+func (s *RepoAwarenessStore) GAwareness(str string) *RepoNodeAwareness {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	return s.nodeStates[str]
+}
+
+func (s *RepoAwarenessStore) GetNodes() map[string]int {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
+	jobCounts := make(map[string]int)
+	for nodeName := range s.nodeStates {
+		jobCounts[nodeName] = s.nodeStates[nodeName].NumJobs
+	}
+	return jobCounts
 }
 
 // ProcessHeartbeat sets status to Up and resets the expirationTimer

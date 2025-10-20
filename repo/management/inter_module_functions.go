@@ -1,8 +1,10 @@
 package management
 
 import (
+	"fmt"
 	"golang.org/x/sys/unix" // POSIX system
 	"os"
+	"sort"
 
 	"github.com/named-data/ndnd/repo/tlv"
 	enc "github.com/named-data/ndnd/std/encoding"
@@ -17,13 +19,14 @@ func (m *RepoManagement) CheckJob(job *tlv.RepoCommand) {
 		log.Debug(m, job.Target.String(), "is under replicated")
 		if !m.storage.DoingJob(job) {
 			log.Debug(m, job.Target.String(), "under replication handler")
-			m.underReplication(job)
+			m.underReplicationCont(job, status)
 		} else {
 			log.Debug(m, job.Target.String(), "under but already doing job")
 		}
 	} else if status < 0 {
-		log.Debug(m, job.Target.String(), "is over replicated")
+		log.Info(m, job.Target.String(), "job", "is over replicated")
 		if m.storage.DoingJob(job) {
+			log.Debug(m, job.Target.String(), "calling", "over handler")
 			m.overReplication(job)
 		}
 	} else if status == 0 {
@@ -35,9 +38,144 @@ func (m *RepoManagement) CheckJob(job *tlv.RepoCommand) {
 	log.Trace(m, "end of CheckJob")
 }
 
+// figure out if you need to drop job
+// this should only be called if you're doing the job
+func (m *RepoManagement) overReplicationCont(job *tlv.RepoCommand, num int) {
+	// starts the negative value
+	num = num * -1
+	// positive value for how many times it still needs to be done
+	// get nodes doing the job
+
+	// all nodes
+	a := m.awareness.GetNodes()
+	for node := range a {
+		aware := m.awareness.Storage.GAwareness(node)
+		jbs := aware.GetJobs()
+		found := false
+		for _, j := range jbs {
+			if found {
+				continue
+			}
+			if j.Target.String() == job.Target.String() {
+				found = true
+			}
+		}
+		if found == false {
+			delete(a, node)
+		}
+	}
+	// add myself to top r nodes
+	a[m.repo.NodeNameN.String()] = len(m.storage.GetJobs())
+
+	// sort nodes by availability
+	sorted := smbv(a)
+	myVal := -1
+	for index, name := range sorted {
+		log.Info(m, name, "val", a[name])
+		if name == m.repo.NodeNameN.String() {
+			myVal = index
+		}
+	}
+	if myVal == -1 {
+		panic("tried to match my name in the array but it didn't find it")
+	}
+
+	// if i am not in top num nodes, drop replication
+	if myVal > m.repo.NumReplicas-1 {
+		m.ReleaseJob(job)
+	}
+
+}
+
+// figure out if you need to do the job
+// this should only be called if you're not doing the job
+func (m *RepoManagement) underReplicationCont(job *tlv.RepoCommand, num int) {
+	// positive value for how many times it still needs to be done
+	// get nodes doing the job
+
+	// all nodes
+	a := m.awareness.GetNodes()
+	jTarget := job.Target.String()
+	for node := range a {
+		aware := m.awareness.Storage.GAwareness(node)
+		jbs := aware.GetJobs()
+		found := false
+		// see if the node is doing the job
+		for _, j := range jbs {
+			if found {
+				continue
+			}
+			if j.Target.String() == jTarget {
+				found = true
+			}
+		}
+		if found == true {
+			delete(a, node)
+		}
+	}
+
+	// add myself to top r nodes
+	a[m.repo.NodeNameN.String()] = len(m.storage.GetJobs())
+
+	// sort nodes by availability
+	sorted := smbv(a)
+	log.Debug(m, fmt.Sprintf("%v", sorted), "needs", num, "target", jTarget)
+	myVal := -1
+	for index, name := range sorted {
+		if name == m.repo.NodeNameN.String() {
+			myVal = index
+		}
+	}
+	if myVal == -1 {
+		panic("tried to match my name in the array but it didn't find it")
+	}
+
+	// if i am in top num nodes, do job
+	if myVal < num {
+		m.DoJob(job)
+	}
+}
+
+// A helper struct to hold a key-value pair.
+type kv struct {
+	Key   string
+	Value int
+}
+
+// SortMapByValue takes a map and returns the keys sorted by value in ascending order.
+func smbv(m map[string]int) []string {
+	// 1. Create a slice of key-value structs from the map.
+	var ss []kv
+	for k, v := range m {
+		ss = append(ss, kv{k, v})
+	}
+
+	// 2. Sort the slice of structs by the Value field.
+	// The anonymous function tells sort.Slice how to compare two elements.
+	sort.Slice(ss, func(i, j int) bool {
+		// First, check if the values are different.
+		if ss[i].Value != ss[j].Value {
+			// If values are different, sort by value (ascending).
+			return ss[i].Value < ss[j].Value
+		}
+		// --- TIE-BREAKER ---
+		// If values are equal, sort by key (alphabetical).
+		return ss[i].Key < ss[j].Key
+	})
+
+	// 3. Extract the keys from the now-sorted slice.
+	// We pre-allocate the slice for better performance.
+	sortedKeys := make([]string, len(m))
+	for i, pair := range ss {
+		sortedKeys[i] = pair.Key
+	}
+
+	return sortedKeys
+}
+
 // calculate number of times a job is done
 func (m *RepoManagement) OnStatus(name enc.Name, content enc.Wire, reply func(wire enc.Wire) error) {
-	log.Info(m, "Getting status for name", name)
+	log.Debug(m, "Getting status for name", name)
 	request, err := tlv.ParseRepoStatusRequest(enc.NewWireView(content), false)
 	if err != nil {
 		log.Warn(m, "got error when trying to parse status from producer", name)
