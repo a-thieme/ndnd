@@ -1,0 +1,483 @@
+time=2025-10-19T03:03:05.040Z level=INFO msg="Starting NDN Data Repository" tag=repo group="&{RepoName:/ndn/repo NumReplicas:3 HeartbeatInterval:5 HeartbeatExpiry:20 RepoNameN:/ndn/repo}" node=RepoNodeConfig
+badger 2025/10/19 03:03:05 INFO: All 17 tables opened in 5ms
+badger 2025/10/19 03:03:05 INFO: Discard stats nextEmptySlot: 0
+badger 2025/10/19 03:03:05 INFO: Set nextTxnTs to 65985
+badger 2025/10/19 03:03:05 INFO: Deleting empty file: /tmp/.ndn/repo/test11/storage/badger/000035.vlog
+time=2025-10-19T03:03:05.063Z level=INFO msg="Created Repo Storage" tag=storage.NewRepoStorage
+time=2025-10-19T03:03:05.063Z level=INFO msg="Starting Repo Awareness SVS" tag=repo-awareness
+time=2025-10-19T03:03:05.063Z level=INFO msg="Starting awareness update" tag=repo-awareness
+time=2025-10-19T03:03:05.063Z level=INFO msg="Starting heartbeat" tag=repo-awareness
+time=2025-10-19T03:03:05.063Z level=INFO msg="Heartbeat started" tag=repo-awareness node=/ndn/node11
+time=2025-10-19T03:03:05.063Z level=INFO msg="starting commands, node" tag=Commands !BADKEY=/ndn/node11 syncPrefix=/ndn/repo/commands
+time=2025-10-19T03:03:05.064Z level=INFO msg="Starting commands svs" tag=Commands
+time=2025-10-19T03:03:05.064Z level=INFO msg="Starting Repo Producer Facing" tag=producer-facing
+time=2025-10-19T03:03:05.067Z level=INFO msg="Ignoring non-versioned data" tag=repo name="/localhost/nfd/rib/register/h%23%07%1B%08%03ndn%08%04repo%08%09awareness%20%03svso%01Aj%01%00/params-sha256=dd5c3812a9a50cd0f93e7fae59cc434e12822a54d5fc71ee2d31f4be4c261b18"
+time=2025-10-19T03:03:05.067Z level=INFO msg="Registered route" tag=client name="/ndn/repo/awareness/32=svs"
+time=2025-10-19T03:03:05.068Z level=INFO msg="Ignoring non-versioned data" tag=repo name="/localhost/nfd/rib/register/h1%07%29%08%03ndn%08%04repo%08%09awareness%08%03ndn%08%06node118%04h%F4T%E9o%01Aj%01%00/params-sha256=044b6e066743d052771b9af4da3948a8b931aeffc0e4648a411b26d524737de6"
+time=2025-10-19T03:03:05.068Z level=INFO msg="Registered route" tag=client name="/ndn/repo/awareness/ndn/node11/t=1760842985"
+time=2025-10-19T03:03:05.068Z level=INFO msg="Ignoring non-versioned data" tag=repo name="/localhost/nfd/rib/register/h%1E%07%16%08%03ndn%08%04repo%08%09heartbeato%01Aj%01%00/params-sha256=ffbb491e9ba091884c76fcae32d296a46d4b9195e28d5a32f8d3d4bcf9332e58"
+time=2025-10-19T03:03:05.068Z level=INFO msg="Registered route" tag=client name=/ndn/repo/heartbeat
+time=2025-10-19T03:03:05.069Z level=INFO msg="Ignoring non-versioned data" tag=repo name="/localhost/nfd/rib/register/h%22%07%1A%08%03ndn%08%04repo%08%08commands%20%03svso%01Aj%01%00/params-sha256=45a05ce88a16cb6898ba9988ba5ffd3764e77c53978c9d2e46e54b30ee06dd71"
+time=2025-10-19T03:03:05.069Z level=INFO msg="Registered route" tag=client name="/ndn/repo/commands/32=svs"
+time=2025-10-19T03:03:05.070Z level=INFO msg="Ignoring non-versioned data" tag=repo name="/localhost/nfd/rib/register/h0%07%28%08%03ndn%08%04repo%08%08commands%08%03ndn%08%06node118%04h%F4T%E9o%01Aj%01%00/params-sha256=afd8bc545e7c0ef76cdfbcb72aea5d723f38543ae9a505e3a3fc418bebeacfc7"
+time=2025-10-19T03:03:05.070Z level=INFO msg="Registered route" tag=client name="/ndn/repo/commands/ndn/node11/t=1760842985"
+time=2025-10-19T03:03:05.072Z level=INFO msg="Ignoring non-versioned data" tag=repo name="/localhost/nfd/rib/register/h%1B%07%13%08%03ndn%08%04repo%08%06notifyo%01Aj%01%00/params-sha256=dcca3701fb6b9d403391df1211612704e3835a5c160bdbffbcb71afe4594917c"
+time=2025-10-19T03:03:05.072Z level=INFO msg="Registered route" tag=client name=/ndn/repo/notify
+time=2025-10-19T03:03:05.073Z level=INFO msg="Ignoring non-versioned data" tag=repo name="/localhost/nfd/rib/register/h%1B%07%13%08%03ndn%08%04repo%08%06statuso%01Aj%01%00/params-sha256=1ac5325c2fe239d8bcbe974af6073c4ada7657068de99c9c91ead61ad45e8c68"
+time=2025-10-19T03:03:05.073Z level=INFO msg="Registered route" tag=client name=/ndn/repo/status
+time=2025-10-19T03:03:10.059Z level=INFO msg="New node added" tag=repo-awareness-store name=/ndn/node2
+time=2025-10-19T03:03:10.063Z level=INFO msg="New node added" tag=repo-awareness-store name=/ndn/node3
+time=2025-10-19T03:03:10.108Z level=INFO msg="New node added" tag=repo-awareness-store name=/ndn/node14
+time=2025-10-19T03:03:10.116Z level=INFO msg="New node added" tag=repo-awareness-store name=/ndn/node7
+time=2025-10-19T03:03:10.120Z level=INFO msg="New node added" tag=repo-awareness-store name=/ndn/node6
+time=2025-10-19T03:03:10.135Z level=INFO msg="New node added" tag=repo-awareness-store name=/ndn/node5
+time=2025-10-19T03:03:10.180Z level=INFO msg="New node added" tag=repo-awareness-store name=/ndn/node4
+time=2025-10-19T03:03:10.226Z level=INFO msg="New node added" tag=repo-awareness-store name=/ndn/node12
+time=2025-10-19T03:03:10.229Z level=INFO msg="New node added" tag=repo-awareness-store name=/ndn/node1
+time=2025-10-19T03:03:10.236Z level=INFO msg="New node added" tag=repo-awareness-store name=/ndn/node8
+time=2025-10-19T03:03:10.238Z level=INFO msg="New node added" tag=repo-awareness-store name=/ndn/node9
+time=2025-10-19T03:03:10.273Z level=INFO msg="New node added" tag=repo-awareness-store name=/ndn/node10
+time=2025-10-19T03:03:10.283Z level=INFO msg="New node added" tag=repo-awareness-store name=/ndn/node16
+time=2025-10-19T03:03:10.311Z level=INFO msg="New node added" tag=repo-awareness-store name=/ndn/node13
+time=2025-10-19T03:03:10.328Z level=INFO msg="New node added" tag=repo-awareness-store name=/ndn/node15
+time=2025-10-19T03:03:15.090Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/2/data/%00/v=1760842995073372"
+time=2025-10-19T03:03:15.090Z level=INFO msg=usage tag=repo-management lengetjobs=0
+time=2025-10-19T03:03:15.090Z level=INFO msg=waiting tag=time-based usage=0 time=0s target="/test/producer/2/data/%00/v=1760842995073372"
+time=2025-10-19T03:03:15.090Z level=INFO msg="now doing job" tag=repo-management !BADKEY="/test/producer/2/data/%00/v=1760842995073372"
+time=2025-10-19T03:03:15.090Z level=INFO msg=AddJob tag=repo-storage target="/test/producer/2/data/%00/v=1760842995073372"
+time=2025-10-19T03:03:15.090Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/2/data/%00/v=1760842995073372 "
+time=2025-10-19T03:03:15.090Z level=WARN msg="should fetch data here but not implemented" tag=repo-storage
+time=2025-10-19T03:03:15.097Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/2/data/%01/v=1760842995078985"
+time=2025-10-19T03:03:15.097Z level=INFO msg=usage tag=repo-management lengetjobs=1
+time=2025-10-19T03:03:15.097Z level=INFO msg=waiting tag=time-based usage=0.02 time=13.225711ms target="/test/producer/2/data/%01/v=1760842995078985"
+time=2025-10-19T03:03:15.101Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/2/data/%02/v=1760842995085766"
+time=2025-10-19T03:03:15.101Z level=INFO msg=usage tag=repo-management lengetjobs=1
+time=2025-10-19T03:03:15.101Z level=INFO msg=waiting tag=time-based usage=0.02 time=5.664576ms target="/test/producer/2/data/%02/v=1760842995085766"
+time=2025-10-19T03:03:15.108Z level=INFO msg="now doing job" tag=repo-management !BADKEY="/test/producer/2/data/%02/v=1760842995085766"
+time=2025-10-19T03:03:15.108Z level=INFO msg=AddJob tag=repo-storage target="/test/producer/2/data/%02/v=1760842995085766"
+time=2025-10-19T03:03:15.108Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/2/data/%00/v=1760842995073372 /test/producer/2/data/%02/v=1760842995085766 "
+time=2025-10-19T03:03:15.108Z level=WARN msg="should fetch data here but not implemented" tag=repo-storage
+time=2025-10-19T03:03:15.111Z level=INFO msg="now doing job" tag=repo-management !BADKEY="/test/producer/2/data/%01/v=1760842995078985"
+time=2025-10-19T03:03:15.111Z level=INFO msg=AddJob tag=repo-storage target="/test/producer/2/data/%01/v=1760842995078985"
+time=2025-10-19T03:03:15.111Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/2/data/%00/v=1760842995073372 /test/producer/2/data/%02/v=1760842995085766 /test/producer/2/data/%01/v=1760842995078985 "
+time=2025-10-19T03:03:15.111Z level=WARN msg="should fetch data here but not implemented" tag=repo-storage
+time=2025-10-19T03:03:15.115Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/2/data/%03/v=1760842995090834"
+time=2025-10-19T03:03:15.115Z level=INFO msg=usage tag=repo-management lengetjobs=3
+time=2025-10-19T03:03:15.115Z level=INFO msg=waiting tag=time-based usage=0.18 time=129.749812ms target="/test/producer/2/data/%03/v=1760842995090834"
+time=2025-10-19T03:03:15.115Z level=INFO msg="got command" tag=producer-facing newTarget="/test/producer/11/data/%00/v=1760842995099351"
+time=2025-10-19T03:03:15.115Z level=INFO msg="new command from producer" tag=repo-management
+time=2025-10-19T03:03:15.115Z level=INFO msg="now doing job" tag=repo-management !BADKEY="/test/producer/11/data/%00/v=1760842995099351"
+time=2025-10-19T03:03:15.115Z level=INFO msg=AddJob tag=repo-storage target="/test/producer/11/data/%00/v=1760842995099351"
+time=2025-10-19T03:03:15.115Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/2/data/%01/v=1760842995078985 /test/producer/11/data/%00/v=1760842995099351 /test/producer/2/data/%00/v=1760842995073372 /test/producer/2/data/%02/v=1760842995085766 "
+time=2025-10-19T03:03:15.115Z level=WARN msg="should fetch data here but not implemented" tag=repo-storage
+time=2025-10-19T03:03:15.115Z level=INFO msg=PublishCommand: tag=Commands !BADKEY="&{Type:INSERT Target:/test/producer/11/data/%00/v=1760842995099351 SnapshotThreshold:0}"
+time=2025-10-19T03:03:15.115Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/11/data/%00/v=1760842995099351"
+time=2025-10-19T03:03:15.124Z level=INFO msg="got command" tag=producer-facing newTarget="/test/producer/11/data/%01/v=1760842995114673"
+time=2025-10-19T03:03:15.124Z level=INFO msg="new command from producer" tag=repo-management
+time=2025-10-19T03:03:15.124Z level=INFO msg="now doing job" tag=repo-management !BADKEY="/test/producer/11/data/%01/v=1760842995114673"
+time=2025-10-19T03:03:15.124Z level=INFO msg=AddJob tag=repo-storage target="/test/producer/11/data/%01/v=1760842995114673"
+time=2025-10-19T03:03:15.124Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/11/data/%00/v=1760842995099351 /test/producer/11/data/%01/v=1760842995114673 /test/producer/2/data/%00/v=1760842995073372 /test/producer/2/data/%02/v=1760842995085766 /test/producer/2/data/%01/v=1760842995078985 "
+time=2025-10-19T03:03:15.124Z level=WARN msg="should fetch data here but not implemented" tag=repo-storage
+time=2025-10-19T03:03:15.124Z level=INFO msg=PublishCommand: tag=Commands !BADKEY="&{Type:INSERT Target:/test/producer/11/data/%01/v=1760842995114673 SnapshotThreshold:0}"
+time=2025-10-19T03:03:15.124Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/11/data/%01/v=1760842995114673"
+time=2025-10-19T03:03:15.128Z level=INFO msg="got command" tag=producer-facing newTarget="/test/producer/11/data/%02/v=1760842995123606"
+time=2025-10-19T03:03:15.128Z level=INFO msg="new command from producer" tag=repo-management
+time=2025-10-19T03:03:15.128Z level=INFO msg="now doing job" tag=repo-management !BADKEY="/test/producer/11/data/%02/v=1760842995123606"
+time=2025-10-19T03:03:15.128Z level=INFO msg=AddJob tag=repo-storage target="/test/producer/11/data/%02/v=1760842995123606"
+time=2025-10-19T03:03:15.128Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/11/data/%00/v=1760842995099351 /test/producer/11/data/%01/v=1760842995114673 /test/producer/11/data/%02/v=1760842995123606 /test/producer/2/data/%00/v=1760842995073372 /test/producer/2/data/%02/v=1760842995085766 /test/producer/2/data/%01/v=1760842995078985 "
+time=2025-10-19T03:03:15.128Z level=WARN msg="should fetch data here but not implemented" tag=repo-storage
+time=2025-10-19T03:03:15.129Z level=INFO msg=PublishCommand: tag=Commands !BADKEY="&{Type:INSERT Target:/test/producer/11/data/%02/v=1760842995123606 SnapshotThreshold:0}"
+time=2025-10-19T03:03:15.129Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/11/data/%02/v=1760842995123606"
+time=2025-10-19T03:03:15.130Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/3/data/%00/v=1760842995074290"
+time=2025-10-19T03:03:15.130Z level=INFO msg=usage tag=repo-management lengetjobs=6
+time=2025-10-19T03:03:15.130Z level=INFO msg=waiting tag=time-based usage=0.72 time=234.602396ms target="/test/producer/3/data/%00/v=1760842995074290"
+time=2025-10-19T03:03:15.133Z level=INFO msg="got command" tag=producer-facing newTarget="/test/producer/11/data/%03/v=1760842995128327"
+time=2025-10-19T03:03:15.133Z level=INFO msg="new command from producer" tag=repo-management
+time=2025-10-19T03:03:15.133Z level=INFO msg="now doing job" tag=repo-management !BADKEY="/test/producer/11/data/%03/v=1760842995128327"
+time=2025-10-19T03:03:15.133Z level=INFO msg=AddJob tag=repo-storage target="/test/producer/11/data/%03/v=1760842995128327"
+time=2025-10-19T03:03:15.133Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/11/data/%01/v=1760842995114673 /test/producer/11/data/%02/v=1760842995123606 /test/producer/11/data/%03/v=1760842995128327 /test/producer/2/data/%00/v=1760842995073372 /test/producer/2/data/%02/v=1760842995085766 /test/producer/2/data/%01/v=1760842995078985 /test/producer/11/data/%00/v=1760842995099351 "
+time=2025-10-19T03:03:15.133Z level=WARN msg="should fetch data here but not implemented" tag=repo-storage
+time=2025-10-19T03:03:15.133Z level=INFO msg=PublishCommand: tag=Commands !BADKEY="&{Type:INSERT Target:/test/producer/11/data/%03/v=1760842995128327 SnapshotThreshold:0}"
+time=2025-10-19T03:03:15.133Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/11/data/%03/v=1760842995128327"
+time=2025-10-19T03:03:15.136Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/3/data/%01/v=1760842995090430"
+time=2025-10-19T03:03:15.136Z level=INFO msg=usage tag=repo-management lengetjobs=7
+time=2025-10-19T03:03:15.136Z level=INFO msg=waiting tag=time-based usage=0.98 time=195.657939ms target="/test/producer/3/data/%01/v=1760842995090430"
+time=2025-10-19T03:03:15.159Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/3/data/%02/v=1760842995104290"
+time=2025-10-19T03:03:15.159Z level=INFO msg=usage tag=repo-management lengetjobs=7
+time=2025-10-19T03:03:15.159Z level=INFO msg=waiting tag=time-based usage=0.98 time=774.217062ms target="/test/producer/3/data/%02/v=1760842995104290"
+time=2025-10-19T03:03:15.175Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/3/data/%03/v=1760842995128490"
+time=2025-10-19T03:03:15.175Z level=INFO msg=usage tag=repo-management lengetjobs=7
+time=2025-10-19T03:03:15.175Z level=INFO msg=waiting tag=time-based usage=0.98 time=574.155019ms target="/test/producer/3/data/%03/v=1760842995128490"
+time=2025-10-19T03:03:15.245Z level=INFO msg="now doing job" tag=repo-management !BADKEY="/test/producer/2/data/%03/v=1760842995090834"
+time=2025-10-19T03:03:15.245Z level=INFO msg=AddJob tag=repo-storage target="/test/producer/2/data/%03/v=1760842995090834"
+time=2025-10-19T03:03:15.245Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/2/data/%00/v=1760842995073372 /test/producer/2/data/%02/v=1760842995085766 /test/producer/2/data/%01/v=1760842995078985 /test/producer/11/data/%00/v=1760842995099351 /test/producer/11/data/%01/v=1760842995114673 /test/producer/11/data/%02/v=1760842995123606 /test/producer/11/data/%03/v=1760842995128327 /test/producer/2/data/%03/v=1760842995090834 "
+time=2025-10-19T03:03:15.245Z level=WARN msg="should fetch data here but not implemented" tag=repo-storage
+time=2025-10-19T03:03:15.257Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/7/data/%00/v=1760842995073288"
+time=2025-10-19T03:03:15.257Z level=INFO msg=usage tag=repo-management lengetjobs=8
+time=2025-10-19T03:03:15.257Z level=INFO msg=waiting tag=time-based usage=1.28 time=392.78997ms target="/test/producer/7/data/%00/v=1760842995073288"
+time=2025-10-19T03:03:15.260Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/5/data/%00/v=1760842995093494"
+time=2025-10-19T03:03:15.260Z level=INFO msg=usage tag=repo-management lengetjobs=8
+time=2025-10-19T03:03:15.260Z level=INFO msg=waiting tag=time-based usage=1.28 time=452.071872ms target="/test/producer/5/data/%00/v=1760842995093494"
+time=2025-10-19T03:03:15.262Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/5/data/%01/v=1760842995103355"
+time=2025-10-19T03:03:15.262Z level=INFO msg=usage tag=repo-management lengetjobs=8
+time=2025-10-19T03:03:15.262Z level=INFO msg=waiting tag=time-based usage=1.28 time=622.493073ms target="/test/producer/5/data/%01/v=1760842995103355"
+time=2025-10-19T03:03:15.269Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/6/data/%00/v=1760842995101643"
+time=2025-10-19T03:03:15.269Z level=INFO msg=usage tag=repo-management lengetjobs=8
+time=2025-10-19T03:03:15.269Z level=INFO msg=waiting tag=time-based usage=1.28 time=1.061552472s target="/test/producer/6/data/%00/v=1760842995101643"
+time=2025-10-19T03:03:15.273Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/7/data/%01/v=1760842995089820"
+time=2025-10-19T03:03:15.273Z level=INFO msg=usage tag=repo-management lengetjobs=8
+time=2025-10-19T03:03:15.273Z level=INFO msg=waiting tag=time-based usage=1.28 time=501.000076ms target="/test/producer/7/data/%01/v=1760842995089820"
+time=2025-10-19T03:03:15.273Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/5/data/%02/v=1760842995111343"
+time=2025-10-19T03:03:15.273Z level=INFO msg=usage tag=repo-management lengetjobs=8
+time=2025-10-19T03:03:15.273Z level=INFO msg=waiting tag=time-based usage=1.28 time=860.753105ms target="/test/producer/5/data/%02/v=1760842995111343"
+time=2025-10-19T03:03:15.276Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/14/data/%00/v=1760842995147425"
+time=2025-10-19T03:03:15.276Z level=INFO msg=usage tag=repo-management lengetjobs=8
+time=2025-10-19T03:03:15.276Z level=INFO msg=waiting tag=time-based usage=1.28 time=1.233537472s target="/test/producer/14/data/%00/v=1760842995147425"
+time=2025-10-19T03:03:15.278Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/14/data/%01/v=1760842995152761"
+time=2025-10-19T03:03:15.278Z level=INFO msg=usage tag=repo-management lengetjobs=8
+time=2025-10-19T03:03:15.278Z level=INFO msg=waiting tag=time-based usage=1.28 time=1.191186405s target="/test/producer/14/data/%01/v=1760842995152761"
+time=2025-10-19T03:03:15.280Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/14/data/%02/v=1760842995156163"
+time=2025-10-19T03:03:15.280Z level=INFO msg=usage tag=repo-management lengetjobs=8
+time=2025-10-19T03:03:15.280Z level=INFO msg=waiting tag=time-based usage=1.28 time=922.901455ms target="/test/producer/14/data/%02/v=1760842995156163"
+time=2025-10-19T03:03:15.282Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/14/data/%03/v=1760842995158234"
+time=2025-10-19T03:03:15.282Z level=INFO msg=usage tag=repo-management lengetjobs=8
+time=2025-10-19T03:03:15.282Z level=INFO msg=waiting tag=time-based usage=1.28 time=1.250977824s target="/test/producer/14/data/%03/v=1760842995158234"
+time=2025-10-19T03:03:15.283Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/6/data/%01/v=1760842995110838"
+time=2025-10-19T03:03:15.283Z level=INFO msg=usage tag=repo-management lengetjobs=8
+time=2025-10-19T03:03:15.283Z level=INFO msg=waiting tag=time-based usage=1.28 time=46.995213ms target="/test/producer/6/data/%01/v=1760842995110838"
+time=2025-10-19T03:03:15.291Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/7/data/%02/v=1760842995107624"
+time=2025-10-19T03:03:15.291Z level=INFO msg=usage tag=repo-management lengetjobs=8
+time=2025-10-19T03:03:15.291Z level=INFO msg=waiting tag=time-based usage=1.28 time=6.161513ms target="/test/producer/7/data/%02/v=1760842995107624"
+time=2025-10-19T03:03:15.295Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/6/data/%02/v=1760842995120582"
+time=2025-10-19T03:03:15.295Z level=INFO msg=usage tag=repo-management lengetjobs=8
+time=2025-10-19T03:03:15.295Z level=INFO msg=waiting tag=time-based usage=1.28 time=1.063113854s target="/test/producer/6/data/%02/v=1760842995120582"
+time=2025-10-19T03:03:15.295Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/5/data/%03/v=1760842995123161"
+time=2025-10-19T03:03:15.295Z level=INFO msg=usage tag=repo-management lengetjobs=8
+time=2025-10-19T03:03:15.295Z level=INFO msg=waiting tag=time-based usage=1.28 time=1.065179415s target="/test/producer/5/data/%03/v=1760842995123161"
+time=2025-10-19T03:03:15.298Z level=INFO msg="now doing job" tag=repo-management !BADKEY="/test/producer/7/data/%02/v=1760842995107624"
+time=2025-10-19T03:03:15.298Z level=INFO msg=AddJob tag=repo-storage target="/test/producer/7/data/%02/v=1760842995107624"
+time=2025-10-19T03:03:15.298Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/11/data/%00/v=1760842995099351 /test/producer/2/data/%03/v=1760842995090834 /test/producer/2/data/%01/v=1760842995078985 /test/producer/11/data/%01/v=1760842995114673 /test/producer/11/data/%02/v=1760842995123606 /test/producer/11/data/%03/v=1760842995128327 /test/producer/7/data/%02/v=1760842995107624 /test/producer/2/data/%00/v=1760842995073372 /test/producer/2/data/%02/v=1760842995085766 "
+time=2025-10-19T03:03:15.298Z level=WARN msg="should fetch data here but not implemented" tag=repo-storage
+time=2025-10-19T03:03:15.306Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/6/data/%03/v=1760842995135766"
+time=2025-10-19T03:03:15.306Z level=INFO msg=usage tag=repo-management lengetjobs=9
+time=2025-10-19T03:03:15.306Z level=INFO msg=waiting tag=time-based usage=1.62 time=1.249851931s target="/test/producer/6/data/%03/v=1760842995135766"
+time=2025-10-19T03:03:15.309Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/7/data/%03/v=1760842995126403"
+time=2025-10-19T03:03:15.309Z level=INFO msg=usage tag=repo-management lengetjobs=9
+time=2025-10-19T03:03:15.309Z level=INFO msg=waiting tag=time-based usage=1.62 time=432.66598ms target="/test/producer/7/data/%03/v=1760842995126403"
+time=2025-10-19T03:03:15.331Z level=INFO msg="now doing job" tag=repo-management !BADKEY="/test/producer/6/data/%01/v=1760842995110838"
+time=2025-10-19T03:03:15.331Z level=INFO msg=AddJob tag=repo-storage target="/test/producer/6/data/%01/v=1760842995110838"
+time=2025-10-19T03:03:15.331Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/7/data/%02/v=1760842995107624 /test/producer/6/data/%01/v=1760842995110838 /test/producer/2/data/%00/v=1760842995073372 /test/producer/2/data/%02/v=1760842995085766 /test/producer/11/data/%00/v=1760842995099351 /test/producer/2/data/%03/v=1760842995090834 /test/producer/2/data/%01/v=1760842995078985 /test/producer/11/data/%01/v=1760842995114673 /test/producer/11/data/%02/v=1760842995123606 /test/producer/11/data/%03/v=1760842995128327 "
+time=2025-10-19T03:03:15.331Z level=WARN msg="should fetch data here but not implemented" tag=repo-storage
+time=2025-10-19T03:03:15.333Z level=INFO msg="now doing job" tag=repo-management !BADKEY="/test/producer/3/data/%01/v=1760842995090430"
+time=2025-10-19T03:03:15.333Z level=INFO msg=AddJob tag=repo-storage target="/test/producer/3/data/%01/v=1760842995090430"
+time=2025-10-19T03:03:15.333Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/11/data/%03/v=1760842995128327 /test/producer/7/data/%02/v=1760842995107624 /test/producer/6/data/%01/v=1760842995110838 /test/producer/3/data/%01/v=1760842995090430 /test/producer/2/data/%00/v=1760842995073372 /test/producer/2/data/%02/v=1760842995085766 /test/producer/11/data/%00/v=1760842995099351 /test/producer/2/data/%03/v=1760842995090834 /test/producer/2/data/%01/v=1760842995078985 /test/producer/11/data/%01/v=1760842995114673 /test/producer/11/data/%02/v=1760842995123606 "
+time=2025-10-19T03:03:15.333Z level=WARN msg="should fetch data here but not implemented" tag=repo-storage
+time=2025-10-19T03:03:15.365Z level=INFO msg="now doing job" tag=repo-management !BADKEY="/test/producer/3/data/%00/v=1760842995074290"
+time=2025-10-19T03:03:15.365Z level=INFO msg=AddJob tag=repo-storage target="/test/producer/3/data/%00/v=1760842995074290"
+time=2025-10-19T03:03:15.365Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/11/data/%02/v=1760842995123606 /test/producer/11/data/%03/v=1760842995128327 /test/producer/7/data/%02/v=1760842995107624 /test/producer/6/data/%01/v=1760842995110838 /test/producer/3/data/%01/v=1760842995090430 /test/producer/2/data/%00/v=1760842995073372 /test/producer/2/data/%02/v=1760842995085766 /test/producer/11/data/%00/v=1760842995099351 /test/producer/2/data/%03/v=1760842995090834 /test/producer/3/data/%00/v=1760842995074290 /test/producer/2/data/%01/v=1760842995078985 /test/producer/11/data/%01/v=1760842995114673 "
+time=2025-10-19T03:03:15.365Z level=WARN msg="should fetch data here but not implemented" tag=repo-storage
+time=2025-10-19T03:03:15.423Z level=INFO msg=waiting tag=time-based ability=43.32 time=34.066583328s target="/test/producer/3/data/%00/v=1760842995074290"
+time=2025-10-19T03:03:15.444Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/4/data/%00/v=1760842995058515"
+time=2025-10-19T03:03:15.444Z level=INFO msg=usage tag=repo-management lengetjobs=12
+time=2025-10-19T03:03:15.444Z level=INFO msg=waiting tag=time-based usage=2.88 time=1.939144972s target="/test/producer/4/data/%00/v=1760842995058515"
+time=2025-10-19T03:03:15.449Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/4/data/%01/v=1760842995065554"
+time=2025-10-19T03:03:15.449Z level=INFO msg=usage tag=repo-management lengetjobs=12
+time=2025-10-19T03:03:15.449Z level=INFO msg=waiting tag=time-based usage=2.88 time=1.508644628s target="/test/producer/4/data/%01/v=1760842995065554"
+time=2025-10-19T03:03:15.457Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/4/data/%02/v=1760842995070911"
+time=2025-10-19T03:03:15.457Z level=INFO msg=usage tag=repo-management lengetjobs=12
+time=2025-10-19T03:03:15.457Z level=INFO msg=waiting tag=time-based usage=2.88 time=1.0481228s target="/test/producer/4/data/%02/v=1760842995070911"
+time=2025-10-19T03:03:15.469Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/4/data/%03/v=1760842995077250"
+time=2025-10-19T03:03:15.469Z level=INFO msg=usage tag=repo-management lengetjobs=12
+time=2025-10-19T03:03:15.469Z level=INFO msg=waiting tag=time-based usage=2.88 time=2.245587754s target="/test/producer/4/data/%03/v=1760842995077250"
+time=2025-10-19T03:03:15.510Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/1/data/%00/v=1760842995074319"
+time=2025-10-19T03:03:15.510Z level=INFO msg=usage tag=repo-management lengetjobs=12
+time=2025-10-19T03:03:15.510Z level=INFO msg=waiting tag=time-based usage=2.88 time=459.186168ms target="/test/producer/1/data/%00/v=1760842995074319"
+time=2025-10-19T03:03:15.517Z level=INFO msg=waiting tag=time-based ability=43.32 time=8.123611439s target="/test/producer/2/data/%01/v=1760842995078985"
+time=2025-10-19T03:03:15.519Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/1/data/%01/v=1760842995083088"
+time=2025-10-19T03:03:15.519Z level=INFO msg=usage tag=repo-management lengetjobs=12
+time=2025-10-19T03:03:15.519Z level=INFO msg=waiting tag=time-based usage=2.88 time=1.073387756s target="/test/producer/1/data/%01/v=1760842995083088"
+time=2025-10-19T03:03:15.529Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/1/data/%02/v=1760842995091928"
+time=2025-10-19T03:03:15.529Z level=INFO msg=usage tag=repo-management lengetjobs=12
+time=2025-10-19T03:03:15.529Z level=INFO msg=waiting tag=time-based usage=2.88 time=2.694517772s target="/test/producer/1/data/%02/v=1760842995091928"
+time=2025-10-19T03:03:15.537Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/1/data/%03/v=1760842995101417"
+time=2025-10-19T03:03:15.537Z level=INFO msg=usage tag=repo-management lengetjobs=12
+time=2025-10-19T03:03:15.537Z level=INFO msg=waiting tag=time-based usage=2.88 time=1.125657076s target="/test/producer/1/data/%03/v=1760842995101417"
+time=2025-10-19T03:03:15.543Z level=INFO msg=waiting tag=time-based ability=43.32 time=15.992955112s target="/test/producer/2/data/%00/v=1760842995073372"
+time=2025-10-19T03:03:15.555Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/12/data/%00/v=1760842995134564"
+time=2025-10-19T03:03:15.555Z level=INFO msg=usage tag=repo-management lengetjobs=12
+time=2025-10-19T03:03:15.555Z level=INFO msg=waiting tag=time-based usage=2.88 time=2.669971628s target="/test/producer/12/data/%00/v=1760842995134564"
+time=2025-10-19T03:03:15.563Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/12/data/%01/v=1760842995142478"
+time=2025-10-19T03:03:15.563Z level=INFO msg=usage tag=repo-management lengetjobs=12
+time=2025-10-19T03:03:15.563Z level=INFO msg=waiting tag=time-based usage=2.88 time=1.114408938s target="/test/producer/12/data/%01/v=1760842995142478"
+time=2025-10-19T03:03:15.566Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/12/data/%02/v=1760842995149674"
+time=2025-10-19T03:03:15.566Z level=INFO msg=usage tag=repo-management lengetjobs=12
+time=2025-10-19T03:03:15.566Z level=INFO msg=waiting tag=time-based usage=2.88 time=2.826706078s target="/test/producer/12/data/%02/v=1760842995149674"
+time=2025-10-19T03:03:15.568Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/12/data/%03/v=1760842995154647"
+time=2025-10-19T03:03:15.568Z level=INFO msg=usage tag=repo-management lengetjobs=12
+time=2025-10-19T03:03:15.568Z level=INFO msg=waiting tag=time-based usage=2.88 time=871.932007ms target="/test/producer/12/data/%03/v=1760842995154647"
+time=2025-10-19T03:03:15.573Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/8/data/%00/v=1760842995133027"
+time=2025-10-19T03:03:15.573Z level=INFO msg=usage tag=repo-management lengetjobs=12
+time=2025-10-19T03:03:15.573Z level=INFO msg=waiting tag=time-based usage=2.88 time=1.906527389s target="/test/producer/8/data/%00/v=1760842995133027"
+time=2025-10-19T03:03:15.577Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/8/data/%01/v=1760842995142391"
+time=2025-10-19T03:03:15.577Z level=INFO msg=usage tag=repo-management lengetjobs=12
+time=2025-10-19T03:03:15.577Z level=INFO msg=waiting tag=time-based usage=2.88 time=1.122385665s target="/test/producer/8/data/%01/v=1760842995142391"
+time=2025-10-19T03:03:15.583Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/8/data/%02/v=1760842995147107"
+time=2025-10-19T03:03:15.583Z level=INFO msg=usage tag=repo-management lengetjobs=12
+time=2025-10-19T03:03:15.583Z level=INFO msg=waiting tag=time-based usage=2.88 time=1.949867619s target="/test/producer/8/data/%02/v=1760842995147107"
+time=2025-10-19T03:03:15.586Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/8/data/%03/v=1760842995152523"
+time=2025-10-19T03:03:15.586Z level=INFO msg=usage tag=repo-management lengetjobs=12
+time=2025-10-19T03:03:15.586Z level=INFO msg=waiting tag=time-based usage=2.88 time=566.218712ms target="/test/producer/8/data/%03/v=1760842995152523"
+time=2025-10-19T03:03:15.590Z level=INFO msg=waiting tag=time-based ability=43.32 time=10.184325468s target="/test/producer/2/data/%02/v=1760842995085766"
+time=2025-10-19T03:03:15.597Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/16/data/%00/v=1760842995120107"
+time=2025-10-19T03:03:15.597Z level=INFO msg=usage tag=repo-management lengetjobs=12
+time=2025-10-19T03:03:15.597Z level=INFO msg=waiting tag=time-based usage=2.88 time=31.088188ms target="/test/producer/16/data/%00/v=1760842995120107"
+time=2025-10-19T03:03:15.603Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/16/data/%01/v=1760842995125373"
+time=2025-10-19T03:03:15.603Z level=INFO msg=usage tag=repo-management lengetjobs=12
+time=2025-10-19T03:03:15.603Z level=INFO msg=waiting tag=time-based usage=2.88 time=2.090671518s target="/test/producer/16/data/%01/v=1760842995125373"
+time=2025-10-19T03:03:15.608Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/16/data/%02/v=1760842995131352"
+time=2025-10-19T03:03:15.608Z level=INFO msg=usage tag=repo-management lengetjobs=12
+time=2025-10-19T03:03:15.608Z level=INFO msg=waiting tag=time-based usage=2.88 time=2.297117702s target="/test/producer/16/data/%02/v=1760842995131352"
+time=2025-10-19T03:03:15.615Z level=INFO msg=waiting tag=time-based ability=43.32 time=3.597123824s target="/test/producer/6/data/%01/v=1760842995110838"
+time=2025-10-19T03:03:15.617Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/16/data/%03/v=1760842995136698"
+time=2025-10-19T03:03:15.617Z level=INFO msg=usage tag=repo-management lengetjobs=12
+time=2025-10-19T03:03:15.617Z level=INFO msg=waiting tag=time-based usage=2.88 time=22.021144ms target="/test/producer/16/data/%03/v=1760842995136698"
+time=2025-10-19T03:03:15.620Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/9/data/%00/v=1760842995105635"
+time=2025-10-19T03:03:15.620Z level=INFO msg=usage tag=repo-management lengetjobs=12
+time=2025-10-19T03:03:15.620Z level=INFO msg=waiting tag=time-based usage=2.88 time=2.294534902s target="/test/producer/9/data/%00/v=1760842995105635"
+time=2025-10-19T03:03:15.629Z level=INFO msg="now doing job" tag=repo-management !BADKEY="/test/producer/16/data/%00/v=1760842995120107"
+time=2025-10-19T03:03:15.629Z level=INFO msg=AddJob tag=repo-storage target="/test/producer/16/data/%00/v=1760842995120107"
+time=2025-10-19T03:03:15.629Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/2/data/%01/v=1760842995078985 /test/producer/11/data/%01/v=1760842995114673 /test/producer/11/data/%02/v=1760842995123606 /test/producer/11/data/%03/v=1760842995128327 /test/producer/7/data/%02/v=1760842995107624 /test/producer/6/data/%01/v=1760842995110838 /test/producer/3/data/%01/v=1760842995090430 /test/producer/16/data/%00/v=1760842995120107 /test/producer/2/data/%00/v=1760842995073372 /test/producer/2/data/%02/v=1760842995085766 /test/producer/11/data/%00/v=1760842995099351 /test/producer/2/data/%03/v=1760842995090834 /test/producer/3/data/%00/v=1760842995074290 "
+time=2025-10-19T03:03:15.629Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/9/data/%01/v=1760842995119175"
+time=2025-10-19T03:03:15.629Z level=WARN msg="should fetch data here but not implemented" tag=repo-storage
+time=2025-10-19T03:03:15.629Z level=INFO msg=usage tag=repo-management lengetjobs=13
+time=2025-10-19T03:03:15.629Z level=INFO msg=waiting tag=time-based usage=3.38 time=1.431333557s target="/test/producer/9/data/%01/v=1760842995119175"
+time=2025-10-19T03:03:15.635Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/9/data/%02/v=1760842995127888"
+time=2025-10-19T03:03:15.635Z level=INFO msg=usage tag=repo-management lengetjobs=13
+time=2025-10-19T03:03:15.635Z level=INFO msg=waiting tag=time-based usage=3.38 time=960.759389ms target="/test/producer/9/data/%02/v=1760842995127888"
+time=2025-10-19T03:03:15.639Z level=INFO msg="now doing job" tag=repo-management !BADKEY="/test/producer/16/data/%03/v=1760842995136698"
+time=2025-10-19T03:03:15.639Z level=INFO msg=AddJob tag=repo-storage target="/test/producer/16/data/%03/v=1760842995136698"
+time=2025-10-19T03:03:15.639Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/11/data/%03/v=1760842995128327 /test/producer/7/data/%02/v=1760842995107624 /test/producer/6/data/%01/v=1760842995110838 /test/producer/3/data/%01/v=1760842995090430 /test/producer/16/data/%00/v=1760842995120107 /test/producer/2/data/%00/v=1760842995073372 /test/producer/2/data/%02/v=1760842995085766 /test/producer/11/data/%00/v=1760842995099351 /test/producer/2/data/%03/v=1760842995090834 /test/producer/3/data/%00/v=1760842995074290 /test/producer/16/data/%03/v=1760842995136698 /test/producer/2/data/%01/v=1760842995078985 /test/producer/11/data/%01/v=1760842995114673 /test/producer/11/data/%02/v=1760842995123606 "
+time=2025-10-19T03:03:15.639Z level=WARN msg="should fetch data here but not implemented" tag=repo-storage
+time=2025-10-19T03:03:15.640Z level=INFO msg=waiting tag=time-based ability=38.88 time=23.272195287s target="/test/producer/3/data/%01/v=1760842995090430"
+time=2025-10-19T03:03:15.640Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/9/data/%03/v=1760842995134509"
+time=2025-10-19T03:03:15.640Z level=INFO msg=usage tag=repo-management lengetjobs=14
+time=2025-10-19T03:03:15.640Z level=INFO msg=waiting tag=time-based usage=3.92 time=3.581378808s target="/test/producer/9/data/%03/v=1760842995134509"
+time=2025-10-19T03:03:15.643Z level=INFO msg=waiting tag=time-based ability=38.88 time=20.458026944s target="/test/producer/11/data/%02/v=1760842995123606"
+time=2025-10-19T03:03:15.644Z level=INFO msg=waiting tag=time-based ability=38.88 time=1.961373687s target="/test/producer/7/data/%02/v=1760842995107624"
+time=2025-10-19T03:03:15.658Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/15/data/%00/v=1760842995099441"
+time=2025-10-19T03:03:15.658Z level=INFO msg=usage tag=repo-management lengetjobs=14
+time=2025-10-19T03:03:15.658Z level=INFO msg=waiting tag=time-based usage=3.92 time=334.420839ms target="/test/producer/15/data/%00/v=1760842995099441"
+time=2025-10-19T03:03:15.658Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/15/data/%01/v=1760842995110778"
+time=2025-10-19T03:03:15.658Z level=INFO msg=usage tag=repo-management lengetjobs=14
+time=2025-10-19T03:03:15.658Z level=INFO msg=waiting tag=time-based usage=3.92 time=1.668761127s target="/test/producer/15/data/%01/v=1760842995110778"
+time=2025-10-19T03:03:15.660Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/10/data/%00/v=1760842995112786"
+time=2025-10-19T03:03:15.661Z level=INFO msg=usage tag=repo-management lengetjobs=14
+time=2025-10-19T03:03:15.661Z level=INFO msg=waiting tag=time-based usage=3.92 time=1.649409025s target="/test/producer/10/data/%00/v=1760842995112786"
+time=2025-10-19T03:03:15.675Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/15/data/%02/v=1760842995123713"
+time=2025-10-19T03:03:15.675Z level=INFO msg=usage tag=repo-management lengetjobs=14
+time=2025-10-19T03:03:15.675Z level=INFO msg=waiting tag=time-based usage=3.92 time=295.876642ms target="/test/producer/15/data/%02/v=1760842995123713"
+time=2025-10-19T03:03:15.675Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/15/data/%03/v=1760842995127914"
+time=2025-10-19T03:03:15.675Z level=INFO msg=usage tag=repo-management lengetjobs=14
+time=2025-10-19T03:03:15.675Z level=INFO msg=waiting tag=time-based usage=3.92 time=3.811717995s target="/test/producer/15/data/%03/v=1760842995127914"
+time=2025-10-19T03:03:15.677Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/10/data/%01/v=1760842995122822"
+time=2025-10-19T03:03:15.677Z level=INFO msg=usage tag=repo-management lengetjobs=14
+time=2025-10-19T03:03:15.677Z level=INFO msg=waiting tag=time-based usage=3.92 time=2.975876194s target="/test/producer/10/data/%01/v=1760842995122822"
+time=2025-10-19T03:03:15.686Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/10/data/%02/v=1760842995136549"
+time=2025-10-19T03:03:15.686Z level=INFO msg=usage tag=repo-management lengetjobs=14
+time=2025-10-19T03:03:15.686Z level=INFO msg=waiting tag=time-based usage=3.92 time=3.256137765s target="/test/producer/10/data/%02/v=1760842995136549"
+time=2025-10-19T03:03:15.692Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/10/data/%03/v=1760842995148408"
+time=2025-10-19T03:03:15.692Z level=INFO msg=usage tag=repo-management lengetjobs=14
+time=2025-10-19T03:03:15.692Z level=INFO msg=waiting tag=time-based usage=3.92 time=2.104353293s target="/test/producer/10/data/%03/v=1760842995148408"
+time=2025-10-19T03:03:15.712Z level=INFO msg="now doing job" tag=repo-management !BADKEY="/test/producer/5/data/%00/v=1760842995093494"
+time=2025-10-19T03:03:15.712Z level=INFO msg=AddJob tag=repo-storage target="/test/producer/5/data/%00/v=1760842995093494"
+time=2025-10-19T03:03:15.712Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/5/data/%00/v=1760842995093494 /test/producer/2/data/%00/v=1760842995073372 /test/producer/11/data/%00/v=1760842995099351 /test/producer/11/data/%01/v=1760842995114673 /test/producer/11/data/%03/v=1760842995128327 /test/producer/16/data/%00/v=1760842995120107 /test/producer/2/data/%02/v=1760842995085766 /test/producer/2/data/%03/v=1760842995090834 /test/producer/3/data/%00/v=1760842995074290 /test/producer/16/data/%03/v=1760842995136698 /test/producer/2/data/%01/v=1760842995078985 /test/producer/11/data/%02/v=1760842995123606 /test/producer/7/data/%02/v=1760842995107624 /test/producer/6/data/%01/v=1760842995110838 /test/producer/3/data/%01/v=1760842995090430 "
+time=2025-10-19T03:03:15.712Z level=WARN msg="should fetch data here but not implemented" tag=repo-storage
+time=2025-10-19T03:03:15.723Z level=INFO msg=waiting tag=time-based ability=36.75 time=2.024375307s target="/test/producer/11/data/%00/v=1760842995099351"
+time=2025-10-19T03:03:15.735Z level=INFO msg=waiting tag=time-based ability=36.75 time=2.442581497s target="/test/producer/5/data/%00/v=1760842995093494"
+time=2025-10-19T03:03:15.742Z level=INFO msg="now doing job" tag=repo-management !BADKEY="/test/producer/7/data/%03/v=1760842995126403"
+time=2025-10-19T03:03:15.742Z level=INFO msg=AddJob tag=repo-storage target="/test/producer/7/data/%03/v=1760842995126403"
+time=2025-10-19T03:03:15.742Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/11/data/%01/v=1760842995114673 /test/producer/11/data/%03/v=1760842995128327 /test/producer/16/data/%00/v=1760842995120107 /test/producer/2/data/%02/v=1760842995085766 /test/producer/2/data/%03/v=1760842995090834 /test/producer/3/data/%00/v=1760842995074290 /test/producer/16/data/%03/v=1760842995136698 /test/producer/2/data/%01/v=1760842995078985 /test/producer/11/data/%02/v=1760842995123606 /test/producer/7/data/%02/v=1760842995107624 /test/producer/6/data/%01/v=1760842995110838 /test/producer/3/data/%01/v=1760842995090430 /test/producer/5/data/%00/v=1760842995093494 /test/producer/7/data/%03/v=1760842995126403 /test/producer/2/data/%00/v=1760842995073372 /test/producer/11/data/%00/v=1760842995099351 "
+time=2025-10-19T03:03:15.742Z level=WARN msg="should fetch data here but not implemented" tag=repo-storage
+time=2025-10-19T03:03:15.755Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/13/data/%00/v=1760842995123348"
+time=2025-10-19T03:03:15.755Z level=INFO msg=usage tag=repo-management lengetjobs=16
+time=2025-10-19T03:03:15.755Z level=INFO msg=waiting tag=time-based usage=5.12 time=377.796843ms target="/test/producer/13/data/%00/v=1760842995123348"
+time=2025-10-19T03:03:15.767Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/13/data/%01/v=1760842995133993"
+time=2025-10-19T03:03:15.767Z level=INFO msg=usage tag=repo-management lengetjobs=16
+time=2025-10-19T03:03:15.767Z level=INFO msg=waiting tag=time-based usage=5.12 time=1.631983792s target="/test/producer/13/data/%01/v=1760842995133993"
+time=2025-10-19T03:03:15.775Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/13/data/%02/v=1760842995149217"
+time=2025-10-19T03:03:15.775Z level=INFO msg=usage tag=repo-management lengetjobs=16
+time=2025-10-19T03:03:15.775Z level=INFO msg=waiting tag=time-based usage=5.12 time=2.250608487s target="/test/producer/13/data/%02/v=1760842995149217"
+time=2025-10-19T03:03:15.777Z level=INFO msg="addCommand for" tag=Commands target="/test/producer/13/data/%03/v=1760842995154439"
+time=2025-10-19T03:03:15.777Z level=INFO msg=usage tag=repo-management lengetjobs=16
+time=2025-10-19T03:03:15.777Z level=INFO msg=waiting tag=time-based usage=5.12 time=4.629004802s target="/test/producer/13/data/%03/v=1760842995154439"
+time=2025-10-19T03:03:15.886Z level=INFO msg="now doing job" tag=repo-management !BADKEY="/test/producer/5/data/%01/v=1760842995103355"
+time=2025-10-19T03:03:15.886Z level=INFO msg=AddJob tag=repo-storage target="/test/producer/5/data/%01/v=1760842995103355"
+time=2025-10-19T03:03:15.886Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/11/data/%01/v=1760842995114673 /test/producer/11/data/%03/v=1760842995128327 /test/producer/16/data/%00/v=1760842995120107 /test/producer/2/data/%02/v=1760842995085766 /test/producer/2/data/%03/v=1760842995090834 /test/producer/3/data/%00/v=1760842995074290 /test/producer/5/data/%01/v=1760842995103355 /test/producer/16/data/%03/v=1760842995136698 /test/producer/2/data/%01/v=1760842995078985 /test/producer/11/data/%02/v=1760842995123606 /test/producer/7/data/%02/v=1760842995107624 /test/producer/6/data/%01/v=1760842995110838 /test/producer/3/data/%01/v=1760842995090430 /test/producer/5/data/%00/v=1760842995093494 /test/producer/7/data/%03/v=1760842995126403 /test/producer/2/data/%00/v=1760842995073372 /test/producer/11/data/%00/v=1760842995099351 "
+time=2025-10-19T03:03:15.886Z level=WARN msg="should fetch data here but not implemented" tag=repo-storage
+time=2025-10-19T03:03:15.971Z level=INFO msg="now doing job" tag=repo-management !BADKEY="/test/producer/15/data/%02/v=1760842995123713"
+time=2025-10-19T03:03:15.971Z level=INFO msg=AddJob tag=repo-storage target="/test/producer/15/data/%02/v=1760842995123713"
+time=2025-10-19T03:03:15.971Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/11/data/%01/v=1760842995114673 /test/producer/11/data/%03/v=1760842995128327 /test/producer/16/data/%00/v=1760842995120107 /test/producer/2/data/%02/v=1760842995085766 /test/producer/2/data/%03/v=1760842995090834 /test/producer/3/data/%00/v=1760842995074290 /test/producer/5/data/%01/v=1760842995103355 /test/producer/16/data/%03/v=1760842995136698 /test/producer/2/data/%01/v=1760842995078985 /test/producer/11/data/%02/v=1760842995123606 /test/producer/7/data/%02/v=1760842995107624 /test/producer/6/data/%01/v=1760842995110838 /test/producer/3/data/%01/v=1760842995090430 /test/producer/5/data/%00/v=1760842995093494 /test/producer/7/data/%03/v=1760842995126403 /test/producer/2/data/%00/v=1760842995073372 /test/producer/11/data/%00/v=1760842995099351 /test/producer/15/data/%02/v=1760842995123713 "
+time=2025-10-19T03:03:15.971Z level=WARN msg="should fetch data here but not implemented" tag=repo-storage
+time=2025-10-19T03:03:15.985Z level=INFO msg=waiting tag=time-based ability=30.72 time=28.662870833s target="/test/producer/16/data/%03/v=1760842995136698"
+time=2025-10-19T03:03:15.993Z level=INFO msg="now doing job" tag=repo-management !BADKEY="/test/producer/15/data/%00/v=1760842995099441"
+time=2025-10-19T03:03:15.993Z level=INFO msg=AddJob tag=repo-storage target="/test/producer/15/data/%00/v=1760842995099441"
+time=2025-10-19T03:03:15.993Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/11/data/%01/v=1760842995114673 /test/producer/11/data/%03/v=1760842995128327 /test/producer/16/data/%00/v=1760842995120107 /test/producer/2/data/%02/v=1760842995085766 /test/producer/2/data/%03/v=1760842995090834 /test/producer/3/data/%00/v=1760842995074290 /test/producer/5/data/%01/v=1760842995103355 /test/producer/16/data/%03/v=1760842995136698 /test/producer/2/data/%01/v=1760842995078985 /test/producer/11/data/%02/v=1760842995123606 /test/producer/7/data/%02/v=1760842995107624 /test/producer/6/data/%01/v=1760842995110838 /test/producer/3/data/%01/v=1760842995090430 /test/producer/5/data/%00/v=1760842995093494 /test/producer/7/data/%03/v=1760842995126403 /test/producer/2/data/%00/v=1760842995073372 /test/producer/11/data/%00/v=1760842995099351 /test/producer/15/data/%02/v=1760842995123713 /test/producer/15/data/%00/v=1760842995099441 "
+time=2025-10-19T03:03:15.993Z level=WARN msg="should fetch data here but not implemented" tag=repo-storage
+time=2025-10-19T03:03:15.993Z level=INFO msg=waiting tag=time-based ability=28.83 time=8.121502023s target="/test/producer/5/data/%01/v=1760842995103355"
+time=2025-10-19T03:03:16.000Z level=INFO msg=waiting tag=time-based ability=28.83 time=8.294650484s target="/test/producer/11/data/%01/v=1760842995114673"
+time=2025-10-19T03:03:16.072Z level=INFO msg=waiting tag=time-based ability=28.83 time=21.920107847s target="/test/producer/16/data/%00/v=1760842995120107"
+time=2025-10-19T03:03:16.134Z level=INFO msg="now doing job" tag=repo-management !BADKEY="/test/producer/13/data/%00/v=1760842995123348"
+time=2025-10-19T03:03:16.134Z level=INFO msg=AddJob tag=repo-storage target="/test/producer/13/data/%00/v=1760842995123348"
+time=2025-10-19T03:03:16.134Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/2/data/%02/v=1760842995085766 /test/producer/2/data/%03/v=1760842995090834 /test/producer/3/data/%00/v=1760842995074290 /test/producer/5/data/%01/v=1760842995103355 /test/producer/13/data/%00/v=1760842995123348 /test/producer/16/data/%03/v=1760842995136698 /test/producer/2/data/%01/v=1760842995078985 /test/producer/11/data/%02/v=1760842995123606 /test/producer/7/data/%02/v=1760842995107624 /test/producer/6/data/%01/v=1760842995110838 /test/producer/3/data/%01/v=1760842995090430 /test/producer/5/data/%00/v=1760842995093494 /test/producer/7/data/%03/v=1760842995126403 /test/producer/2/data/%00/v=1760842995073372 /test/producer/11/data/%00/v=1760842995099351 /test/producer/15/data/%02/v=1760842995123713 /test/producer/15/data/%00/v=1760842995099441 /test/producer/11/data/%01/v=1760842995114673 /test/producer/11/data/%03/v=1760842995128327 /test/producer/16/data/%00/v=1760842995120107 "
+time=2025-10-19T03:03:16.134Z level=WARN msg="should fetch data here but not implemented" tag=repo-storage
+time=2025-10-19T03:03:16.140Z level=INFO msg=waiting tag=time-based ability=27 time=8.958789598s target="/test/producer/15/data/%02/v=1760842995123713"
+time=2025-10-19T03:03:16.163Z level=INFO msg=waiting tag=time-based ability=27 time=11.536002776s target="/test/producer/2/data/%03/v=1760842995090834"
+time=2025-10-19T03:03:16.312Z level=INFO msg=waiting tag=time-based ability=27 time=890.701855ms target="/test/producer/11/data/%03/v=1760842995128327"
+time=2025-10-19T03:03:16.380Z level=INFO msg=waiting tag=time-based ability=27 time=9.405977155s target="/test/producer/15/data/%00/v=1760842995099441"
+time=2025-10-19T03:03:16.604Z level=INFO msg=waiting tag=time-based ability=27 time=1.485216158s target="/test/producer/7/data/%03/v=1760842995126403"
+time=2025-10-19T03:03:16.628Z level=INFO msg=waiting tag=time-based ability=27 time=12.496272898s target="/test/producer/13/data/%00/v=1760842995123348"
+time=2025-10-19T03:03:17.203Z level=INFO msg="releasing job" tag=repo-management !BADKEY="/test/producer/11/data/%03/v=1760842995128327"
+time=2025-10-19T03:03:17.203Z level=INFO msg="Releasing job" tag=repo-storage !BADKEY="&{Type:INSERT Target:/test/producer/11/data/%03/v=1760842995128327 SnapshotThreshold:0}"
+time=2025-10-19T03:03:17.203Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/2/data/%02/v=1760842995085766 /test/producer/2/data/%03/v=1760842995090834 /test/producer/3/data/%00/v=1760842995074290 /test/producer/5/data/%01/v=1760842995103355 /test/producer/13/data/%00/v=1760842995123348 /test/producer/16/data/%03/v=1760842995136698 /test/producer/2/data/%01/v=1760842995078985 /test/producer/11/data/%02/v=1760842995123606 /test/producer/7/data/%02/v=1760842995107624 /test/producer/6/data/%01/v=1760842995110838 /test/producer/3/data/%01/v=1760842995090430 /test/producer/5/data/%00/v=1760842995093494 /test/producer/7/data/%03/v=1760842995126403 /test/producer/2/data/%00/v=1760842995073372 /test/producer/11/data/%00/v=1760842995099351 /test/producer/15/data/%02/v=1760842995123713 /test/producer/15/data/%00/v=1760842995099441 /test/producer/11/data/%01/v=1760842995114673 /test/producer/16/data/%00/v=1760842995120107 "
+time=2025-10-19T03:03:17.203Z level=INFO msg="removing data" tag=repo-storage target="/test/producer/11/data/%03/v=1760842995128327"
+time=2025-10-19T03:03:17.606Z level=INFO msg="releasing job" tag=repo-management !BADKEY="/test/producer/7/data/%02/v=1760842995107624"
+time=2025-10-19T03:03:17.606Z level=INFO msg="Releasing job" tag=repo-storage !BADKEY="&{Type:INSERT Target:/test/producer/7/data/%02/v=1760842995107624 SnapshotThreshold:0}"
+time=2025-10-19T03:03:17.607Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/16/data/%03/v=1760842995136698 /test/producer/2/data/%01/v=1760842995078985 /test/producer/11/data/%02/v=1760842995123606 /test/producer/6/data/%01/v=1760842995110838 /test/producer/3/data/%01/v=1760842995090430 /test/producer/5/data/%00/v=1760842995093494 /test/producer/7/data/%03/v=1760842995126403 /test/producer/2/data/%00/v=1760842995073372 /test/producer/11/data/%00/v=1760842995099351 /test/producer/15/data/%02/v=1760842995123713 /test/producer/15/data/%00/v=1760842995099441 /test/producer/11/data/%01/v=1760842995114673 /test/producer/16/data/%00/v=1760842995120107 /test/producer/2/data/%02/v=1760842995085766 /test/producer/2/data/%03/v=1760842995090834 /test/producer/3/data/%00/v=1760842995074290 /test/producer/5/data/%01/v=1760842995103355 /test/producer/13/data/%00/v=1760842995123348 "
+time=2025-10-19T03:03:17.607Z level=INFO msg="removing data" tag=repo-storage target="/test/producer/7/data/%02/v=1760842995107624"
+time=2025-10-19T03:03:17.748Z level=INFO msg="releasing job" tag=repo-management !BADKEY="/test/producer/11/data/%00/v=1760842995099351"
+time=2025-10-19T03:03:17.748Z level=INFO msg="Releasing job" tag=repo-storage !BADKEY="&{Type:INSERT Target:/test/producer/11/data/%00/v=1760842995099351 SnapshotThreshold:0}"
+time=2025-10-19T03:03:17.748Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/11/data/%01/v=1760842995114673 /test/producer/16/data/%00/v=1760842995120107 /test/producer/2/data/%02/v=1760842995085766 /test/producer/2/data/%03/v=1760842995090834 /test/producer/3/data/%00/v=1760842995074290 /test/producer/5/data/%01/v=1760842995103355 /test/producer/13/data/%00/v=1760842995123348 /test/producer/16/data/%03/v=1760842995136698 /test/producer/2/data/%01/v=1760842995078985 /test/producer/11/data/%02/v=1760842995123606 /test/producer/6/data/%01/v=1760842995110838 /test/producer/3/data/%01/v=1760842995090430 /test/producer/5/data/%00/v=1760842995093494 /test/producer/7/data/%03/v=1760842995126403 /test/producer/2/data/%00/v=1760842995073372 /test/producer/15/data/%02/v=1760842995123713 /test/producer/15/data/%00/v=1760842995099441 "
+time=2025-10-19T03:03:17.748Z level=INFO msg="removing data" tag=repo-storage target="/test/producer/11/data/%00/v=1760842995099351"
+time=2025-10-19T03:03:18.089Z level=INFO msg="releasing job" tag=repo-management !BADKEY="/test/producer/7/data/%03/v=1760842995126403"
+time=2025-10-19T03:03:18.089Z level=INFO msg="Releasing job" tag=repo-storage !BADKEY="&{Type:INSERT Target:/test/producer/7/data/%03/v=1760842995126403 SnapshotThreshold:0}"
+time=2025-10-19T03:03:18.090Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/11/data/%01/v=1760842995114673 /test/producer/16/data/%00/v=1760842995120107 /test/producer/2/data/%02/v=1760842995085766 /test/producer/2/data/%03/v=1760842995090834 /test/producer/3/data/%00/v=1760842995074290 /test/producer/5/data/%01/v=1760842995103355 /test/producer/13/data/%00/v=1760842995123348 /test/producer/16/data/%03/v=1760842995136698 /test/producer/2/data/%01/v=1760842995078985 /test/producer/11/data/%02/v=1760842995123606 /test/producer/6/data/%01/v=1760842995110838 /test/producer/3/data/%01/v=1760842995090430 /test/producer/5/data/%00/v=1760842995093494 /test/producer/2/data/%00/v=1760842995073372 /test/producer/15/data/%02/v=1760842995123713 /test/producer/15/data/%00/v=1760842995099441 "
+time=2025-10-19T03:03:18.090Z level=INFO msg="removing data" tag=repo-storage target="/test/producer/7/data/%03/v=1760842995126403"
+time=2025-10-19T03:03:18.178Z level=INFO msg="releasing job" tag=repo-management !BADKEY="/test/producer/5/data/%00/v=1760842995093494"
+time=2025-10-19T03:03:18.178Z level=INFO msg="Releasing job" tag=repo-storage !BADKEY="&{Type:INSERT Target:/test/producer/5/data/%00/v=1760842995093494 SnapshotThreshold:0}"
+time=2025-10-19T03:03:18.178Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/13/data/%00/v=1760842995123348 /test/producer/16/data/%03/v=1760842995136698 /test/producer/2/data/%01/v=1760842995078985 /test/producer/11/data/%02/v=1760842995123606 /test/producer/6/data/%01/v=1760842995110838 /test/producer/3/data/%01/v=1760842995090430 /test/producer/2/data/%00/v=1760842995073372 /test/producer/15/data/%02/v=1760842995123713 /test/producer/15/data/%00/v=1760842995099441 /test/producer/11/data/%01/v=1760842995114673 /test/producer/16/data/%00/v=1760842995120107 /test/producer/2/data/%02/v=1760842995085766 /test/producer/2/data/%03/v=1760842995090834 /test/producer/3/data/%00/v=1760842995074290 /test/producer/5/data/%01/v=1760842995103355 "
+time=2025-10-19T03:03:18.178Z level=INFO msg="removing data" tag=repo-storage target="/test/producer/5/data/%00/v=1760842995093494"
+time=2025-10-19T03:03:19.213Z level=INFO msg="releasing job" tag=repo-management !BADKEY="/test/producer/6/data/%01/v=1760842995110838"
+time=2025-10-19T03:03:19.213Z level=INFO msg="Releasing job" tag=repo-storage !BADKEY="&{Type:INSERT Target:/test/producer/6/data/%01/v=1760842995110838 SnapshotThreshold:0}"
+time=2025-10-19T03:03:19.213Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/11/data/%01/v=1760842995114673 /test/producer/16/data/%00/v=1760842995120107 /test/producer/2/data/%02/v=1760842995085766 /test/producer/2/data/%03/v=1760842995090834 /test/producer/3/data/%00/v=1760842995074290 /test/producer/5/data/%01/v=1760842995103355 /test/producer/13/data/%00/v=1760842995123348 /test/producer/16/data/%03/v=1760842995136698 /test/producer/2/data/%01/v=1760842995078985 /test/producer/11/data/%02/v=1760842995123606 /test/producer/3/data/%01/v=1760842995090430 /test/producer/2/data/%00/v=1760842995073372 /test/producer/15/data/%02/v=1760842995123713 /test/producer/15/data/%00/v=1760842995099441 "
+time=2025-10-19T03:03:19.213Z level=INFO msg="removing data" tag=repo-storage target="/test/producer/6/data/%01/v=1760842995110838"
+time=2025-10-19T03:03:23.149Z level=INFO msg=usage tag=repo-management lengetjobs=14
+time=2025-10-19T03:03:23.149Z level=INFO msg=waiting tag=time-based usage=3.92 time=3.554529999s target="/test/producer/16/data/%01/v=1760842995125373"
+time=2025-10-19T03:03:23.641Z level=INFO msg="releasing job" tag=repo-management !BADKEY="/test/producer/2/data/%01/v=1760842995078985"
+time=2025-10-19T03:03:23.641Z level=INFO msg="Releasing job" tag=repo-storage !BADKEY="&{Type:INSERT Target:/test/producer/2/data/%01/v=1760842995078985 SnapshotThreshold:0}"
+time=2025-10-19T03:03:23.641Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/16/data/%03/v=1760842995136698 /test/producer/11/data/%02/v=1760842995123606 /test/producer/3/data/%01/v=1760842995090430 /test/producer/2/data/%00/v=1760842995073372 /test/producer/15/data/%02/v=1760842995123713 /test/producer/15/data/%00/v=1760842995099441 /test/producer/11/data/%01/v=1760842995114673 /test/producer/16/data/%00/v=1760842995120107 /test/producer/2/data/%02/v=1760842995085766 /test/producer/2/data/%03/v=1760842995090834 /test/producer/3/data/%00/v=1760842995074290 /test/producer/5/data/%01/v=1760842995103355 /test/producer/13/data/%00/v=1760842995123348 "
+time=2025-10-19T03:03:23.641Z level=INFO msg="removing data" tag=repo-storage target="/test/producer/2/data/%01/v=1760842995078985"
+time=2025-10-19T03:03:24.115Z level=INFO msg="releasing job" tag=repo-management !BADKEY="/test/producer/5/data/%01/v=1760842995103355"
+time=2025-10-19T03:03:24.115Z level=INFO msg="Releasing job" tag=repo-storage !BADKEY="&{Type:INSERT Target:/test/producer/5/data/%01/v=1760842995103355 SnapshotThreshold:0}"
+time=2025-10-19T03:03:24.115Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/2/data/%02/v=1760842995085766 /test/producer/2/data/%03/v=1760842995090834 /test/producer/3/data/%00/v=1760842995074290 /test/producer/13/data/%00/v=1760842995123348 /test/producer/16/data/%03/v=1760842995136698 /test/producer/11/data/%02/v=1760842995123606 /test/producer/3/data/%01/v=1760842995090430 /test/producer/2/data/%00/v=1760842995073372 /test/producer/15/data/%02/v=1760842995123713 /test/producer/15/data/%00/v=1760842995099441 /test/producer/11/data/%01/v=1760842995114673 /test/producer/16/data/%00/v=1760842995120107 "
+time=2025-10-19T03:03:24.115Z level=INFO msg="removing data" tag=repo-storage target="/test/producer/5/data/%01/v=1760842995103355"
+time=2025-10-19T03:03:24.296Z level=INFO msg="releasing job" tag=repo-management !BADKEY="/test/producer/11/data/%01/v=1760842995114673"
+time=2025-10-19T03:03:24.296Z level=INFO msg="Releasing job" tag=repo-storage !BADKEY="&{Type:INSERT Target:/test/producer/11/data/%01/v=1760842995114673 SnapshotThreshold:0}"
+time=2025-10-19T03:03:24.296Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/11/data/%02/v=1760842995123606 /test/producer/3/data/%01/v=1760842995090430 /test/producer/2/data/%00/v=1760842995073372 /test/producer/15/data/%02/v=1760842995123713 /test/producer/15/data/%00/v=1760842995099441 /test/producer/16/data/%00/v=1760842995120107 /test/producer/2/data/%02/v=1760842995085766 /test/producer/2/data/%03/v=1760842995090834 /test/producer/3/data/%00/v=1760842995074290 /test/producer/13/data/%00/v=1760842995123348 /test/producer/16/data/%03/v=1760842995136698 "
+time=2025-10-19T03:03:24.296Z level=INFO msg="removing data" tag=repo-storage target="/test/producer/11/data/%01/v=1760842995114673"
+time=2025-10-19T03:03:25.100Z level=INFO msg="releasing job" tag=repo-management !BADKEY="/test/producer/15/data/%02/v=1760842995123713"
+time=2025-10-19T03:03:25.100Z level=INFO msg="Releasing job" tag=repo-storage !BADKEY="&{Type:INSERT Target:/test/producer/15/data/%02/v=1760842995123713 SnapshotThreshold:0}"
+time=2025-10-19T03:03:25.100Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/3/data/%01/v=1760842995090430 /test/producer/2/data/%00/v=1760842995073372 /test/producer/15/data/%00/v=1760842995099441 /test/producer/16/data/%00/v=1760842995120107 /test/producer/2/data/%02/v=1760842995085766 /test/producer/2/data/%03/v=1760842995090834 /test/producer/3/data/%00/v=1760842995074290 /test/producer/13/data/%00/v=1760842995123348 /test/producer/16/data/%03/v=1760842995136698 /test/producer/11/data/%02/v=1760842995123606 "
+time=2025-10-19T03:03:25.100Z level=INFO msg="removing data" tag=repo-storage target="/test/producer/15/data/%02/v=1760842995123713"
+time=2025-10-19T03:03:25.787Z level=INFO msg="releasing job" tag=repo-management !BADKEY="/test/producer/15/data/%00/v=1760842995099441"
+time=2025-10-19T03:03:25.787Z level=INFO msg="Releasing job" tag=repo-storage !BADKEY="&{Type:INSERT Target:/test/producer/15/data/%00/v=1760842995099441 SnapshotThreshold:0}"
+time=2025-10-19T03:03:25.787Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/16/data/%00/v=1760842995120107 /test/producer/2/data/%02/v=1760842995085766 /test/producer/2/data/%03/v=1760842995090834 /test/producer/3/data/%00/v=1760842995074290 /test/producer/13/data/%00/v=1760842995123348 /test/producer/16/data/%03/v=1760842995136698 /test/producer/11/data/%02/v=1760842995123606 /test/producer/3/data/%01/v=1760842995090430 /test/producer/2/data/%00/v=1760842995073372 "
+time=2025-10-19T03:03:25.787Z level=INFO msg="removing data" tag=repo-storage target="/test/producer/15/data/%00/v=1760842995099441"
+time=2025-10-19T03:03:27.137Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:03:27.154Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:03:27.171Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:03:27.190Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:03:27.191Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:03:27.191Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:03:27.210Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:03:27.238Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:03:27.312Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:03:27.319Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:03:27.382Z level=INFO msg=usage tag=repo-management lengetjobs=9
+time=2025-10-19T03:03:27.382Z level=INFO msg=waiting tag=time-based usage=1.62 time=767.96262ms target="/test/producer/15/data/%02/v=1760842995123713"
+time=2025-10-19T03:03:27.418Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:03:27.784Z level=INFO msg=usage tag=repo-management lengetjobs=9
+time=2025-10-19T03:03:27.784Z level=INFO msg=waiting tag=time-based usage=1.62 time=1.244374156s target="/test/producer/4/data/%01/v=1760842995065554"
+time=2025-10-19T03:03:28.150Z level=INFO msg="now doing job" tag=repo-management !BADKEY="/test/producer/15/data/%02/v=1760842995123713"
+time=2025-10-19T03:03:28.150Z level=INFO msg=AddJob tag=repo-storage target="/test/producer/15/data/%02/v=1760842995123713"
+time=2025-10-19T03:03:28.150Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/3/data/%01/v=1760842995090430 /test/producer/2/data/%00/v=1760842995073372 /test/producer/16/data/%00/v=1760842995120107 /test/producer/2/data/%02/v=1760842995085766 /test/producer/2/data/%03/v=1760842995090834 /test/producer/3/data/%00/v=1760842995074290 /test/producer/13/data/%00/v=1760842995123348 /test/producer/16/data/%03/v=1760842995136698 /test/producer/15/data/%02/v=1760842995123713 /test/producer/11/data/%02/v=1760842995123606 "
+time=2025-10-19T03:03:28.150Z level=WARN msg="should fetch data here but not implemented" tag=repo-storage
+time=2025-10-19T03:03:28.352Z level=INFO msg=waiting tag=time-based ability=48 time=6.530742193s target="/test/producer/15/data/%02/v=1760842995123713"
+time=2025-10-19T03:03:33.504Z level=INFO msg=usage tag=repo-management lengetjobs=10
+time=2025-10-19T03:03:33.504Z level=INFO msg=waiting tag=time-based usage=2 time=517.44407ms target="/test/producer/11/data/%01/v=1760842995114673"
+time=2025-10-19T03:03:34.022Z level=INFO msg="now doing job" tag=repo-management !BADKEY="/test/producer/11/data/%01/v=1760842995114673"
+time=2025-10-19T03:03:34.022Z level=INFO msg=AddJob tag=repo-storage target="/test/producer/11/data/%01/v=1760842995114673"
+time=2025-10-19T03:03:34.022Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/11/data/%01/v=1760842995114673 /test/producer/16/data/%00/v=1760842995120107 /test/producer/2/data/%02/v=1760842995085766 /test/producer/2/data/%03/v=1760842995090834 /test/producer/3/data/%00/v=1760842995074290 /test/producer/13/data/%00/v=1760842995123348 /test/producer/16/data/%03/v=1760842995136698 /test/producer/15/data/%02/v=1760842995123713 /test/producer/11/data/%02/v=1760842995123606 /test/producer/3/data/%01/v=1760842995090430 /test/producer/2/data/%00/v=1760842995073372 "
+time=2025-10-19T03:03:34.022Z level=WARN msg="should fetch data here but not implemented" tag=repo-storage
+time=2025-10-19T03:03:34.415Z level=INFO msg=waiting tag=time-based ability=45.63 time=19.547817139s target="/test/producer/11/data/%01/v=1760842995114673"
+time=2025-10-19T03:03:34.883Z level=INFO msg="releasing job" tag=repo-management !BADKEY="/test/producer/15/data/%02/v=1760842995123713"
+time=2025-10-19T03:03:34.883Z level=INFO msg="Releasing job" tag=repo-storage !BADKEY="&{Type:INSERT Target:/test/producer/15/data/%02/v=1760842995123713 SnapshotThreshold:0}"
+time=2025-10-19T03:03:34.883Z level=INFO msg=logjobs tag=repo-storage jobs="/test/producer/11/data/%01/v=1760842995114673 /test/producer/16/data/%00/v=1760842995120107 /test/producer/2/data/%02/v=1760842995085766 /test/producer/2/data/%03/v=1760842995090834 /test/producer/3/data/%00/v=1760842995074290 /test/producer/13/data/%00/v=1760842995123348 /test/producer/16/data/%03/v=1760842995136698 /test/producer/11/data/%02/v=1760842995123606 /test/producer/3/data/%01/v=1760842995090430 /test/producer/2/data/%00/v=1760842995073372 "
+time=2025-10-19T03:03:34.883Z level=INFO msg="removing data" tag=repo-storage target="/test/producer/15/data/%02/v=1760842995123713"
+time=2025-10-19T03:03:41.169Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:03:41.186Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:03:41.204Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:03:41.222Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:03:41.223Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:03:41.223Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:03:41.242Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:03:41.270Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:03:41.343Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:03:41.351Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:03:41.450Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:03:42.065Z level=INFO msg=waiting tag=time-based ability=48 time=18.319650656s target="/test/producer/3/data/%01/v=1760842995090430"
+time=2025-10-19T03:03:55.201Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:03:55.219Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:03:55.235Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:03:55.254Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:03:55.255Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:03:55.255Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:03:55.275Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:03:55.301Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:03:55.374Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:03:55.383Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:03:55.483Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:09.234Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:09.252Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:09.268Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:09.287Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:09.287Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:09.287Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:09.308Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:09.334Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:09.407Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:09.416Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:09.516Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:23.266Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:23.284Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:23.300Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:23.319Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:23.319Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:23.319Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:23.340Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:23.366Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:23.439Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:23.448Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:23.548Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:37.297Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:37.315Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:37.331Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:37.351Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:37.351Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:37.351Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:37.372Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:37.397Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:37.470Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:37.479Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:37.580Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:51.329Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:51.347Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:51.363Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:51.382Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:51.382Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:51.382Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:51.404Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:51.429Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:51.502Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:51.511Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:04:51.612Z level=ERROR msg="SVS ALO error" tag=repo-awareness err="sync error [/ndn/node3][1760842985]: network error: retries exhausted, segment number=0"
+time=2025-10-19T03:05:01.505Z level=ERROR msg="Error on face" tag=basic-engine err=EOF face="stream-face (unix:///run/nfd/tno.sock)"
