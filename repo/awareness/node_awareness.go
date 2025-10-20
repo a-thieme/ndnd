@@ -18,10 +18,11 @@ const (
 
 // Local awareness of the state of repo nodes within a cluster
 type RepoNodeAwareness struct {
-	name   *enc.Name
-	jobs   []*tlv.RepoCommand
-	status NodeStatus
-	timer  *time.Timer
+	name    *enc.Name
+	jobs    []*tlv.RepoCommand
+	status  NodeStatus
+	timer   *time.Timer
+	NumJobs int
 
 	expiryFunc func([]*tlv.RepoCommand)
 }
@@ -56,6 +57,7 @@ func (r *RepoNodeAwareness) Update(jobs []*tlv.RepoCommand) {
 	log.Debug(r, "updating local state for node", r.name, "jobs", jobs)
 
 	r.jobs = jobs
+	r.NumJobs = len(jobs)
 	log.Debug(r, "end of Update()")
 }
 

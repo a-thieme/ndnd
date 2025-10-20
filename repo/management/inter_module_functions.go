@@ -13,7 +13,7 @@ func (m *RepoManagement) CheckJob(job *tlv.RepoCommand) {
 	log.Debug(m, "checking job", job.Target)
 	status := m.getJobStatus(job)
 	// TODO: make it a switch statement
-	if status == "under" {
+	if status > 0 {
 		log.Debug(m, job.Target.String(), "is under replicated")
 		if !m.storage.DoingJob(job) {
 			log.Debug(m, job.Target.String(), "under replication handler")
@@ -21,12 +21,12 @@ func (m *RepoManagement) CheckJob(job *tlv.RepoCommand) {
 		} else {
 			log.Debug(m, job.Target.String(), "under but already doing job")
 		}
-	} else if status == "over" {
+	} else if status < 0 {
 		log.Debug(m, job.Target.String(), "is over replicated")
 		if m.storage.DoingJob(job) {
 			m.overReplication(job)
 		}
-	} else if status == "good" {
+	} else if status == 0 {
 		log.Debug(m, job.Target.String(), "is replicated")
 		m.goodReplication(job)
 	} else {
@@ -59,7 +59,7 @@ func (m *RepoManagement) OnStatus(name enc.Name, content enc.Wire, reply func(wi
 		sr.Status = "unknown"
 	} else {
 		log.Debug(m, "job exists, getting status", job.Target)
-		sr.Status = m.getJobStatus(job)
+		sr.Status = string(m.getJobStatus(job))
 	}
 
 	log.Debug(m, "Reply with status response")
@@ -69,7 +69,7 @@ func (m *RepoManagement) OnStatus(name enc.Name, content enc.Wire, reply func(wi
 	}
 	log.Debug(m, "end of OnStatus()")
 }
-func (m *RepoManagement) getJobStatus(job *tlv.RepoCommand) string {
+func (m *RepoManagement) getJobStatus(job *tlv.RepoCommand) int {
 	// how many times the job should be done
 	r := 0
 	log.Debug(m, "get whether it should be active")
@@ -90,12 +90,7 @@ func (m *RepoManagement) getJobStatus(job *tlv.RepoCommand) string {
 
 	// status return
 	// TODO: maybe standardize this
-	if num < r {
-		return "under"
-	} else if num > r {
-		return "over"
-	}
-	return "good"
+	return r - num
 }
 
 // FIXME: get this to actuall do storage analysis. for now, just number of commands, and total is 50
