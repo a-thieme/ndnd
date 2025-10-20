@@ -83,7 +83,7 @@ func (r *RepoAwareness) Start() (err error) {
 
 	// Set error handler
 	r.awarenessSvs.SetOnError(func(err error) {
-		log.Error(r, "SVS ALO error", "err", err)
+		log.Debug(r, "SVS ALO error", "err", err)
 	})
 
 	// Subscribe to all publishers
@@ -93,6 +93,7 @@ func (r *RepoAwareness) Start() (err error) {
 			panic("Snapshot publications are not supported in Repo Awareness")
 		} else {
 			// Process the publication.
+			log.Info(r, "awareness update", "seq", pub.SeqNum, "node", pub.Publisher)
 			log.Debug(r, "got awareness update", pub.Content)
 
 			update, err := tlv.ParseAwarenessUpdate(enc.NewWireView(pub.Content), true)
@@ -219,7 +220,7 @@ func (r *RepoAwareness) StartHeartbeat() (err error) {
 // this is called directly from storage because storage knows when it updates itself
 func (r *RepoAwareness) PublishAwarenessUpdate(awarenessUpdate *tlv.AwarenessUpdate) {
 	// publish to awareness SVS
-	log.Debug(r, "Publishing awareness update for node", r.nodeNameN)
+	log.Info(r, "Publishing awareness update", "node", r.nodeNameN)
 	_, _, err := r.awarenessSvs.Publish(awarenessUpdate.Encode())
 	log.Debug(r, "after Publish() in awareness for update", awarenessUpdate)
 	if err != nil {

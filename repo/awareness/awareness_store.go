@@ -112,7 +112,12 @@ func (s *RepoAwarenessStore) ProcessAwarenessUpdate(update *tlv.AwarenessUpdate)
 }
 
 func (s *RepoAwarenessStore) onHeartbeatExpire(rc []*tlv.RepoCommand) {
+	log.Info(s, "heartbeat expired, checking jobs", "length", len(rc))
 	for _, job := range rc {
+		log.Info(s, "now checking", "job", job.Target)
+		s.mutex.Lock()
+		s.jobReplications[job.Target.String()]--
+		s.mutex.Unlock()
 		s.checkJob(job)
 	}
 }
