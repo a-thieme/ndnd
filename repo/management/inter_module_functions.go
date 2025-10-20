@@ -119,7 +119,6 @@ func (m *RepoManagement) underReplicationCont(job *tlv.RepoCommand, num int) {
 
 	// sort nodes by availability
 	sorted := smbv(a)
-	log.Debug(m, fmt.Sprintf("%v", sorted), "needs", num, "target", jTarget)
 	myVal := -1
 	for index, name := range sorted {
 		if name == m.repo.NodeNameN.String() {
@@ -131,6 +130,7 @@ func (m *RepoManagement) underReplicationCont(job *tlv.RepoCommand, num int) {
 	}
 
 	// if i am in top num nodes, do job
+	log.Info(m, fmt.Sprintf("%v", sorted), "needs", num, "myval", myVal, "target", jTarget)
 	if myVal < num {
 		m.DoJob(job)
 	}
@@ -224,7 +224,7 @@ func (m *RepoManagement) getJobStatus(job *tlv.RepoCommand) int {
 	}
 	log.Trace(m, "job is done", num, "times and should be", r)
 	// FIXME: remove this, just doing debug since i'm not at trace level
-	log.Debug(m, job.Target.String(), "done", num, "target", r)
+	log.Info(m, job.Target.String(), "done", num, "target", r)
 
 	// status return
 	// TODO: maybe standardize this
