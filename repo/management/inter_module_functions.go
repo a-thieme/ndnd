@@ -17,12 +17,15 @@ func (m *RepoManagement) CheckJob(job *tlv.RepoCommand) {
 	// TODO: make it a switch statement
 	if status > 0 {
 		log.Debug(m, job.Target.String(), "is under replicated")
-		if !m.storage.DoingJob(job) {
-			log.Debug(m, job.Target.String(), "under replication handler")
-			m.underReplicationCont(job, status)
-		} else {
-			log.Debug(m, job.Target.String(), "under but already doing job")
-		}
+		// auction should be able to figure out if it is the auctioneer
+		// m.underReplication(job.Target.String())
+		m.AucAucJob(job)
+		// if !m.storage.DoingJob(job) {
+		// 	log.Debug(m, job.Target.String(), "under replication handler")
+		// 	m.underReplicationCont(job, status)
+		// } else {
+		// 	log.Debug(m, job.Target.String(), "under but already doing job")
+		// }
 	} else if status < 0 {
 		log.Info(m, job.Target.String(), "job", "is over replicated")
 		if m.storage.DoingJob(job) {
@@ -224,7 +227,7 @@ func (m *RepoManagement) getJobStatus(job *tlv.RepoCommand) int {
 	}
 	log.Trace(m, "job is done", num, "times and should be", r)
 	// FIXME: remove this, just doing debug since i'm not at trace level
-	log.Debug(m, job.Target.String(), "done", num, "target", r)
+	log.Info(m, job.Target.String(), "done", num, "target", r)
 
 	// status return
 	// TODO: maybe standardize this
@@ -284,10 +287,10 @@ func (m *RepoManagement) OnNewCommand(command *tlv.RepoCommand) {
 	// TODO: the way to fix this is by separating the check for replication out of the PublishCommand call.
 
 	log.Info(m, "new command from producer")
-	// do job if you have the resources
-	m.DoJob(command)
 	// publish command to the commands SVS group, since it's new
 	m.commands.PublishCommand(command)
+	// do job if you have the resources
+	m.DoJob(command)
 }
 
 // storage will call awareness if an update happens
@@ -333,11 +336,13 @@ func (m *RepoManagement) AucDoJob(s string) {
 	job := m.DecodeCommand(s)
 	if job != nil {
 		m.DoJob(job)
+	} else {
+		panic("decoding command didn't work")
 	}
 }
 
 func (m *RepoManagement) AucAucJob(job *tlv.RepoCommand) {
-	m.auction.AuctionItem(EncodeCommand(job))
+	m.auction.AuctionItem(job.Target.String())
 }
 
 func EncodeCommand(command *tlv.RepoCommand) string {
@@ -354,4 +359,16 @@ func (m *RepoManagement) DecodeCommand(s string) *tlv.RepoCommand {
 		return rc
 	}
 	return nil
+}
+
+func (m *RepoManagement) AucCalcBid(s string) int {
+	cmd := m.DecodeCommand(s)
+	if cmd == nil {
+		return 0
+	}
+	working := int(m.GetAvailability(cmd)) + 1
+	if m.storage.DoingJob(cmd) {
+		return 3 * working / 2
+	}
+	return working
 }

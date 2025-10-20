@@ -215,7 +215,7 @@ func main() {
 	producer.Start()
 	defer producer.Stop()
 
-	totalData := 1
+	totalData := 12
 	checkData := make([]enc.Name, totalData)
 
 	// for i := 0; i < totalData; i++ {

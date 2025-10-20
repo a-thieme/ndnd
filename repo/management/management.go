@@ -26,7 +26,7 @@ type RepoManagement struct {
 	timeBased      *distribution.TimeBased
 
 	overReplication  func(command *tlv.RepoCommand)
-	underReplication func(command *tlv.RepoCommand)
+	underReplication func(command string)
 	goodReplication  func(command *tlv.RepoCommand)
 }
 
@@ -44,14 +44,14 @@ func NewRepoManagement(repo *types.RepoShared, aware *awareness.RepoAwareness, s
 		timeBased:      distribution.NewTimeBased(),
 		commands:       commands,
 	}
-	// // Create repo auction
-	// rm.auction = distribution.NewAuctionEngine(
-	// 	repo,
-	// 	awareness.GetOnlineNodes,
-	// 	rm.GetAvailability,
-	// 	rm.AucDoJob,
-	// )
-	//rm.auction.Start()
+	// Create repo auction
+	rm.auction = distribution.NewAuctionEngine(
+		repo,
+		rm.awareness.GetOnlineNodes,
+		rm.AucCalcBid,
+		rm.AucDoJob,
+	)
+	rm.auction.Start()
 
 	// NOTE: This file sets callbacks to connect modules to management
 	// in addition, it sets the managemnt's decisions for what to do if a job is under, over, or well-replicated
@@ -67,7 +67,7 @@ func NewRepoManagement(repo *types.RepoShared, aware *awareness.RepoAwareness, s
 	// TODO: move data fetching and sync joining logic into management
 
 	// connect management to timers
-	rm.setUnder(rm.timeBased.Under)
+	// rm.setUnder(rm.auction.AuctionItem)
 	rm.setOver(rm.timeBased.Over)
 	rm.setGood(rm.timeBased.Good)
 
@@ -80,7 +80,7 @@ func NewRepoManagement(repo *types.RepoShared, aware *awareness.RepoAwareness, s
 	return rm
 }
 
-func (rm *RepoManagement) setUnder(f func(command *tlv.RepoCommand)) {
+func (rm *RepoManagement) setUnder(f func(command string)) {
 	rm.underReplication = f
 }
 

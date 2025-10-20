@@ -4,6 +4,7 @@ package distribution
 
 import (
 	"fmt"
+	"hash/fnv"
 	"math/rand"
 	"slices"
 	"sort"
@@ -25,9 +26,12 @@ type Auction struct {
 	itemID       string
 	nonce        string
 	expectedBids int
+	needed       int
 	bids         []Bid
 	numBids      int
 	results      string
+	bidders      []string
+	startTime    time.Time
 }
 type Bid struct {
 	node string
@@ -41,11 +45,13 @@ func (a *Auction) String() string {
 func NewAuction(itemID string, size int) Auction {
 	a := new(Auction)
 	a.bids = make([]Bid, size)
+	a.bidders = make([]string, size)
 	a.itemID = itemID
 	a.nonce = strconv.Itoa(rand.Int())
 	a.numBids = 0
 	a.expectedBids = size
 	a.results = ""
+	a.startTime = time.Now()
 	return *a
 }
 
@@ -63,11 +69,11 @@ func (a *Auction) determineWinners(numWinners int) {
 }
 
 type AuctionEngine struct {
-	mutex sync.RWMutex
+	mutex sync.Mutex
 
 	// ndn communication
 	repo           *types.RepoShared
-	availableNodes func() []*enc.Name
+	availableNodes func() []string
 	auctions       map[string]Auction
 	interestCfg    ndn.InterestConfig
 	calculateBid   func(string) int
@@ -83,7 +89,7 @@ func (a *AuctionEngine) String() string {
 	return "auction-engine"
 }
 
-func NewAuctionEngine(repo *types.RepoShared, availableNodes func() []*enc.Name, calculateBid func(string) int, onWin func(string)) *AuctionEngine {
+func NewAuctionEngine(repo *types.RepoShared, availableNodes func() []string, calculateBid func(string) int, onWin func(string)) *AuctionEngine {
 	a := new(AuctionEngine)
 	a.repo = repo
 	a.auctions = make(map[string]Auction)
@@ -128,8 +134,8 @@ func (a *AuctionEngine) Start() error {
 }
 
 func (a *AuctionEngine) Stop() error {
-	a.mutex.RLock()
-	defer a.mutex.RUnlock()
+	a.mutex.Lock()
+	defer a.mutex.Unlock()
 
 	log.Info(a, "Stopping Repo Auction Engine")
 
@@ -148,40 +154,66 @@ func (a *AuctionEngine) Stop() error {
 	return nil
 }
 
-func (a *AuctionEngine) addBid(itemId string, node *enc.Name, bid int) {
+func (a *AuctionEngine) addBid(itemId string, node string, bid int) {
 	a.mutex.Lock()
-	defer a.mutex.Unlock()
-
-	a.auctions[itemId].bids[a.auctions[itemId].numBids] = Bid{node.String(), bid}
+	log.Info(a, "addbid", "item", itemId, "node", node, "bid", bid)
+	if slices.Contains(a.auctions[itemId].bidders, node) {
+		log.Info(a, "already got bid, skipping")
+		a.mutex.Unlock()
+		return
+	}
+	a.auctions[itemId].bidders[a.auctions[itemId].numBids] = node
+	a.auctions[itemId].bids[a.auctions[itemId].numBids] = Bid{node, bid}
+	iWin := false
 	// https://stackoverflow.com/questions/42605337/cannot-assign-to-struct-field-in-a-map
 	if entry, ok := a.auctions[itemId]; ok {
 		log.Info(a, "Adding bid", "itemId", itemId, "node", node, "bid", bid)
 		entry.numBids++
 		if entry.numBids == entry.expectedBids {
 			entry.determineWinners(a.repo.NumReplicas)
-
 			// if we are a winner, notify the management module
 			if slices.Contains(strings.Fields(entry.results), a.repo.NodeNameN.String()) {
-				a.onWin(itemId)
+				iWin = true
 			}
 		}
 		a.auctions[itemId] = entry
+	}
+	a.mutex.Unlock()
+	if iWin {
+		a.onWin(itemId)
 	}
 }
 
 func (a *AuctionEngine) AuctionItem(itemId string) {
 	// get list of node prefixes
 	nodes := a.availableNodes()
+	nodes = append(nodes, a.repo.NodeNameN.String())
+	sort.Strings(nodes)
 	numNodes := len(nodes)
+	if nodes[HashAndMod(itemId, numNodes)] != a.repo.NodeNameN.String() {
+		return
+	}
 
 	// Protect the map write with mutex
 	a.mutex.Lock()
+
+	// Check if an auction for this item already exists and is recent
+	// if existingAuction, ok := a.auctions[itemId]; ok {
+	// 	if time.Since(existingAuction.startTime) < (5 * time.Second) {
+	// 		// It's too soon to start a new auction for this item
+	// 		log.Info(a, "Skipping new auction, existing one is too recent", "item", itemId, "created", existingAuction.startTime)
+	// 		a.mutex.Unlock() // Don't forget to unlock before returning
+	// 		return
+	// 	}
+	// }
+
+	log.Info(a, "auctioning", "item", itemId)
 	a.auctions[itemId] = NewAuction(itemId, numNodes)
 	nonce := a.auctions[itemId].nonce
 	a.mutex.Unlock()
 	// /<node>/<repo>/<itemID>/bid/<auctioneer>/<nonce>
 	for _, node := range nodes {
-		if node.Equal(a.repo.NodeNameN) {
+		if node == a.repo.NodeNameN.String() {
 			a.addBid(itemId, node, a.calculateBid(itemId))
 			continue
 		}
@@ -190,7 +222,8 @@ func (a *AuctionEngine) AuctionItem(itemId string) {
 		intCfg.Nonce = utils.ConvertNonce(a.repo.Client.Engine().Timer().Nonce())
 
 		// probably a better way to do this
-		var n = node.String() + a.repo.RepoNameN.String() + "/" + itemId + "/bid/" + enc.Component{
+		nme, _ := enc.NameFromStr(itemId)
+		var n = node + a.repo.RepoNameN.String() + "/" + enc.Component{Typ: 8, Val: nme.Bytes()}.String() + "/bid/" + enc.Component{
 			Typ: 8,
 			Val: a.repo.NodeNameN.Bytes()}.String() + "/" + nonce
 
@@ -225,15 +258,46 @@ func (a *AuctionEngine) AuctionItem(itemId string) {
 	}
 }
 
+func HashAndMod(s string, m int) int {
+	// A divisor of 0 is not allowed for a modulo operation.
+	if m == 0 {
+		panic("error: divisor cannot be zero")
+	}
+
+	// Create a new FNV-1a 32-bit hash object.
+	// FNV (Fowler-Noll-Vo) is a fast, non-cryptographic hash function.
+	h := fnv.New32a()
+
+	// Write the string's byte representation to the hash object.
+	// The Write method never returns an error.
+	_, _ = h.Write([]byte(s))
+
+	// Sum32 returns the 32-bit hash value as a uint32.
+	hashValue := h.Sum32()
+
+	// Convert the uint32 hash value to an int and perform the modulo operation.
+	// We take the absolute value of m to handle potential negative divisors,
+	// ensuring the result is always non-negative.
+	divisor := m
+	if divisor < 0 {
+		divisor = -divisor
+	}
+
+	result := int(hashValue) % divisor
+
+	return result
+}
+
 func (a *AuctionEngine) fetchResults(auctioneer []byte, itemId string, nonce string) {
 	auctioneerName, _ := enc.NameFromBytes(auctioneer)
-	iName, _ := enc.NameFromStr(auctioneerName.String() + a.repo.RepoNameN.String() + "/" + itemId + "/results/" + nonce)
-	log.Info(a, "Received results interest", "itemId", itemId, "auctioneer", auctioneerName, "nonce", nonce)
+	tmp, _ := enc.NameFromStr(itemId)
+	iName, _ := enc.NameFromStr(auctioneerName.String() + a.repo.RepoNameN.String() + "/" + enc.Component{Typ: 8, Val: tmp.Bytes()}.String() + "/results/" + nonce)
+	log.Info(a, "fetching results", "name", iName, "itemId", itemId, "auctioneer", auctioneerName, "nonce", nonce)
 	intCfg := a.interestCfg
 	intCfg.Nonce = utils.ConvertNonce(a.repo.Engine.Timer().Nonce())
 	object.ExpressR(a.repo.Engine, ndn.ExpressRArgs{
 		Name:    iName,
-		Retries: 5,
+		Retries: 15,
 		Config:  &intCfg,
 		Callback: func(args ndn.ExpressCallbackArgs) {
 			switch args.Result {
@@ -263,13 +327,15 @@ func (a *AuctionEngine) fetchResults(auctioneer []byte, itemId string, nonce str
 func (a *AuctionEngine) onInterest(args ndn.InterestHandlerArgs) {
 	interest := args.Interest
 	n := interest.Name()
+	log.Info(a, "got interest", "name", n)
 	tmp := n.At(-3).String()
 	var content []byte
 	if tmp == "bid" {
-		log.Info(a, "Received bid interest", "name", n)
-
-		itemId := n.At(-4).String()
+		tmp := n.At(-4).Val
+		name, _ := enc.NameFromBytes(tmp)
+		itemId := name.String()
 		auctioneer := n.At(-2).Val
+		log.Info(a, "Received bid interest", "name", n, "auctioneer", auctioneer)
 		nonce := n.At(-1).String()
 		a.fetchResults(auctioneer, itemId, nonce)
 
@@ -277,20 +343,30 @@ func (a *AuctionEngine) onInterest(args ndn.InterestHandlerArgs) {
 	} else if n.At(-2).String() == "results" {
 		log.Info(a, "Received auction results interest", "name", n)
 
-		itemId := n.At(-3).String()
+		tmp := n.At(-3).Val
+		anothertmp, _ := enc.NameFromBytes(tmp)
+		itemId := anothertmp.String()
+		log.Info(a, "asked results for", "item", itemId)
+
 		// todo: add nonce to itemID
 		nonce := n.At(-1).String()
 
 		// Protect map access with mutex
-		a.mutex.RLock()
-		if a.auctions[itemId].nonce != nonce {
+		log.Info(a, "locking")
+		a.mutex.Lock()
+		cnon := a.auctions[itemId].nonce
+		log.Info(a, "unlocking")
+		a.mutex.Unlock()
+		log.Info(a, "unlocked")
+		if cnon != nonce {
+			log.Info(a, "nonces don't match", a.auctions[itemId].nonce, nonce)
 			// todo: nack?
 			// requested results were for a previous auction of the item, not the latest
-			a.mutex.RUnlock()
 			return
 		}
+		a.mutex.Lock()
 		r := a.auctions[itemId].results
-		a.mutex.RUnlock()
+		a.mutex.Unlock()
 		// FIXME: while r is unchanged, wait a small amount of time
 		if r == "" {
 			// don't respond until there's a result
